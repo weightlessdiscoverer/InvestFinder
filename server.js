@@ -12,6 +12,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const {
   scanAllETFs,
+  normalizeAssetClass,
   normalizeSmaPeriod,
   normalizeProviderFilter,
   DEFAULT_SMA_PERIOD,
@@ -20,7 +21,11 @@ const {
   startYahooHistoryUpdater,
   getYahooHistoryUpdaterInfo,
 } = require('./src/yahooHistoryUpdater');
-const { getStoreSummary, listAvailableTickerRecords } = require('./src/yahooHistoryStore');
+const {
+  classifyFreshness,
+  getStoreSummary,
+  listAvailableTickerRecords,
+} = require('./src/yahooHistoryStore');
 const { getEtfUniverse } = require('./src/etfUniverseService');
 
 const app = express();
@@ -55,15 +60,22 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
 
   let smaPeriod;
   let providerFilter;
+  let assetClass;
   try {
     smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
     providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
+    assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
   }
 
   try {
-    const results = await scanAllETFs({ bypassCache, smaPeriod, providerFilter });
+    const results = await scanAllETFs({
+      bypassCache,
+      smaPeriod,
+      providerFilter,
+      assetClass,
+    });
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {
     console.error('[/api/scan] Error:', err.message);
@@ -84,17 +96,13 @@ app.get('/api/yahoo-sync-status', async (_req, res) => {
   }
 });
 
-/**
- * GET /api/available-etfs
- * Returns ETFs that already have persisted Yahoo history in local database.
- * Optional query: provider=all|ishares|xtrackers
- */
-app.get('/api/available-etfs', async (req, res) => {
+async function handleAvailableInstruments(req, res) {
   try {
+    const assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
     const providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
     const [records, universe, summary] = await Promise.all([
       listAvailableTickerRecords(),
-      getEtfUniverse({ providerFilter, bypassCache: false }),
+      getEtfUniverse({ providerFilter, bypassCache: false, assetClass }),
       getStoreSummary(),
     ]);
 
@@ -108,6 +116,7 @@ app.get('/api/available-etfs', async (req, res) => {
         if (!etf) return null;
 
         return {
+          assetClass: etf.assetClass || assetClass,
           provider: etf.provider,
           ticker: etf.ticker,
           name: etf.name,
@@ -129,18 +138,40 @@ app.get('/api/available-etfs', async (req, res) => {
         return a.ticker.localeCompare(b.ticker);
       });
 
+    const oldestItemUpdate = items
+      .map(item => item.updatedAt)
+      .filter(Boolean)
+      .sort()[0] || null;
+
+    const effectiveFreshness = items.length > 0
+      ? classifyFreshness(oldestItemUpdate)
+      : summary.freshness;
+
     res.json({
       ok: true,
+      assetClass,
       providerFilter,
       count: items.length,
-      freshness: summary.freshness,
+      freshness: effectiveFreshness,
       items,
       listedAt: new Date().toISOString(),
     });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }
-});
+}
+
+/**
+ * GET /api/available-instruments
+ * Returns persisted Yahoo history entries for selected asset class.
+ * Optional query: provider=all|ishares|xtrackers and assetClass=etf|dax40
+ */
+app.get('/api/available-instruments', handleAvailableInstruments);
+
+/**
+ * Backward-compatible alias for legacy clients.
+ */
+app.get('/api/available-etfs', handleAvailableInstruments);
 
 // Catch-all: serve index.html for any unknown path (SPA fallback)
 app.use((_req, res) => {

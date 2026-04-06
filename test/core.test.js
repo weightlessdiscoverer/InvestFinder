@@ -10,7 +10,11 @@ const {
   MAX_SMA_PERIOD,
 } = require('../src/analysis');
 const { fetchDailyCloses } = require('../src/dataService');
-const { getEtfUniverse, normalizeProviderFilter } = require('../src/etfUniverseService');
+const {
+  getEtfUniverse,
+  normalizeAssetClass,
+  normalizeProviderFilter,
+} = require('../src/etfUniverseService');
 const { computeSMA } = require('../src/indicators');
 const { detectBreakoutSignal } = require('../src/signals');
 const { classifyFreshness } = require('../src/yahooHistoryStore');
@@ -94,6 +98,13 @@ test('normalizeProviderFilter validates allowed provider values', () => {
   assert.throws(() => normalizeProviderFilter('other'), /Ungueltiger Anbieterfilter/);
 });
 
+test('normalizeAssetClass validates allowed asset types', () => {
+  assert.equal(normalizeAssetClass('etf'), 'etf');
+  assert.equal(normalizeAssetClass(' DAX40 '), 'dax40');
+  assert.equal(normalizeAssetClass('all'), 'all');
+  assert.throws(() => normalizeAssetClass('stocks'), /Ungueltiger Asset-Typ/);
+});
+
 test('getEtfUniverse returns deduplicated valid entries', async () => {
   const all = await getEtfUniverse({ providerFilter: 'all', bypassCache: true });
   const byProviderTicker = new Set(all.map(item => `${item.provider}|${item.ticker}`));
@@ -104,6 +115,11 @@ test('getEtfUniverse returns deduplicated valid entries', async () => {
 
   const ishares = await getEtfUniverse({ providerFilter: 'ishares', bypassCache: true });
   assert.ok(ishares.every(item => item.provider === 'iShares'));
+
+  const dax40 = await getEtfUniverse({ assetClass: 'dax40', bypassCache: true });
+  assert.ok(dax40.length > 0);
+  assert.ok(dax40.every(item => item.provider === 'DAX40'));
+  assert.ok(dax40.every(item => item.assetClass === 'dax40'));
 });
 
 test('masterDataService resolves identifiers and supports cache warmup', async () => {

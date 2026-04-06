@@ -31,7 +31,11 @@ function isRateLimitError(err) {
 }
 
 async function buildQueue() {
-  const universe = await getEtfUniverse({ providerFilter: 'all', bypassCache: false });
+  const universe = await getEtfUniverse({
+    providerFilter: 'all',
+    bypassCache: false,
+    assetClass: 'all',
+  });
 
   const rows = await Promise.all(
     universe.map(async etf => ({

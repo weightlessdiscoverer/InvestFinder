@@ -15,7 +15,7 @@
         <span class="logo-icon">📈</span>
         <h1>InvestFinder</h1>
       </div>
-      <p class="subtitle">iShares + Xtrackers ETF &mdash; SMA Breakout Scanner</p>
+      <p class="subtitle">ETF &amp; DAX40 &mdash; SMA Breakout Scanner</p>
     </header>
 
     <nav class="tab-nav" aria-label="Bereichsauswahl">
@@ -28,6 +28,11 @@
     <!-- ── Scan Controls ────────────────────────────────────────────────── -->
     <section class="controls-panel">
       <div class="controls-row">
+        <label class="input-label" for="assetClassFilter">Asset-Typ</label>
+        <select id="assetClassFilter" class="provider-select" title="Zwischen ETFs und DAX40-Einzelwerten wechseln">
+          <option value="etf" selected>ETFs</option>
+          <option value="dax40">DAX40-Einzelwerte</option>
+        </select>
         <label class="input-label" for="smaPeriodInput">SMA-Periode</label>
         <input
           id="smaPeriodInput"
@@ -61,7 +66,7 @@
         </label>
       </div>
       <p class="hint">
-        Scannt <strong id="etfCount">…</strong> ETFs (iShares/Xtrackers) auf ein
+        Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">ETFs (iShares/Xtrackers)</strong> auf ein
         <strong id="selectedSmaLabel">SMA200</strong>-Breakout-Signal (Tagesbasis).
       </p>
     </section>
@@ -151,7 +156,7 @@
     <!-- ── Results Table ─────────────────────────────────────────────────── -->
     <section id="resultsSection" class="results-section hidden">
       <h2 class="section-title">
-        <span>✅ Breakout-Signale</span>
+        <span id="resultsTitleLabel">✅ Breakout-Signale (ETFs)</span>
         <span class="badge" id="matchBadge">0</span>
       </h2>
 
@@ -193,7 +198,7 @@
     <!-- ── Errors Table (collapsible) ───────────────────────────────────── -->
     <section id="errorsSection" class="results-section errors-section hidden">
       <h2 class="section-title">
-        <span>⚠️ Nicht abrufbare ETFs</span>
+        <span id="errorsTitleLabel">⚠️ Nicht abrufbare ETFs</span>
         <span class="badge badge-warn" id="errorBadge">0</span>
       </h2>
 
@@ -218,7 +223,7 @@
     <!-- ── Database ETF List ─────────────────────────────────────────────── -->
     <section id="dbEtfSection" class="results-section">
       <h2 class="section-title">
-        <span>📚 ETFs mit vorhandenen DB-Daten</span>
+        <span id="dbSectionTitleLabel">📚 ETFs mit vorhandenen DB-Daten</span>
         <span class="badge" id="dbEtfBadge">0</span>
         <span class="badge" id="dbFreshnessBadge">Unbekannt</span>
       </h2>

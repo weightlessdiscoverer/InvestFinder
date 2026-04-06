@@ -12,8 +12,15 @@
 
 const ISHARES_ETFS = require('./etfList');
 const XTRACKERS_ETFS = require('./xtrackersList');
+const DAX40_STOCKS = require('./dax40List');
 const { isValidIsinFormat } = require('./masterDataService');
 const { getDiscoveredEtfs } = require('./yahooDiscoveryService');
+
+const ASSET_CLASSES = {
+  etf: 'etf',
+  dax40: 'dax40',
+  all: 'all',
+};
 
 const PROVIDERS = {
   all: ['iShares', 'Xtrackers'],
@@ -30,6 +37,14 @@ function normalizeProviderFilter(providerFilter) {
   const key = String(providerFilter || 'all').trim().toLowerCase();
   if (!PROVIDERS[key]) {
     throw new Error('Ungueltiger Anbieterfilter. Erlaubt: all, ishares, xtrackers.');
+  }
+  return key;
+}
+
+function normalizeAssetClass(assetClass) {
+  const key = String(assetClass || 'etf').trim().toLowerCase();
+  if (!ASSET_CLASSES[key]) {
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, all.');
   }
   return key;
 }
@@ -108,14 +123,58 @@ async function getProviderEtfs(providerName, bypassCache) {
   return dedupedByTicker;
 }
 
+function getDax40Universe() {
+  const normalized = DAX40_STOCKS
+    .map(item => ({
+      assetClass: 'dax40',
+      provider: 'DAX40',
+      ticker: String(item.ticker || '').trim().toUpperCase(),
+      name: String(item.name || '').trim(),
+      isin: String(item.isin || '').trim().toUpperCase(),
+      wkn: item.wkn ? String(item.wkn).trim().toUpperCase() : 'nicht verfügbar',
+    }))
+    .map(item => ({
+      ...item,
+      isin: isValidIsinFormat(item.isin) ? item.isin : '',
+    }))
+    .filter(item => item.ticker && item.name);
+
+  const byTicker = new Map();
+  for (const item of normalized) {
+    if (!byTicker.has(item.ticker)) {
+      byTicker.set(item.ticker, item);
+    }
+  }
+
+  return Array.from(byTicker.values());
+}
+
 /**
  * Liefert gefiltertes und dedupliziertes ETF-Universum.
  * Deduplizierung bevorzugt eindeutige ISIN (sonst Anbieter+Ticker).
  *
- * @param {{ providerFilter?: string, bypassCache?: boolean }} options
+ * @param {{ providerFilter?: string, bypassCache?: boolean, assetClass?: string }} options
  * @returns {Promise<object[]>}
  */
-async function getEtfUniverse({ providerFilter = 'all', bypassCache = false } = {}) {
+async function getEtfUniverse({
+  providerFilter = 'all',
+  bypassCache = false,
+  assetClass = 'etf',
+} = {}) {
+  const normalizedAssetClass = normalizeAssetClass(assetClass);
+
+  if (normalizedAssetClass === 'dax40') {
+    return getDax40Universe();
+  }
+
+  if (normalizedAssetClass === 'all') {
+    const [etfs, dax40] = await Promise.all([
+      getEtfUniverse({ providerFilter, bypassCache, assetClass: 'etf' }),
+      Promise.resolve(getDax40Universe()),
+    ]);
+    return [...etfs, ...dax40];
+  }
+
   const normalizedFilter = normalizeProviderFilter(providerFilter);
   const selectedProviders = PROVIDERS[normalizedFilter];
 
@@ -129,7 +188,10 @@ async function getEtfUniverse({ providerFilter = 'all', bypassCache = false } = 
   for (const etf of merged) {
     const key = etf.isin || `${etf.provider}|${etf.ticker}`;
     if (!byIdentity.has(key)) {
-      byIdentity.set(key, etf);
+      byIdentity.set(key, {
+        ...etf,
+        assetClass: 'etf',
+      });
     }
   }
 
@@ -138,5 +200,6 @@ async function getEtfUniverse({ providerFilter = 'all', bypassCache = false } = 
 
 module.exports = {
   getEtfUniverse,
+  normalizeAssetClass,
   normalizeProviderFilter,
 };

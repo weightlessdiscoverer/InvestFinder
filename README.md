@@ -111,13 +111,14 @@ InvestFinder/
 
 ### `GET /api/scan`
 
-Scans ETFs from selected providers and returns matches.
+Scans Instrumente fuer den gewaehlten Asset-Typ und gibt Treffer zurueck.
 
 **Query Parameters:**
 
 | Param | Values | Description |
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force a fresh scan |
+| `assetClass` | `etf`, `dax40` | Asset-Typ (default: `etf`) |
 | `sma` | `20`, `50`, `100`, `200`, ... | SMA period (integer > 1, max 400; default: 200) |
 | `provider` | `all`, `ishares`, `xtrackers` | Provider filter (default: `all`) |
 
@@ -128,6 +129,7 @@ Scans ETFs from selected providers and returns matches.
   "ok": true,
   "scannedAt": "2025-01-15T08:30:00.000Z",
   "results": {
+    "assetClass": "etf",
     "providerFilter": "all",
     "total": 100,
     "scanned": 100,
@@ -184,19 +186,25 @@ Beispiel:
 }
 ```
 
-### `GET /api/available-etfs`
+### `GET /api/available-instruments`
 
-Liefert die Liste der ETFs, fuer die in der lokalen Yahoo-Datenbank bereits Kursdaten vorhanden sind.
+Liefert die Liste der Instrumente, fuer die in der lokalen Yahoo-Datenbank bereits Kursdaten vorhanden sind.
 
 Optionaler Query-Parameter:
 
 - `provider=all|ishares|xtrackers` (Default: `all`)
+- `assetClass=etf|dax40` (Default: `etf`)
+
+Legacy-Alias (rueckwaertskompatibel):
+
+- `GET /api/available-etfs`
 
 Beispiel:
 
 ```jsonc
 {
   "ok": true,
+  "assetClass": "etf",
   "providerFilter": "all",
   "count": 11,
   "items": [
@@ -236,7 +244,7 @@ Signal fires when:
 - Yahoo Finance is a **public, unofficial API** – no API key is required but it is subject to rate limits. The app processes ETFs in batches of 5 with a 300 ms delay to mitigate this.
 - Die persistente Yahoo-Datenbank liegt lokal unter `src/data/provider-cache/yahoo-history-db.json` und wird fortlaufend erweitert/aktualisiert.
 - Das Cooldown-Intervall ist ueber `YAHOO_COOLDOWN_MS` konfigurierbar (Default: 60000 ms).
-- ETF universes are cached **separately per provider** and then merged internally; this avoids unnecessary reloads and makes provider-level scaling easy.
+- Instrument universes are cached **separately per provider** and then merged internally; this avoids unnecessary reloads and makes provider-level scaling easy.
 - Bei SMA-Aenderungen werden vorhandene Kursdaten aus dem lokalen Cache wiederverwendet. Dadurch sind Folgescans (anderes N) deutlich schneller und vermeiden unnoetige API-Calls.
 - Duplicate entries are prevented during merge via unique identity (ISIN first, fallback provider+ticker).
 - ISIN wird beim Laden validiert (`^[A-Z0-9]{12}$`), um fehlerhafte Stammdaten auszufiltern.

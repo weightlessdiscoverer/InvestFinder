@@ -15,7 +15,11 @@
 'use strict';
 
 const { fetchDailyCloses } = require('./dataService');
-const { getEtfUniverse, normalizeProviderFilter } = require('./etfUniverseService');
+const {
+  getEtfUniverse,
+  normalizeAssetClass,
+  normalizeProviderFilter,
+} = require('./etfUniverseService');
 const { detectBreakoutSignal } = require('./signals');
 const { getTickerHistory, upsertTickerHistory } = require('./yahooHistoryStore');
 
@@ -125,6 +129,7 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
     const signalResult = detectBreakoutSignal({ dates, closes, smaPeriod });
 
     const baseResult = {
+      assetClass: etf.assetClass || 'etf',
       provider: etf.provider,
       ticker:  etf.ticker,
       name:    etf.name,
@@ -180,13 +185,16 @@ async function scanAllETFs({
   bypassCache = false,
   smaPeriod: smaPeriodInput,
   providerFilter = 'all',
+  assetClass: assetClassInput = 'etf',
 } = {}) {
   const smaPeriod = normalizeSmaPeriod(smaPeriodInput);
+  const normalizedAssetClass = normalizeAssetClass(assetClassInput);
   const normalizedProviderFilter = normalizeProviderFilter(providerFilter);
 
   const etfUniverse = await getEtfUniverse({
     providerFilter: normalizedProviderFilter,
     bypassCache,
+    assetClass: normalizedAssetClass,
   });
 
   // Process ETFs in batches to avoid triggering rate limits
@@ -214,6 +222,7 @@ async function scanAllETFs({
   );
 
   return {
+    assetClass: normalizedAssetClass,
     providerFilter: normalizedProviderFilter,
     smaPeriod,
     smaLabel: `SMA${smaPeriod}`,
@@ -226,6 +235,7 @@ async function scanAllETFs({
 
 module.exports = {
   scanAllETFs,
+  normalizeAssetClass,
   normalizeProviderFilter,
   normalizeSmaPeriod,
   DEFAULT_SMA_PERIOD,

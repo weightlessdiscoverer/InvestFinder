@@ -13,10 +13,12 @@
 
 /* ── DOM references ─────────────────────────────────────────────────────── */
 const btnScan = document.getElementById('btnScan');
+const assetClassFilter = document.getElementById('assetClassFilter');
 const smaPeriodInput = document.getElementById('smaPeriodInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
 const etfCountEl = document.getElementById('etfCount');
+const assetHintLabel = document.getElementById('assetHintLabel');
 const selectedSmaLabel = document.getElementById('selectedSmaLabel');
 const loadingSection = document.getElementById('loadingSection');
 const loadingStatus = document.getElementById('loadingStatus');
@@ -32,10 +34,12 @@ const resultsSection = document.getElementById('resultsSection');
 const resultsBody = document.getElementById('resultsBody');
 const noMatches = document.getElementById('noMatches');
 const matchBadge = document.getElementById('matchBadge');
+const resultsTitleLabel = document.getElementById('resultsTitleLabel');
 const thSmaValue = document.getElementById('thSmaValue');
 const errorsSection = document.getElementById('errorsSection');
 const errorsBody = document.getElementById('errorsBody');
 const errorBadge = document.getElementById('errorBadge');
+const errorsTitleLabel = document.getElementById('errorsTitleLabel');
 const syncStatusSection = document.getElementById('syncStatusSection');
 const syncStateBadge = document.getElementById('syncStateBadge');
 const syncProcessed = document.getElementById('syncProcessed');
@@ -51,6 +55,7 @@ const tabDbBtn = document.getElementById('tabDbBtn');
 const tabMainContent = document.getElementById('tabMainContent');
 const tabDbContent = document.getElementById('tabDbContent');
 const dbEtfSection = document.getElementById('dbEtfSection');
+const dbSectionTitleLabel = document.getElementById('dbSectionTitleLabel');
 const dbEtfBadge = document.getElementById('dbEtfBadge');
 const dbFreshnessBadge = document.getElementById('dbFreshnessBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
@@ -59,10 +64,12 @@ const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
 const DEFAULT_SMA_PERIOD = 200;
+const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 
 /** Total number of ETFs in the current filter (filled after first response). */
 let knownTotal = '…';
+let currentAssetClass = 'etf';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
@@ -191,6 +198,32 @@ function getSelectedProviderFilter() {
     throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur iShares, nur Xtrackers.');
   }
   return value;
+}
+
+function getSelectedAssetClass() {
+  const value = String(assetClassFilter.value || 'etf').trim().toLowerCase();
+  if (!ALLOWED_ASSET_CLASSES.has(value)) {
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40.');
+  }
+  return value;
+}
+
+function applyAssetClassUiState() {
+  if (currentAssetClass === 'dax40') {
+    providerFilter.value = 'all';
+    providerFilter.disabled = true;
+    assetHintLabel.textContent = 'DAX40-Einzelwerte';
+    resultsTitleLabel.textContent = '✅ Breakout-Signale (DAX40-Einzelwerte)';
+    errorsTitleLabel.textContent = '⚠️ Nicht abrufbare DAX40-Einzelwerte';
+    dbSectionTitleLabel.textContent = '📚 DAX40-Einzelwerte mit vorhandenen DB-Daten';
+    return;
+  }
+
+  providerFilter.disabled = false;
+  assetHintLabel.textContent = 'ETFs (iShares/Xtrackers)';
+  resultsTitleLabel.textContent = '✅ Breakout-Signale (ETFs)';
+  errorsTitleLabel.textContent = '⚠️ Nicht abrufbare ETFs';
+  dbSectionTitleLabel.textContent = '📚 ETFs mit vorhandenen DB-Daten';
 }
 
 function updateSmaLabels(smaPeriod) {
@@ -405,8 +438,11 @@ function renderDbFreshness(freshness) {
 
 async function loadDbEtfList() {
   try {
-    const params = new URLSearchParams({ provider: currentProviderFilter });
-    const response = await fetch(`/api/available-etfs?${params.toString()}`);
+    const params = new URLSearchParams({
+      provider: currentProviderFilter,
+      assetClass: currentAssetClass,
+    });
+    const response = await fetch(`/api/available-instruments?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -457,18 +493,22 @@ function stopStatusAnimation() {
 async function runScan() {
   let smaPeriod;
   let provider;
+  let assetClass;
 
   try {
+    assetClass = getSelectedAssetClass();
     smaPeriod = getSelectedSmaPeriod();
-    provider = getSelectedProviderFilter();
+    provider = assetClass === 'dax40' ? 'all' : getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
     setVisible(errorBanner, true);
     return;
   }
 
+  currentAssetClass = assetClass;
   currentSmaPeriod = smaPeriod;
   currentProviderFilter = provider;
+  applyAssetClassUiState();
   updateSmaLabels(currentSmaPeriod);
 
   setVisible(errorBanner, false);
@@ -481,6 +521,7 @@ async function runScan() {
 
   try {
     const params = new URLSearchParams({
+      assetClass: currentAssetClass,
       sma: String(currentSmaPeriod),
       provider: currentProviderFilter,
     });
@@ -500,6 +541,12 @@ async function runScan() {
 
     etfCountEl.textContent = data.results?.total ?? knownTotal;
     knownTotal = data.results?.total ?? knownTotal;
+
+    if (data.results?.assetClass) {
+      currentAssetClass = data.results.assetClass;
+      assetClassFilter.value = currentAssetClass;
+      applyAssetClassUiState();
+    }
 
     if (data.results?.smaPeriod) {
       currentSmaPeriod = data.results.smaPeriod;
@@ -540,10 +587,30 @@ smaPeriodInput.addEventListener('change', () => {
 
 providerFilter.addEventListener('change', () => {
   try {
+    if (currentAssetClass === 'dax40') {
+      providerFilter.value = 'all';
+      return;
+    }
     currentProviderFilter = getSelectedProviderFilter();
     if (currentTab === 'db') {
       loadDbEtfList();
     }
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+assetClassFilter.addEventListener('change', () => {
+  try {
+    currentAssetClass = getSelectedAssetClass();
+    applyAssetClassUiState();
+
+    if (currentTab === 'db') {
+      loadDbEtfList();
+    }
+
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -562,6 +629,8 @@ tabDbBtn.addEventListener('click', () => setActiveTab('db'));
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 
 etfCountEl.textContent = knownTotal;
+currentAssetClass = getSelectedAssetClass();
+applyAssetClassUiState();
 updateSmaLabels(currentSmaPeriod);
 startSyncStatusPolling();
 setActiveTab('main');
