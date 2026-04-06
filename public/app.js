@@ -46,6 +46,10 @@ const syncLastTicker = document.getElementById('syncLastTicker');
 const syncTickerCount = document.getElementById('syncTickerCount');
 const syncOldestUpdate = document.getElementById('syncOldestUpdate');
 const syncStatusNote = document.getElementById('syncStatusNote');
+const dbEtfSection = document.getElementById('dbEtfSection');
+const dbEtfBadge = document.getElementById('dbEtfBadge');
+const dbEtfBody = document.getElementById('dbEtfBody');
+const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
@@ -281,6 +285,57 @@ function renderSummary(data) {
   setVisible(summaryBar, true);
 }
 
+function renderDbEtfList(items) {
+  setVisible(dbEtfSection, true);
+  dbEtfBadge.textContent = String(items.length);
+
+  if (!items.length) {
+    dbEtfBody.innerHTML = '';
+    setVisible(dbEtfEmpty, true);
+    return;
+  }
+
+  setVisible(dbEtfEmpty, false);
+
+  dbEtfBody.innerHTML = items
+    .map(item => `
+      <tr>
+        <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
+        <td>${escHtml(item.name || 'nicht verfügbar')}</td>
+        <td><span class="ticker-chip">${escHtml(item.ticker || '-')}</span></td>
+        <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
+        <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
+        <td class="num">${fmt(item.points, 0)}</td>
+        <td><span class="date-badge">${fmtDate(item.firstDate)}</span></td>
+        <td><span class="date-badge">${fmtDate(item.lastDate)}</span></td>
+      </tr>
+    `)
+    .join('');
+}
+
+async function loadDbEtfList() {
+  try {
+    const params = new URLSearchParams({ provider: currentProviderFilter });
+    const response = await fetch(`/api/available-etfs?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Unbekannter Fehler beim Laden der DB-Liste');
+    }
+
+    renderDbEtfList(data.items || []);
+  } catch (err) {
+    setVisible(dbEtfSection, true);
+    dbEtfBadge.textContent = '0';
+    dbEtfBody.innerHTML = '';
+    setVisible(dbEtfEmpty, true);
+    dbEtfEmpty.textContent = `DB-Liste konnte nicht geladen werden: ${err.message}`;
+  }
+}
+
 /* ── Scan logic ──────────────────────────────────────────────────────────── */
 
 const STATUS_MESSAGES = [
@@ -398,6 +453,7 @@ smaPeriodInput.addEventListener('change', () => {
 providerFilter.addEventListener('change', () => {
   try {
     currentProviderFilter = getSelectedProviderFilter();
+    loadDbEtfList();
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -415,3 +471,4 @@ chkShowErrors.addEventListener('change', () => {
 etfCountEl.textContent = knownTotal;
 updateSmaLabels(currentSmaPeriod);
 startSyncStatusPolling();
+loadDbEtfList();

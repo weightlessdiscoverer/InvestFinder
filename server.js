@@ -20,6 +20,8 @@ const {
   startYahooHistoryUpdater,
   getYahooHistoryUpdaterInfo,
 } = require('./src/yahooHistoryUpdater');
+const { listAvailableTickerRecords } = require('./src/yahooHistoryStore');
+const { getEtfUniverse } = require('./src/etfUniverseService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,6 +81,60 @@ app.get('/api/yahoo-sync-status', async (_req, res) => {
     res.json({ ok: true, ...info, checkedAt: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/available-etfs
+ * Returns ETFs that already have persisted Yahoo history in local database.
+ * Optional query: provider=all|ishares|xtrackers
+ */
+app.get('/api/available-etfs', async (req, res) => {
+  try {
+    const providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
+    const [records, universe] = await Promise.all([
+      listAvailableTickerRecords(),
+      getEtfUniverse({ providerFilter, bypassCache: false }),
+    ]);
+
+    const byTicker = new Map(
+      universe.map(etf => [String(etf.ticker || '').toUpperCase(), etf])
+    );
+
+    const items = records
+      .map(record => {
+        const etf = byTicker.get(record.ticker);
+        if (!etf) return null;
+
+        return {
+          provider: etf.provider,
+          ticker: etf.ticker,
+          name: etf.name,
+          isin: etf.isin || 'nicht verfügbar',
+          wkn: etf.wkn || 'nicht verfügbar',
+          points: record.points,
+          firstDate: record.firstDate,
+          lastDate: record.lastDate,
+          updatedAt: record.updatedAt,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (a.provider !== b.provider) {
+          return a.provider.localeCompare(b.provider);
+        }
+        return a.ticker.localeCompare(b.ticker);
+      });
+
+    res.json({
+      ok: true,
+      providerFilter,
+      count: items.length,
+      items,
+      listedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 

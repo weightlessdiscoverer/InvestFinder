@@ -165,6 +165,38 @@ Beispiel:
 }
 ```
 
+### `GET /api/available-etfs`
+
+Liefert die Liste der ETFs, fuer die in der lokalen Yahoo-Datenbank bereits Kursdaten vorhanden sind.
+
+Optionaler Query-Parameter:
+
+- `provider=all|ishares|xtrackers` (Default: `all`)
+
+Beispiel:
+
+```jsonc
+{
+  "ok": true,
+  "providerFilter": "all",
+  "count": 11,
+  "items": [
+    {
+      "provider": "iShares",
+      "ticker": "IWDA.AS",
+      "name": "iShares Core MSCI World UCITS ETF",
+      "isin": "IE00B4L5Y983",
+      "wkn": "A0RPWH",
+      "points": 292,
+      "firstDate": "2025-02-10",
+      "lastDate": "2026-04-02",
+      "updatedAt": "2026-04-06T10:20:00.000Z"
+    }
+  ],
+  "listedAt": "2026-04-06T10:25:00.000Z"
+}
+```
+
 ---
 
 ## Breakout Logic

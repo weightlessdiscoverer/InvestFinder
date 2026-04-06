@@ -144,6 +144,21 @@ async function getStoreSummary() {
   };
 }
 
+async function listAvailableTickerRecords() {
+  const store = await readStore();
+
+  return Object.entries(store.tickers)
+    .map(([ticker, row]) => ({
+      ticker,
+      points: Number(row?.points || 0),
+      firstDate: row?.firstDate || null,
+      lastDate: row?.lastDate || null,
+      updatedAt: row?.updatedAt || null,
+    }))
+    .filter(row => row.points > 0)
+    .sort((a, b) => b.points - a.points || a.ticker.localeCompare(b.ticker));
+}
+
 module.exports = {
   STORE_PATH,
   readStore,
@@ -151,4 +166,5 @@ module.exports = {
   getTickerUpdatedAt,
   upsertTickerHistory,
   getStoreSummary,
+  listAvailableTickerRecords,
 };
