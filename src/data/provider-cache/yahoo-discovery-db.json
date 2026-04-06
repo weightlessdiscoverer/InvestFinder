@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-06T20:34:11.121Z",
+  "updatedAt": "2026-04-06T20:38:13.568Z",
   "source": "Yahoo Finance Search API",
   "counts": {
     "iShares": 130,
-    "Xtrackers": 133,
-    "total": 263
+    "Xtrackers": 135,
+    "total": 265
   },
   "providers": {
     "iShares": [
@@ -27,8 +27,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "CSJP.MI",
-        "name": "iShares VII PLC - iShares MSCI Japan ETF USD Acc",
+        "ticker": "IMEU.MI",
+        "name": "iShares Core MSCI Europe UCITS ETF EUR (Dist)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -43,8 +43,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "IMEU.MI",
-        "name": "iShares Core MSCI Europe UCITS ETF EUR (Dist)",
+        "ticker": "CSJP.MI",
+        "name": "iShares VII PLC - iShares MSCI Japan ETF USD Acc",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -99,8 +99,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "EXXX.DE",
-        "name": "iShares ATX UCITS ETF (DE)",
+        "ticker": "IQQ4.DE",
+        "name": "iShares Asia Property Yield UCITS ETF USD (Dist)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -395,8 +395,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "IBC2.DE",
-        "name": "iShares $ High Yield Corp Bond UCITS ETF",
+        "ticker": "IHHG.L",
+        "name": "iShares $ High Yield Corp Bond UCITS ETF GBP Hedged (Dist)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -411,16 +411,16 @@
       },
       {
         "provider": "iShares",
-        "ticker": "IHYG.L",
-        "name": "iShares € High Yield Corp Bond UCITS ETF EUR (Dist)",
+        "ticker": "HYPE.DE",
+        "name": "iShares € High Yield Corp Bond ESG Paris-Aligned Climate UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "iShares",
-        "ticker": "IHHG.L",
-        "name": "iShares $ High Yield Corp Bond UCITS ETF GBP Hedged (Dist)",
+        "ticker": "IHYG.L",
+        "name": "iShares € High Yield Corp Bond UCITS ETF EUR (Dist)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -475,16 +475,16 @@
       },
       {
         "provider": "iShares",
-        "ticker": "BEMB",
-        "name": "Ishares J.P. Morgan Broad USD Emerging Markets Bond ETF",
+        "ticker": "JPEAN.MX",
+        "name": "iShares II Public Limited Company - iShares J.P. Morgan $ Emerging Markets Bond UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "iShares",
-        "ticker": "JPEAN.MX",
-        "name": "iShares II Public Limited Company - iShares J.P. Morgan $ Emerging Markets Bond UCITS ETF",
+        "ticker": "BEMB",
+        "name": "Ishares J.P. Morgan Broad USD Emerging Markets Bond ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -547,8 +547,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "TEND",
-        "name": "Ishares Large Cap 10% Target Buffer Dec ETF",
+        "ticker": "MAXJ",
+        "name": "iShares Large Cap Max Buffer Ju",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -563,8 +563,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "MAXJ",
-        "name": "iShares Large Cap Max Buffer Ju",
+        "ticker": "TEND",
+        "name": "Ishares Large Cap 10% Target Buffer Dec ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -667,8 +667,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "XQQ.TO",
-        "name": "iShares NASDAQ 100 Index ETF (CAD-Hedged)",
+        "ticker": "IGE",
+        "name": "iShares North American Natural Resources ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -699,6 +699,14 @@
       },
       {
         "provider": "iShares",
+        "ticker": "SPOGL.XC",
+        "name": "iShares Oil & Gas Exploration &",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "iShares",
         "ticker": "OMXSL.XC",
         "name": "iShares OMX Stockholm Capped UC",
         "isin": "",
@@ -715,16 +723,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "SPOGL.XC",
-        "name": "iShares Oil & Gas Exploration &",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "iShares",
-        "ticker": "OM3X.DE",
-        "name": "iShares OMX Stockholm Capped UCITS ETF",
+        "ticker": "IOGP.AS",
+        "name": "iShares Oil & Gas Exploration & Production UCITS ETF USD (Acc)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -763,8 +763,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "IDBZ.L",
-        "name": "iShares MSCI Brazil UCITS ETF USD (Dist)",
+        "ticker": "IUKD.L",
+        "name": "iShares UK Dividend UCITS ETF GBP (Dist)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -891,8 +891,8 @@
       },
       {
         "provider": "iShares",
-        "ticker": "HDV.MX",
-        "name": "iShares Core High Dividend ETF",
+        "ticker": "USRT.MX",
+        "name": "iShares Core U.S. REIT ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -971,14 +971,6 @@
       },
       {
         "provider": "iShares",
-        "ticker": "CSP1.AQ",
-        "name": "ISHARES VII PLC",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "iShares",
         "ticker": "ID32.L",
         "name": "ISHARES V PUBLIC LIMITED COMPAN",
         "isin": "",
@@ -987,16 +979,16 @@
       },
       {
         "provider": "iShares",
-        "ticker": "WOEE.DE",
-        "name": "iShares World Equity Enhanced Active UCITS ETF USD (Acc)",
+        "ticker": "CSP1.AQ",
+        "name": "ISHARES VII PLC",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "iShares",
-        "ticker": "WDMF.AX",
-        "name": "iShares World Equity Factor ETF",
+        "ticker": "B3FX.F",
+        "name": "BlackRock Global Index Funds - iShares World Equity Index Fund (LU)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1011,8 +1003,16 @@
       },
       {
         "provider": "iShares",
-        "ticker": "B3FX.F",
-        "name": "BlackRock Global Index Funds - iShares World Equity Index Fund (LU)",
+        "ticker": "WOEE.DE",
+        "name": "iShares World Equity Enhanced Active UCITS ETF USD (Acc)",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "iShares",
+        "ticker": "WINC.DE",
+        "name": "iShares World Equity High Income Active UCITS ETF USD Inc",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1093,32 +1093,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XAIX.DE",
-        "name": "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C",
+        "ticker": "XAIXD.XC",
+        "name": "Xtrackers Artificial Intelligen",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DB10.VI",
-        "name": "Xtrackers - ATX UCITS ETF",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XB4A.DE",
-        "name": "Xtrackers ATX UCITS ETF 1C",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XAIX.MI",
-        "name": "Xtrackers Artificial Intelligence & Big Data UCITS ETF 1C",
+        "ticker": "XB4A.MU",
+        "name": "Xtrackers ATX                 I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1133,8 +1117,24 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XAIXD.XC",
-        "name": "Xtrackers Artificial Intelligen",
+        "ticker": "XB4A.DU",
+        "name": "Xtrackers ATX                 I",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XB4A.HA",
+        "name": "Xtrackers ATX                 I",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XB4A.HM",
+        "name": "Xtrackers ATX                 I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1197,16 +1197,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DX2G.DE",
-        "name": "Xtrackers CAC 40 UCITS ETF",
+        "ticker": "XCHA.DE",
+        "name": "Xtrackers CSI300 Swap UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XCHA.DE",
-        "name": "Xtrackers CSI300 Swap UCITS ETF 1C",
+        "ticker": "DX2G.DE",
+        "name": "Xtrackers CAC 40 UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1229,15 +1229,15 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XCHAL.XC",
-        "name": "Xtrackers CSI300 Swap UCITS ETF",
+        "ticker": "XCHA.MU",
+        "name": "Xtrackers CSI300 Swap         I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DX2G.HM",
+        "ticker": "DX2G.MU",
         "name": "Xtrackers CAC 40              I",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -1253,16 +1253,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DBXD.MU",
-        "name": "Xtrackers DAX                 I",
+        "ticker": "XDAX.L",
+        "name": "Xtrackers DAX UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XDDA.MU",
-        "name": "Xtrackers DAX                 I",
+        "ticker": "DB12.VI",
+        "name": "Xtrackers - DAX UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1285,16 +1285,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XDDA.DU",
+        "ticker": "DBXD.MU",
         "name": "Xtrackers DAX                 I",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XGBE.MI",
-        "name": "Xtrackers EUR Corporate Green Bond UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1303,6 +1295,14 @@
         "provider": "Xtrackers",
         "ticker": "XZHE.MI",
         "name": "Xtrackers EUR High Yield Corporate Bond SRI PAB UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XGBE.MI",
+        "name": "Xtrackers EUR Corporate Green Bond UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1381,16 +1381,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XDUK.HM",
-        "name": "Xtrackers FTSE 100            I",
+        "ticker": "DBXI.HA",
+        "name": "Xtrackers FTSE MIB            I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XMCX.HM",
-        "name": "Xtrackers FTSE 250            I",
+        "ticker": "XDUK.HM",
+        "name": "Xtrackers FTSE 100            I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1421,16 +1421,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DB45.VI",
-        "name": "Xtrackers II - Global Aggregate Bond Swap UCITS ETF",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XBAE.DE",
-        "name": "Xtrackers II ESG Global Aggregate Bond UCITS ETF 5C - EUR Hedged",
+        "ticker": "XBAE.MU",
+        "name": "XtrackersIIESG Gl.Ag.Bd U ETF I",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1439,6 +1431,14 @@
         "provider": "Xtrackers",
         "ticker": "XBAG.DU",
         "name": "XtrackersIIESG Gl.Ag.Bd U ETF I",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "DB27.VI",
+        "name": "Xtrackers II - Global Government Bond UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1469,16 +1469,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XCTE.DE",
-        "name": "Xtrackers Harvest MSCI China Tech 100 UCITS ETF 1C",
+        "ticker": "AH50.L",
+        "name": "Xtrackers Harvest CSI A500 UCITS ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XCTE.MI",
-        "name": "Xtrackers Harvest MSCI China Tech 100 UCITS ETF 1C",
+        "ticker": "ASHR.L",
+        "name": "Xtrackers Harvest CSI300 UCITS ETF 1D",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1501,14 +1501,6 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNAS.L",
-        "name": "Xtrackers NASDAQ 100 UCITS ETF 1C",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
         "ticker": "X03G.DE",
         "name": "Xtrackers II Germany Government Bond UCITS ETF 1C",
         "isin": "",
@@ -1517,8 +1509,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XRMU.L",
-        "name": "Xtrackers MSCI USA Screened UCITS ETF 1C",
+        "ticker": "XNAS.L",
+        "name": "Xtrackers NASDAQ 100 UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1533,6 +1525,22 @@
       },
       {
         "provider": "Xtrackers",
+        "ticker": "XRMU.L",
+        "name": "Xtrackers MSCI USA Screened UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "D5BB.DE",
+        "name": "Xtrackers II Germany Government Bond UCITS ETF",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
         "ticker": "SDG3.L",
         "name": "Xtrackers MSCI Global SDG 3 Good Health UCITS ETF 1C USD",
         "isin": "",
@@ -1541,8 +1549,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XUHY.L",
-        "name": "Xtrackers USD High Yield Corporate Bond UCITS ETF 1D",
+        "ticker": "C9DC.HM",
+        "name": "XTRACKERS J.P. MORGAN ESG USD H",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1551,14 +1559,6 @@
         "provider": "Xtrackers",
         "ticker": "XEML.MU",
         "name": "XtrackersII-JPM EM LGB UC.ETF A",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "C9DC.HM",
-        "name": "XTRACKERS J.P. MORGAN ESG USD H",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1581,14 +1581,6 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNJP.DE",
-        "name": "Xtrackers Japan Net Zero Pathway Paris Aligned UCITS ETF",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
         "ticker": "XNJS.L",
         "name": "Xtrackers Japan Net Zero Pathway Paris Aligned UCITS ETF 1C EUR Acc",
         "isin": "",
@@ -1597,8 +1589,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XEML.MI",
-        "name": "Xtrackers II J.P. Morgan EM Local Government Bond UCITS ETF 1D USD",
+        "ticker": "XNJP.DE",
+        "name": "Xtrackers Japan Net Zero Pathway Paris Aligned UCITS ETF",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XNJG.L",
+        "name": "Xtrackers Japan Net Zero Pathway Paris Aligned UCITS ETF 1C EUR Acc",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1606,6 +1606,22 @@
       {
         "provider": "Xtrackers",
         "ticker": "DBPE.DU",
+        "name": "Xtrackers LevDAX Daily Swap   I",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XLPEM.XD",
+        "name": "Xtrackers LPX Private Equity Sw",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "DBPE.HM",
         "name": "Xtrackers LevDAX Daily Swap   I",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -1623,22 +1639,6 @@
         "provider": "Xtrackers",
         "ticker": "XMAE.MU",
         "name": "Xtrackers Le PLC - Xtrackers Msci Ac World Esg Screened Ucits ETF",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "DBPE.HM",
-        "name": "Xtrackers LevDAX Daily Swap   I",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XLPEM.XD",
-        "name": "Xtrackers LPX Private Equity Sw",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1717,32 +1717,24 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XDJE.DE",
-        "name": "Xtrackers Nikkei 225 UCITS ETF 2D EUR Hedged",
+        "ticker": "XNAS.DE",
+        "name": "Xtrackers NASDAQ 100 UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNIF.MI",
-        "name": "Xtrackers Nifty 50 Swap UCITS ETF 1C",
+        "ticker": "XNAS.MI",
+        "name": "Xtrackers NASDAQ 100 UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNZN.L",
-        "name": "Xtrackers Nordic Net Zero Pathway Paris Aligned UCITS ETF 1C",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XAD6.MI",
-        "name": "Xtrackers Physical Silver ETC (EUR)",
+        "ticker": "XDJP.DE",
+        "name": "Xtrackers Nikkei 225 UCITS ETF 1D",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1751,6 +1743,14 @@
         "provider": "Xtrackers",
         "ticker": "XAD5.MI",
         "name": "Xtrackers Physical Gold ETC (EUR)",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XAD6.MI",
+        "name": "Xtrackers Physical Silver ETC (EUR)",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1805,14 +1805,6 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XRS2.MI",
-        "name": "Xtrackers Russell 2000 UCITS ETF 1C",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
         "ticker": "XRSU.L",
         "name": "Xtrackers Russell 2000 UCITS ETF 1C",
         "isin": "",
@@ -1821,8 +1813,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "QARP",
-        "name": "Xtrackers Russell 1000 US QARP ETF",
+        "ticker": "XRS2.MI",
+        "name": "Xtrackers Russell 2000 UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "HYRM",
+        "name": "Xtrackers Risk Managed USD High Yield Strategy ETF",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1877,8 +1877,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "DXS3.BD",
-        "name": "Xtrackers S&P 500 Inverse Daily Swap UCITS ETF 1C",
+        "ticker": "XZSP.DE",
+        "name": "Xtrackers S&P 500 Scored & Screened UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1901,23 +1901,23 @@
       },
       {
         "provider": "Xtrackers",
+        "ticker": "XM33.MI",
+        "name": "Xtrackers II Target Maturity Sept 2033 EUR Corporate Bond UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XB32.MI",
+        "name": "Xtrackers II Target Maturity Sept 2032 EUR Corporate Bond UCITS ETF 1D",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
         "ticker": "XM29.MI",
-        "name": "Xtrackers Target Maturity Sept",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XB30.MI",
-        "name": "Xtrackers II Target Maturity Sept 2030 EUR Corporate Bond UCITS ETF 1D",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XM31.MI",
         "name": "Xtrackers Target Maturity Sept",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -1935,6 +1935,14 @@
         "provider": "Xtrackers",
         "ticker": "XM27.MI",
         "name": "Xtrackers Target Maturity Sept",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XUHY.L",
+        "name": "Xtrackers USD High Yield Corporate Bond UCITS ETF 1D",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1965,8 +1973,16 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XYLD.L",
-        "name": "Xtrackers USD Corporate Bond Short Duration SRI PAB UCITS ETF 1D",
+        "ticker": "XT0D.L",
+        "name": "Xtrackers US Treasuries Ultrashort Bond UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XZBE.DE",
+        "name": "Xtrackers USD Corporate Bond SRI PAB UCITS ETF 2C - EUR hedged",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -1974,6 +1990,30 @@
       {
         "provider": "Xtrackers",
         "ticker": "XFVT.L",
+        "name": "Xtrackers Vietnam Swap UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XVTD.L",
+        "name": "Xtrackers Vietnam Swap UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XFVT.MI",
+        "name": "Xtrackers Vietnam Swap UCITS ETF 1C",
+        "isin": "",
+        "wkn": "nicht verfügbar",
+        "source": "Yahoo Finance Search Discovery"
+      },
+      {
+        "provider": "Xtrackers",
+        "ticker": "XFVT.DE",
         "name": "Xtrackers Vietnam Swap UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -1997,24 +2037,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XFVT.HM",
-        "name": "Xtrackers Vietnam Swap U.ETF  I",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XVTDL.XC",
-        "name": "Xtrackers Vietnam Swap UCITS ET",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XFVTL.XC",
-        "name": "Xtrackers Vietnam Swap UCITS ET",
+        "ticker": "XBI0.DE",
+        "name": "Xtrackers World Biodiversity Focus SRI UCITS ETF 1C USD Acc",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -2037,15 +2061,7 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XBI0.DE",
-        "name": "Xtrackers World Biodiversity Focus SRI UCITS ETF 1C USD Acc",
-        "isin": "",
-        "wkn": "nicht verfügbar",
-        "source": "Yahoo Finance Search Discovery"
-      },
-      {
-        "provider": "Xtrackers",
-        "ticker": "XNZW.MI",
+        "ticker": "XNZW.SW",
         "name": "Xtrackers World Net Zero Pathway Paris Aligned UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -2061,7 +2077,7 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNZW.L",
+        "ticker": "XNZW.MI",
         "name": "Xtrackers World Net Zero Pathway Paris Aligned UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
@@ -2069,8 +2085,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XNZS.L",
-        "name": "Xtrackers World Net Zero Pathway Paris Aligned UCITS ETF 1C",
+        "ticker": "GTIS.DE",
+        "name": "Xtrackers World Small Cap Green Tech Innovators UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
@@ -2101,8 +2117,8 @@
       },
       {
         "provider": "Xtrackers",
-        "ticker": "XSPR.L",
-        "name": "Xtrackers MSCI Europe Materials Screened UCITS ETF 1C",
+        "ticker": "XMJP.L",
+        "name": "Xtrackers MSCI Japan UCITS ETF 1C",
         "isin": "",
         "wkn": "nicht verfügbar",
         "source": "Yahoo Finance Search Discovery"
