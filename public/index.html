@@ -18,6 +18,13 @@
       <p class="subtitle">iShares + Xtrackers ETF &mdash; SMA Breakout Scanner</p>
     </header>
 
+    <nav class="tab-nav" aria-label="Bereichsauswahl">
+      <button id="tabMainBtn" class="tab-btn active" type="button">Scanner</button>
+      <button id="tabDbBtn" class="tab-btn" type="button">DB-Daten</button>
+    </nav>
+
+    <div id="tabMainContent">
+
     <!-- ── Scan Controls ────────────────────────────────────────────────── -->
     <section class="controls-panel">
       <div class="controls-row">
@@ -140,36 +147,6 @@
       </p>
     </section>
 
-    <!-- ── Database ETF List ─────────────────────────────────────────────── -->
-    <section id="dbEtfSection" class="results-section hidden">
-      <h2 class="section-title">
-        <span>📚 ETFs mit vorhandenen DB-Daten</span>
-        <span class="badge" id="dbEtfBadge">0</span>
-      </h2>
-
-      <div class="table-wrapper">
-        <table class="results-table">
-          <thead>
-            <tr>
-              <th>Anbieter</th>
-              <th>Name</th>
-              <th>Ticker</th>
-              <th>ISIN</th>
-              <th>WKN</th>
-              <th class="num">Datenpunkte</th>
-              <th>Von</th>
-              <th>Bis</th>
-            </tr>
-          </thead>
-          <tbody id="dbEtfBody"></tbody>
-        </table>
-      </div>
-
-      <p id="dbEtfEmpty" class="no-matches hidden">
-        Noch keine ETFs mit gespeicherten Yahoo-Daten vorhanden.
-      </p>
-    </section>
-
     <!-- ── Results Table ─────────────────────────────────────────────────── -->
     <section id="resultsSection" class="results-section hidden">
       <h2 class="section-title">
@@ -223,6 +200,40 @@
         </table>
       </div>
     </section>
+
+    </div>
+
+    <div id="tabDbContent" class="hidden">
+    <!-- ── Database ETF List ─────────────────────────────────────────────── -->
+    <section id="dbEtfSection" class="results-section">
+      <h2 class="section-title">
+        <span>📚 ETFs mit vorhandenen DB-Daten</span>
+        <span class="badge" id="dbEtfBadge">0</span>
+      </h2>
+
+      <div class="table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Anbieter</th>
+              <th>Name</th>
+              <th>Ticker</th>
+              <th>ISIN</th>
+              <th>WKN</th>
+              <th class="num">Datenpunkte</th>
+              <th>Von</th>
+              <th>Bis</th>
+            </tr>
+          </thead>
+          <tbody id="dbEtfBody"></tbody>
+        </table>
+      </div>
+
+      <p id="dbEtfEmpty" class="no-matches hidden">
+        Noch keine ETFs mit gespeicherten Yahoo-Daten vorhanden.
+      </p>
+    </section>
+    </div>
 
     <!-- ── Footer ────────────────────────────────────────────────────────── -->
     <footer class="app-footer">

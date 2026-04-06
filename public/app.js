@@ -46,6 +46,10 @@ const syncLastTicker = document.getElementById('syncLastTicker');
 const syncTickerCount = document.getElementById('syncTickerCount');
 const syncOldestUpdate = document.getElementById('syncOldestUpdate');
 const syncStatusNote = document.getElementById('syncStatusNote');
+const tabMainBtn = document.getElementById('tabMainBtn');
+const tabDbBtn = document.getElementById('tabDbBtn');
+const tabMainContent = document.getElementById('tabMainContent');
+const tabDbContent = document.getElementById('tabDbContent');
 const dbEtfSection = document.getElementById('dbEtfSection');
 const dbEtfBadge = document.getElementById('dbEtfBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
@@ -61,6 +65,7 @@ let knownTotal = '…';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
+let currentTab = 'main';
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
 
@@ -136,6 +141,21 @@ function updateSmaLabels(smaPeriod) {
   selectedSmaLabel.textContent = label;
   sumSma.textContent = label;
   thSmaValue.textContent = `${label} (heute)`;
+}
+
+function setActiveTab(tab) {
+  currentTab = tab === 'db' ? 'db' : 'main';
+
+  const mainActive = currentTab === 'main';
+  setVisible(tabMainContent, mainActive);
+  setVisible(tabDbContent, !mainActive);
+
+  tabMainBtn.classList.toggle('active', mainActive);
+  tabDbBtn.classList.toggle('active', !mainActive);
+
+  if (!mainActive) {
+    loadDbEtfList();
+  }
 }
 
 function setSyncBadgeState({ running, isCoolingDown }) {
@@ -453,7 +473,9 @@ smaPeriodInput.addEventListener('change', () => {
 providerFilter.addEventListener('change', () => {
   try {
     currentProviderFilter = getSelectedProviderFilter();
-    loadDbEtfList();
+    if (currentTab === 'db') {
+      loadDbEtfList();
+    }
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -466,9 +488,12 @@ chkShowErrors.addEventListener('change', () => {
   setVisible(errorsSection, chkShowErrors.checked && errorCount > 0);
 });
 
+tabMainBtn.addEventListener('click', () => setActiveTab('main'));
+tabDbBtn.addEventListener('click', () => setActiveTab('db'));
+
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 
 etfCountEl.textContent = knownTotal;
 updateSmaLabels(currentSmaPeriod);
 startSyncStatusPolling();
-loadDbEtfList();
+setActiveTab('main');

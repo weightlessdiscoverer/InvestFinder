@@ -72,6 +72,40 @@ a:hover { text-decoration: underline; }
   font-size: 1rem;
 }
 
+/* ── Tab Navigation ─────────────────────────────────────────────────────── */
+.tab-nav {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 6px;
+}
+
+.tab-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: var(--color-primary);
+  border-color: rgba(79, 142, 247, 0.65);
+}
+
 /* ── Controls Panel ──────────────────────────────────────────────────────── */
 .controls-panel {
   background: var(--color-surface);
@@ -476,6 +510,14 @@ a:hover { text-decoration: underline; }
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .logo h1 { font-size: 1.5rem; }
+  .tab-nav {
+    display: flex;
+    width: 100%;
+  }
+  .tab-btn {
+    flex: 1;
+    text-align: center;
+  }
   .summary-bar { flex-wrap: wrap; }
   .summary-item { flex: 1 1 50%; }
   .sync-grid { grid-template-columns: 1fr; }
