@@ -13,6 +13,7 @@
 const ISHARES_ETFS = require('./etfList');
 const XTRACKERS_ETFS = require('./xtrackersList');
 const { isValidIsinFormat } = require('./masterDataService');
+const { getDiscoveredEtfs } = require('./yahooDiscoveryService');
 
 const PROVIDERS = {
   all: ['iShares', 'Xtrackers'],
@@ -55,7 +56,15 @@ async function getProviderEtfs(providerName, bypassCache) {
     }
   }
 
-  const raw = getSourceForProvider(providerName);
+  const [rawStatic, rawDiscovered] = await Promise.all([
+    Promise.resolve(getSourceForProvider(providerName)),
+    getDiscoveredEtfs({
+      providerFilter: providerName === 'iShares' ? 'ishares' : 'xtrackers',
+      forceRefresh: bypassCache,
+    }),
+  ]);
+
+  const raw = [...rawStatic, ...rawDiscovered];
 
   const normalized = raw
     .map(item => ({
@@ -65,14 +74,38 @@ async function getProviderEtfs(providerName, bypassCache) {
       isin: String(item.isin || '').trim().toUpperCase(),
       wkn: item.wkn ? String(item.wkn).trim().toUpperCase() : 'nicht verfügbar',
     }))
-    .filter(item => item.ticker && item.name && isValidIsinFormat(item.isin));
+    .map(item => ({
+      ...item,
+      isin: isValidIsinFormat(item.isin) ? item.isin : '',
+    }))
+    .filter(item => item.ticker && item.name);
+
+  const byTicker = new Map();
+  for (const item of normalized) {
+    const existing = byTicker.get(item.ticker);
+    if (!existing) {
+      byTicker.set(item.ticker, item);
+      continue;
+    }
+
+    // Prefer richer metadata when the same ticker appears in static + discovered data.
+    const pick = {
+      ...existing,
+      name: existing.name.length >= item.name.length ? existing.name : item.name,
+      isin: existing.isin || item.isin,
+      wkn: existing.wkn !== 'nicht verfügbar' ? existing.wkn : item.wkn,
+    };
+    byTicker.set(item.ticker, pick);
+  }
+
+  const dedupedByTicker = Array.from(byTicker.values());
 
   providerCache.set(providerName, {
-    data: normalized,
+    data: dedupedByTicker,
     expiresAt: now + UNIVERSE_CACHE_TTL_MS,
   });
 
-  return normalized;
+  return dedupedByTicker;
 }
 
 /**

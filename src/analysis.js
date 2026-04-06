@@ -128,7 +128,7 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
       provider: etf.provider,
       ticker:  etf.ticker,
       name:    etf.name,
-      isin: etf.isin,
+      isin: etf.isin || 'nicht verfügbar',
       wkn: etf.wkn || 'nicht verfügbar',
       identifierSource: `${etf.provider} statische Stammdatenquelle`,
       smaPeriod,

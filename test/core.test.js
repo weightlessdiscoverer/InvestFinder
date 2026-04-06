@@ -84,10 +84,10 @@ test('normalizeProviderFilter validates allowed provider values', () => {
 
 test('getEtfUniverse returns deduplicated valid entries', async () => {
   const all = await getEtfUniverse({ providerFilter: 'all', bypassCache: true });
-  const byIsin = new Set(all.map(item => item.isin));
+  const byProviderTicker = new Set(all.map(item => `${item.provider}|${item.ticker}`));
 
   assert.ok(all.length > 0);
-  assert.equal(byIsin.size, all.length);
+  assert.equal(byProviderTicker.size, all.length);
   assert.ok(all.every(item => item.provider && item.ticker && item.name));
 
   const ishares = await getEtfUniverse({ providerFilter: 'ishares', bypassCache: true });
