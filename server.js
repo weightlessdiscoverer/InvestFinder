@@ -1,6 +1,6 @@
 /**
  * server.js
- * Express backend for the InvestFinder ETF Golden Cross scanner.
+ * Express backend for the InvestFinder ETF SMA breakout scanner.
  * Provides a REST API that the frontend calls to trigger a scan.
  */
 
@@ -10,7 +10,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const { scanAllETFs } = require('./src/analysis');
+const {
+  scanAllETFs,
+  normalizeSmaPeriod,
+  DEFAULT_SMA_PERIOD,
+} = require('./src/analysis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,16 +35,25 @@ const scanLimiter = rateLimit({
 
 /**
  * GET /api/scan
- * Scans all iShares ETFs for a SMA200 golden-cross signal on the current day.
+ * Scans all iShares ETFs for a breakout signal over a selectable SMA(N).
  * Returns JSON array of matching ETFs.
  *
  * Query params:
  *   - cache=false  – bypass in-memory cache (default: use cache)
+ *   - sma=200      – SMA period (integer > 1, default: 200)
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
+
+  let smaPeriod;
   try {
-    const results = await scanAllETFs({ bypassCache });
+    smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
+  } catch (validationErr) {
+    return res.status(400).json({ ok: false, error: validationErr.message });
+  }
+
+  try {
+    const results = await scanAllETFs({ bypassCache, smaPeriod });
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {
     console.error('[/api/scan] Error:', err.message);

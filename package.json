@@ -1,7 +1,7 @@
 {
   "name": "investfinder",
   "version": "1.0.0",
-  "description": "iShares ETF Golden Cross (SMA200) Scanner",
+  "description": "iShares ETF SMA Breakout Scanner",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

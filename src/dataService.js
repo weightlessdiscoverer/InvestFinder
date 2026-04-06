@@ -5,7 +5,7 @@
  * Uses the public Yahoo Finance v8 chart API – no API key required.
  * Endpoint: https://query1.finance.yahoo.com/v8/finance/chart/{ticker}
  *
- * To compute a valid SMA200 we need at least 201 trading days of history.
+ * To compute larger SMAs reliably we need enough trading history.
  * We request 1 year + a buffer (420 calendar days ≈ ~300 trading days).
  */
 

@@ -4,10 +4,10 @@
  *
  * For each ETF in the universe:
  *   1. Fetch historical daily closes
- *   2. Compute the 200-day Simple Moving Average (SMA200) for each day
- *   3. Check for a Golden Cross signal:
- *        yesterday.close < yesterday.SMA200  AND
- *        today.close    >    today.SMA200
+ *   2. Compute a selectable Simple Moving Average (SMA N)
+ *   3. Check breakout signal:
+ *        yesterday.close < yesterday.SMA(N)  AND
+ *        today.close    >    today.SMA(N)
  *
  * Results are cached in-memory for one trading day to avoid hammering Yahoo.
  */
@@ -16,150 +16,155 @@
 
 const { fetchDailyCloses } = require('./dataService');
 const ISHARES_ETFS = require('./etfList');
+const { detectBreakoutSignal } = require('./signals');
 const {
   warmMasterDataCache,
   getIdentifiersByTicker,
 } = require('./masterDataService');
 
-// ── SMA period ────────────────────────────────────────────────────────────────
-const SMA_PERIOD = 200;
+const DEFAULT_SMA_PERIOD = 200;
+const MIN_SMA_PERIOD = 2;
+const MAX_SMA_PERIOD = 400;
 
 // ── In-memory cache ──────────────────────────────────────────────────────────
-// Maps cache-key → { data, expiresAt }
-const cache = new Map();
+// Caches raw price history, independent of the selected SMA period.
+// Maps ticker -> { dates, closes, expiresAt }
+const priceCache = new Map();
+
+// Optional cache for computed scan results per ticker and SMA period.
+// Maps `${ticker}|${smaPeriod}` -> { data, expiresAt }
+const signalCache = new Map();
 
 /** Cache TTL in milliseconds (6 hours). */
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 /**
- * Compute Simple Moving Average for an array of numbers.
- * Returns an array of the same length; elements before index (period - 1) are null.
- *
- * @param {number[]} values
- * @param {number}   period
- * @returns {(number|null)[]}
+ * Validiert und normalisiert die gewuenschte SMA-Periode.
+ * @param {number|string|undefined|null} smaPeriodInput
+ * @returns {number}
+ * @throws {Error} bei ungueltiger Eingabe
  */
-function computeSMA(values, period) {
-  const sma = new Array(values.length).fill(null);
-  let sum = 0;
-
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= period) {
-      sum -= values[i - period];
-    }
-    if (i >= period - 1) {
-      sma[i] = sum / period;
-    }
+function normalizeSmaPeriod(smaPeriodInput) {
+  if (smaPeriodInput == null || smaPeriodInput === '') {
+    return DEFAULT_SMA_PERIOD;
   }
-  return sma;
+
+  const parsed = Number(smaPeriodInput);
+  if (!Number.isInteger(parsed) || parsed < MIN_SMA_PERIOD) {
+    throw new Error(`Ungueltige SMA-Periode. Bitte eine ganze Zahl >= ${MIN_SMA_PERIOD} angeben.`);
+  }
+
+  if (parsed > MAX_SMA_PERIOD) {
+    throw new Error(
+      `SMA-Periode ${parsed} ist zu gross. Maximal erlaubt: ${MAX_SMA_PERIOD}.`
+    );
+  }
+
+  return parsed;
 }
 
 /**
- * Detect a Golden Cross on the last two complete trading days.
- *
- * @param {string[]} dates   Sorted ascending (YYYY-MM-DD)
- * @param {number[]} closes  Corresponding closing prices
- * @returns {{ signal: boolean, todayDate: string|null, yesterdayDate: string|null,
- *             todayClose: number|null, todaysSMA: number|null,
- *             yesterdayClose: number|null, yesterdaysSMA: number|null }}
+ * Liefert Kursdaten fuer einen ETF und cached sie SMA-unabhaengig.
+ * @param {{ ticker: string }} etf
+ * @param {boolean} bypassCache
+ * @returns {Promise<{ dates: string[], closes: number[] }>}
  */
-function detectGoldenCross(dates, closes) {
-  const sma = computeSMA(closes, SMA_PERIOD);
-  const n = closes.length;
+async function getPriceHistory(etf, bypassCache) {
+  const now = Date.now();
+  const key = etf.ticker;
 
-  // We need at least SMA_PERIOD + 1 data points for two valid SMA values
-  if (n < SMA_PERIOD + 1) {
-    return { signal: false };
+  if (!bypassCache && priceCache.has(key)) {
+    const cached = priceCache.get(key);
+    if (now < cached.expiresAt) {
+      return { dates: cached.dates, closes: cached.closes };
+    }
   }
 
-  const todayIdx     = n - 1;
-  const yesterdayIdx = n - 2;
+  const history = await fetchDailyCloses(etf.ticker);
 
-  const todayClose     = closes[todayIdx];
-  const yesterdayClose = closes[yesterdayIdx];
-  const todaySMA       = sma[todayIdx];
-  const yesterdaySMA   = sma[yesterdayIdx];
+  priceCache.set(key, {
+    dates: history.dates,
+    closes: history.closes,
+    expiresAt: now + CACHE_TTL_MS,
+  });
 
-  // Both SMA values must be valid
-  if (todaySMA === null || yesterdaySMA === null) {
-    return { signal: false };
-  }
-
-  const signal =
-    yesterdayClose < yesterdaySMA &&
-    todayClose     > todaySMA;
-
-  return {
-    signal,
-    todayDate:      dates[todayIdx],
-    yesterdayDate:  dates[yesterdayIdx],
-    todayClose:     +todayClose.toFixed(4),
-    todaySMA:       +todaySMA.toFixed(4),
-    yesterdayClose: +yesterdayClose.toFixed(4),
-    yesterdaySMA:   +yesterdaySMA.toFixed(4),
-  };
+  return history;
 }
 
 /**
  * Scan a single ETF for a Golden Cross signal.
  *
  * @param {{ ticker: string, name: string }} etf
- * @param {boolean} bypassCache
+ * @param {{ bypassCache: boolean, smaPeriod: number }} options
  * @returns {Promise<object>} result object
  */
-async function scanETF(etf, bypassCache) {
-  const cacheKey = etf.ticker;
+async function scanETF(etf, { bypassCache, smaPeriod }) {
+  const cacheKey = `${etf.ticker}|${smaPeriod}`;
   const now = Date.now();
 
-  // Return cached result if still fresh
-  if (!bypassCache && cache.has(cacheKey)) {
-    const cached = cache.get(cacheKey);
+  if (!bypassCache && signalCache.has(cacheKey)) {
+    const cached = signalCache.get(cacheKey);
     if (now < cached.expiresAt) {
       return cached.data;
     }
   }
 
   try {
-    const { dates, closes } = await fetchDailyCloses(etf.ticker);
-    const crossResult = detectGoldenCross(dates, closes);
+    const { dates, closes } = await getPriceHistory(etf, bypassCache);
+    const signalResult = detectBreakoutSignal({ dates, closes, smaPeriod });
     const identifiers = await getIdentifiersByTicker(etf.ticker);
 
-    const result = {
+    const baseResult = {
       ticker:  etf.ticker,
       name:    etf.name,
       isin: identifiers.isin,
       wkn: identifiers.wkn,
       identifierSource: identifiers.source,
-      status:  'ok',
-      ...crossResult,
+      smaPeriod,
+      smaLabel: `SMA${smaPeriod}`,
     };
 
-    // Cache the result
-    cache.set(cacheKey, { data: result, expiresAt: now + CACHE_TTL_MS });
+    const result = signalResult.insufficientData
+      ? {
+          ...baseResult,
+          status: 'insufficient-data',
+          signal: false,
+          error: signalResult.error,
+          ...signalResult,
+        }
+      : {
+          ...baseResult,
+          status: 'ok',
+          ...signalResult,
+        };
+
+    signalCache.set(cacheKey, { data: result, expiresAt: now + CACHE_TTL_MS });
     return result;
   } catch (err) {
     const result = {
       ticker: etf.ticker,
       name:   etf.name,
+      smaPeriod,
+      smaLabel: `SMA${smaPeriod}`,
       status: 'error',
       error:  err.message,
       signal: false,
     };
-    // Cache errors briefly (5 min) to avoid hammering on repeated failures
-    cache.set(cacheKey, { data: result, expiresAt: now + 5 * 60 * 1000 });
+    signalCache.set(cacheKey, { data: result, expiresAt: now + 5 * 60 * 1000 });
     return result;
   }
 }
 
 /**
  * Scan all iShares ETFs concurrently (with a concurrency limit to respect
- * Yahoo Finance rate limits) and return only those with a Golden Cross signal.
+ * Yahoo Finance rate limits) and return only those with a breakout signal.
  *
- * @param {{ bypassCache?: boolean }} options
+ * @param {{ bypassCache?: boolean, smaPeriod?: number|string }} options
  * @returns {Promise<{ matches: object[], errors: object[], total: number }>}
  */
-async function scanAllETFs({ bypassCache = false } = {}) {
+async function scanAllETFs({ bypassCache = false, smaPeriod: smaPeriodInput } = {}) {
+  const smaPeriod = normalizeSmaPeriod(smaPeriodInput);
+
   // Load and cache static identifier master data once per scan run.
   await warmMasterDataCache({ bypassCache });
 
@@ -172,7 +177,7 @@ async function scanAllETFs({ bypassCache = false } = {}) {
   for (let i = 0; i < ISHARES_ETFS.length; i += BATCH_SIZE) {
     const batch = ISHARES_ETFS.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(etf => scanETF(etf, bypassCache))
+      batch.map(etf => scanETF(etf, { bypassCache, smaPeriod }))
     );
     allResults.push(...batchResults);
 
@@ -183,9 +188,13 @@ async function scanAllETFs({ bypassCache = false } = {}) {
   }
 
   const matches = allResults.filter(r => r.signal === true);
-  const errors  = allResults.filter(r => r.status === 'error');
+  const errors = allResults.filter(
+    r => r.status === 'error' || r.status === 'insufficient-data'
+  );
 
   return {
+    smaPeriod,
+    smaLabel: `SMA${smaPeriod}`,
     matches,
     errors,
     total: ISHARES_ETFS.length,
@@ -193,4 +202,10 @@ async function scanAllETFs({ bypassCache = false } = {}) {
   };
 }
 
-module.exports = { scanAllETFs, computeSMA, detectGoldenCross };
+module.exports = {
+  scanAllETFs,
+  normalizeSmaPeriod,
+  DEFAULT_SMA_PERIOD,
+  MIN_SMA_PERIOD,
+  MAX_SMA_PERIOD,
+};
