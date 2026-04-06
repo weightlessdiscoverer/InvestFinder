@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-06",
+  "source": "Manuell gepflegtes Ticker-zu-Identifikator-Mapping auf Basis oeffentlicher iShares-Produktstammdaten (Factsheets/Produktseiten).",
+  "items": [
+    {
+      "ticker": "IWDA.AS",
+      "isin": "IE00B4L5Y983",
+      "wkn": "A0RPWH",
+      "source": "iShares Core MSCI World UCITS ETF"
+    },
+    {
+      "ticker": "SWDA.L",
+      "isin": "IE00B4L5Y983",
+      "wkn": "A0RPWH",
+      "source": "iShares Core MSCI World UCITS ETF"
+    },
+    {
+      "ticker": "IWDA.L",
+      "isin": "IE00B4L5Y983",
+      "wkn": "A0RPWH",
+      "source": "iShares Core MSCI World UCITS ETF"
+    },
+    {
+      "ticker": "CSPX.L",
+      "isin": "IE00B5BMR087",
+      "wkn": "A0YEDG",
+      "source": "iShares Core S&P 500 UCITS ETF (Acc)"
+    },
+    {
+      "ticker": "ISAC.L",
+      "isin": "IE00B6R52259",
+      "wkn": "A1JMDF",
+      "source": "iShares Core MSCI ACWI UCITS ETF"
+    }
+  ]
+}

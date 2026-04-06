@@ -117,11 +117,15 @@ function renderMatches(matches) {
       const spreadHtml = spreadPct != null
         ? `<span class="spread-positive">+${fmt(spreadPct, 2)} %</span>`
         : '–';
+      const isin = r.isin || 'nicht verfügbar';
+      const wkn = r.wkn || 'nicht verfügbar';
 
       return `
         <tr>
           <td><span class="ticker-chip">${escHtml(r.ticker)}</span></td>
           <td>${escHtml(r.name)}</td>
+          <td><span class="id-chip">${escHtml(isin)}</span></td>
+          <td><span class="id-chip">${escHtml(wkn)}</span></td>
           <td><span class="date-badge">${fmtDate(r.todayDate)}</span></td>
           <td class="num">${fmt(r.todayClose, 4)}</td>
           <td class="num">${fmt(r.todaySMA, 4)}</td>

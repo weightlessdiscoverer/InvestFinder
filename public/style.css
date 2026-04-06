@@ -322,6 +322,18 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.03em;
 }
 
+.id-chip {
+  display: inline-block;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+}
+
 /* Date badge */
 .date-badge {
   display: inline-block;

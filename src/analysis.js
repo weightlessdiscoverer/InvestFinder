@@ -16,6 +16,10 @@
 
 const { fetchDailyCloses } = require('./dataService');
 const ISHARES_ETFS = require('./etfList');
+const {
+  warmMasterDataCache,
+  getIdentifiersByTicker,
+} = require('./masterDataService');
 
 // ── SMA period ────────────────────────────────────────────────────────────────
 const SMA_PERIOD = 200;
@@ -119,10 +123,14 @@ async function scanETF(etf, bypassCache) {
   try {
     const { dates, closes } = await fetchDailyCloses(etf.ticker);
     const crossResult = detectGoldenCross(dates, closes);
+    const identifiers = await getIdentifiersByTicker(etf.ticker);
 
     const result = {
       ticker:  etf.ticker,
       name:    etf.name,
+      isin: identifiers.isin,
+      wkn: identifiers.wkn,
+      identifierSource: identifiers.source,
       status:  'ok',
       ...crossResult,
     };
@@ -152,6 +160,9 @@ async function scanETF(etf, bypassCache) {
  * @returns {Promise<{ matches: object[], errors: object[], total: number }>}
  */
 async function scanAllETFs({ bypassCache = false } = {}) {
+  // Load and cache static identifier master data once per scan run.
+  await warmMasterDataCache({ bypassCache });
+
   // Process ETFs in batches to avoid triggering rate limits
   const BATCH_SIZE = 5;
   const BATCH_DELAY_MS = 300; // ms between batches
