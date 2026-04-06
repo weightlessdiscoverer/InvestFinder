@@ -20,7 +20,7 @@ const {
   startYahooHistoryUpdater,
   getYahooHistoryUpdaterInfo,
 } = require('./src/yahooHistoryUpdater');
-const { listAvailableTickerRecords } = require('./src/yahooHistoryStore');
+const { getStoreSummary, listAvailableTickerRecords } = require('./src/yahooHistoryStore');
 const { getEtfUniverse } = require('./src/etfUniverseService');
 
 const app = express();
@@ -92,9 +92,10 @@ app.get('/api/yahoo-sync-status', async (_req, res) => {
 app.get('/api/available-etfs', async (req, res) => {
   try {
     const providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
-    const [records, universe] = await Promise.all([
+    const [records, universe, summary] = await Promise.all([
       listAvailableTickerRecords(),
       getEtfUniverse({ providerFilter, bypassCache: false }),
+      getStoreSummary(),
     ]);
 
     const byTicker = new Map(
@@ -116,6 +117,7 @@ app.get('/api/available-etfs', async (req, res) => {
           firstDate: record.firstDate,
           lastDate: record.lastDate,
           updatedAt: record.updatedAt,
+          freshness: record.freshness,
           dataSource: 'Yahoo Finance',
         };
       })
@@ -131,6 +133,7 @@ app.get('/api/available-etfs', async (req, res) => {
       ok: true,
       providerFilter,
       count: items.length,
+      freshness: summary.freshness,
       items,
       listedAt: new Date().toISOString(),
     });

@@ -385,6 +385,42 @@ a:hover { text-decoration: underline; }
   color: #000;
 }
 
+.freshness-very-fresh {
+  color: var(--color-green) !important;
+}
+
+.freshness-acceptable {
+  color: var(--color-yellow) !important;
+}
+
+.freshness-stale {
+  color: var(--color-red) !important;
+}
+
+.freshness-unknown {
+  color: var(--color-text-muted) !important;
+}
+
+.badge.freshness-very-fresh {
+  background: var(--color-green);
+  color: #fff !important;
+}
+
+.badge.freshness-acceptable {
+  background: var(--color-yellow);
+  color: #000 !important;
+}
+
+.badge.freshness-stale {
+  background: var(--color-red);
+  color: #fff !important;
+}
+
+.badge.freshness-unknown {
+  background: var(--color-border);
+  color: var(--color-text) !important;
+}
+
 /* ── Results Section ─────────────────────────────────────────────────────── */
 .results-section {
   background: var(--color-surface);

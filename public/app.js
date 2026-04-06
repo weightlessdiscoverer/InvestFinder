@@ -44,6 +44,7 @@ const syncCooldown = document.getElementById('syncCooldown');
 const syncLastTicker = document.getElementById('syncLastTicker');
 const syncTickerCount = document.getElementById('syncTickerCount');
 const syncOldestUpdate = document.getElementById('syncOldestUpdate');
+const syncFreshness = document.getElementById('syncFreshness');
 const syncStatusNote = document.getElementById('syncStatusNote');
 const tabMainBtn = document.getElementById('tabMainBtn');
 const tabDbBtn = document.getElementById('tabDbBtn');
@@ -51,6 +52,7 @@ const tabMainContent = document.getElementById('tabMainContent');
 const tabDbContent = document.getElementById('tabDbContent');
 const dbEtfSection = document.getElementById('dbEtfSection');
 const dbEtfBadge = document.getElementById('dbEtfBadge');
+const dbFreshnessBadge = document.getElementById('dbFreshnessBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
 const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 
@@ -102,6 +104,47 @@ function fmtDuration(ms) {
   const sec = totalSec % 60;
   if (min === 0) return `${sec}s`;
   return `${min}m ${sec}s`;
+}
+
+function formatFreshnessLabel(freshness) {
+  if (!freshness || !freshness.label) {
+    return 'Unbekannt';
+  }
+
+  if (freshness.ageInDays == null) {
+    return freshness.label;
+  }
+
+  if (freshness.ageInDays === 0) {
+    return `${freshness.label} (heute)`;
+  }
+
+  if (freshness.ageInDays === 1) {
+    return `${freshness.label} (1 Tag)`;
+  }
+
+  return `${freshness.label} (${freshness.ageInDays} Tage)`;
+}
+
+function setFreshnessClass(el, level) {
+  el.classList.remove('freshness-very-fresh', 'freshness-acceptable', 'freshness-stale', 'freshness-unknown');
+
+  if (level === 'very-fresh') {
+    el.classList.add('freshness-very-fresh');
+    return;
+  }
+
+  if (level === 'acceptable') {
+    el.classList.add('freshness-acceptable');
+    return;
+  }
+
+  if (level === 'stale') {
+    el.classList.add('freshness-stale');
+    return;
+  }
+
+  el.classList.add('freshness-unknown');
 }
 
 function escHtml(str) {
@@ -204,6 +247,8 @@ function renderSyncStatus(payload) {
   syncLastTicker.textContent = status.lastTicker || '-';
   syncTickerCount.textContent = String(summary.tickerCount ?? 0);
   syncOldestUpdate.textContent = fmtDateTime(summary.oldestUpdate);
+  syncFreshness.textContent = formatFreshnessLabel(summary.freshness);
+  setFreshnessClass(syncFreshness, summary?.freshness?.level);
 
   const checkedAt = fmtDateTime(payload.checkedAt);
   if (!status.running) {
@@ -349,6 +394,11 @@ function renderDbEtfList(items) {
     .join('');
 }
 
+function renderDbFreshness(freshness) {
+  dbFreshnessBadge.textContent = formatFreshnessLabel(freshness);
+  setFreshnessClass(dbFreshnessBadge, freshness?.level);
+}
+
 async function loadDbEtfList() {
   try {
     const params = new URLSearchParams({ provider: currentProviderFilter });
@@ -362,10 +412,12 @@ async function loadDbEtfList() {
       throw new Error(data.error || 'Unbekannter Fehler beim Laden der DB-Liste');
     }
 
+    renderDbFreshness(data.freshness);
     renderDbEtfList(data.items || []);
   } catch (err) {
     setVisible(dbEtfSection, true);
     dbEtfBadge.textContent = '0';
+    renderDbFreshness(null);
     dbEtfBody.innerHTML = '';
     setVisible(dbEtfEmpty, true);
     dbEtfEmpty.textContent = `DB-Liste konnte nicht geladen werden: ${err.message}`;

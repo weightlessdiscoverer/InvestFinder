@@ -17,6 +17,8 @@ const EMPTY_STORE = {
 
 let writeQueue = Promise.resolve();
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -67,6 +69,52 @@ function persistStore(store) {
 
 function normalizeTicker(ticker) {
   return String(ticker || '').trim().toUpperCase();
+}
+
+function getAgeInDays(isoDateTime) {
+  if (!isoDateTime) return null;
+
+  const parsed = new Date(isoDateTime);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const now = new Date();
+  const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startThen = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  return Math.floor((startNow - startThen) / MS_PER_DAY);
+}
+
+function classifyFreshness(updatedAt) {
+  const ageInDays = getAgeInDays(updatedAt);
+
+  if (ageInDays == null) {
+    return {
+      level: 'unknown',
+      label: 'Unbekannt',
+      ageInDays: null,
+    };
+  }
+
+  if (ageInDays <= 0) {
+    return {
+      level: 'very-fresh',
+      label: 'Sehr aktuell',
+      ageInDays,
+    };
+  }
+
+  if (ageInDays <= 5) {
+    return {
+      level: 'acceptable',
+      label: 'Geht gerade noch',
+      ageInDays,
+    };
+  }
+
+  return {
+    level: 'stale',
+    label: 'Veraltet',
+    ageInDays,
+  };
 }
 
 function buildRecord({ dates, closes, fetchedAt }) {
@@ -140,6 +188,7 @@ async function getStoreSummary() {
     totalPoints,
     oldestUpdate,
     newestUpdate,
+    freshness: classifyFreshness(oldestUpdate),
     metaUpdatedAt: store.meta?.updatedAt || null,
   };
 }
@@ -154,6 +203,7 @@ async function listAvailableTickerRecords() {
       firstDate: row?.firstDate || null,
       lastDate: row?.lastDate || null,
       updatedAt: row?.updatedAt || null,
+      freshness: classifyFreshness(row?.updatedAt || null),
     }))
     .filter(row => row.points > 0)
     .sort((a, b) => b.points - a.points || a.ticker.localeCompare(b.ticker));
@@ -167,4 +217,5 @@ module.exports = {
   upsertTickerHistory,
   getStoreSummary,
   listAvailableTickerRecords,
+  classifyFreshness,
 };

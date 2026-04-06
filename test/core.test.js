@@ -13,6 +13,7 @@ const { fetchDailyCloses } = require('../src/dataService');
 const { getEtfUniverse, normalizeProviderFilter } = require('../src/etfUniverseService');
 const { computeSMA } = require('../src/indicators');
 const { detectBreakoutSignal } = require('../src/signals');
+const { classifyFreshness } = require('../src/yahooHistoryStore');
 const {
   isValidIsinFormat,
   getIdentifiersByTicker,
@@ -73,6 +74,16 @@ test('isValidIsinFormat validates expected ISIN shapes', () => {
   assert.equal(isValidIsinFormat('de0005933931'), true);
   assert.equal(isValidIsinFormat('INVALID'), false);
   assert.equal(isValidIsinFormat(''), false);
+});
+
+test('classifyFreshness follows expected day thresholds', () => {
+  const now = new Date();
+  const isoDaysAgo = days => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  assert.equal(classifyFreshness(isoDaysAgo(0)).label, 'Sehr aktuell');
+  assert.equal(classifyFreshness(isoDaysAgo(5)).label, 'Geht gerade noch');
+  assert.equal(classifyFreshness(isoDaysAgo(6)).label, 'Veraltet');
+  assert.equal(classifyFreshness(null).label, 'Unbekannt');
 });
 
 test('normalizeProviderFilter validates allowed provider values', () => {
