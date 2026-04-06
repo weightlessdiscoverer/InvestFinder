@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InvestFinder – iShares ETF Golden Cross Scanner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">📈</span>
+        <h1>InvestFinder</h1>
+      </div>
+      <p class="subtitle">iShares ETF &mdash; SMA200 Golden Cross Scanner</p>
+    </header>
+
+    <!-- ── Scan Controls ────────────────────────────────────────────────── -->
+    <section class="controls-panel">
+      <div class="controls-row">
+        <button id="btnScan" class="btn btn-primary">
+          <span class="btn-icon">🔍</span> Scan starten
+        </button>
+        <button id="btnRefresh" class="btn btn-secondary" title="Cache umgehen und neu scannen">
+          <span class="btn-icon">🔄</span> Neu laden
+        </button>
+        <label class="toggle-label">
+          <input type="checkbox" id="chkShowErrors" />
+          Fehlerhafte ETFs anzeigen
+        </label>
+      </div>
+      <p class="hint">
+        Scannt <strong id="etfCount">…</strong> iShares ETFs auf ein
+        <strong>SMA200-Golden-Cross-Signal</strong> (Tagesbasis).
+      </p>
+    </section>
+
+    <!-- ── Loading Indicator ────────────────────────────────────────────── -->
+    <div id="loadingSection" class="loading-section hidden">
+      <div class="spinner"></div>
+      <div class="loading-text">
+        <p id="loadingStatus">Lade Kursdaten…</p>
+        <p class="loading-sub">
+          Dies kann 30–60 Sekunden dauern (Yahoo Finance Rate Limits).
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Error Banner ──────────────────────────────────────────────────── -->
+    <div id="errorBanner" class="error-banner hidden">
+      <span class="error-icon">⚠️</span>
+      <span id="errorMessage">Unbekannter Fehler</span>
+    </div>
+
+    <!-- ── Summary Bar ───────────────────────────────────────────────────── -->
+    <div id="summaryBar" class="summary-bar hidden">
+      <div class="summary-item">
+        <span class="summary-label">Gescannt</span>
+        <span class="summary-value" id="sumScanned">–</span>
+      </div>
+      <div class="summary-item highlight">
+        <span class="summary-label">Treffer (Golden Cross)</span>
+        <span class="summary-value" id="sumMatches">–</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Fehler</span>
+        <span class="summary-value" id="sumErrors">–</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Zeitpunkt</span>
+        <span class="summary-value" id="sumTime">–</span>
+      </div>
+    </div>
+
+    <!-- ── Results Table ─────────────────────────────────────────────────── -->
+    <section id="resultsSection" class="results-section hidden">
+      <h2 class="section-title">
+        <span>✅ Golden Cross Signale</span>
+        <span class="badge" id="matchBadge">0</span>
+      </h2>
+
+      <div class="table-wrapper">
+        <table id="resultsTable" class="results-table">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Name</th>
+              <th>Datum</th>
+              <th class="num">Kurs (heute)</th>
+              <th class="num">SMA200 (heute)</th>
+              <th class="num">Abstand</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+
+      <p id="noMatches" class="no-matches hidden">
+        Keine Golden-Cross-Signale gefunden.
+      </p>
+    </section>
+
+    <!-- ── Errors Table (collapsible) ───────────────────────────────────── -->
+    <section id="errorsSection" class="results-section errors-section hidden">
+      <h2 class="section-title">
+        <span>⚠️ Nicht abrufbare ETFs</span>
+        <span class="badge badge-warn" id="errorBadge">0</span>
+      </h2>
+
+      <div class="table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Name</th>
+              <th>Fehler</th>
+            </tr>
+          </thead>
+          <tbody id="errorsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────────────────────── -->
+    <footer class="app-footer">
+      <p>
+        Datenquelle: <a href="https://finance.yahoo.com" target="_blank" rel="noopener">Yahoo Finance</a>
+        &nbsp;|&nbsp; ETF-Anbieter: <a href="https://www.ishares.com" target="_blank" rel="noopener">BlackRock iShares</a>
+      </p>
+      <p class="disclaimer">
+        Diese App dient ausschließlich Informationszwecken und stellt keine Anlageberatung dar.
+      </p>
+    </footer>
+
+  </div><!-- /.container -->
+
+  <script src="app.js"></script>
+</body>
+</html>
