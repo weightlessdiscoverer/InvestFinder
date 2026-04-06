@@ -25,6 +25,7 @@ const { computeSMA } = require('./indicators');
  *   todaySMA?: number,
  *   yesterdayClose?: number,
  *   yesterdaySMA?: number,
+ *   breakoutSteepnessPct?: number,
  * }}
  */
 function detectBreakoutSignal({ dates, closes, smaPeriod }) {
@@ -61,6 +62,9 @@ function detectBreakoutSignal({ dates, closes, smaPeriod }) {
   }
 
   const signal = yesterdayClose < yesterdaySMA && todayClose > todaySMA;
+  const todaySpreadPct = ((todayClose - todaySMA) / todaySMA) * 100;
+  const yesterdaySpreadPct = ((yesterdayClose - yesterdaySMA) / yesterdaySMA) * 100;
+  const breakoutSteepnessPct = todaySpreadPct - yesterdaySpreadPct;
 
   return {
     signal,
@@ -73,6 +77,7 @@ function detectBreakoutSignal({ dates, closes, smaPeriod }) {
     todaySMA: +todaySMA.toFixed(4),
     yesterdayClose: +yesterdayClose.toFixed(4),
     yesterdaySMA: +yesterdaySMA.toFixed(4),
+    breakoutSteepnessPct: +breakoutSteepnessPct.toFixed(4),
   };
 }
 

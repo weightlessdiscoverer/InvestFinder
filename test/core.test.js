@@ -55,6 +55,7 @@ test('detectBreakoutSignal identifies bullish crossover', () => {
   assert.equal(result.insufficientData, false);
   assert.equal(result.smaLabel, 'SMA3');
   assert.equal(result.todayDate, '2026-01-04');
+  assert.ok(result.breakoutSteepnessPct > 0);
 });
 
 test('detectBreakoutSignal reports insufficient data', () => {

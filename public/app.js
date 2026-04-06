@@ -317,6 +317,9 @@ function renderMatches(matches) {
       const spreadHtml = spreadPct != null
         ? `<span class="spread-positive">+${fmt(spreadPct, 2)} %</span>`
         : '–';
+      const steepnessHtml = r.breakoutSteepnessPct != null
+        ? `<span class="spread-positive">+${fmt(r.breakoutSteepnessPct, 2)} %</span>`
+        : '–';
       const isin = r.isin || 'nicht verfügbar';
       const wkn = r.wkn || 'nicht verfügbar';
 
@@ -331,6 +334,7 @@ function renderMatches(matches) {
           <td><span class="date-badge">${fmtDate(r.todayDate)}</span></td>
           <td class="num">${fmt(r.todayClose, 4)}</td>
           <td class="num">${fmt(r.todaySMA, 4)}</td>
+          <td class="num">${steepnessHtml}</td>
           <td class="num">${spreadHtml}</td>
         </tr>`;
     })
