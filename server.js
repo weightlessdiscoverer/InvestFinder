@@ -16,6 +16,10 @@ const {
   normalizeProviderFilter,
   DEFAULT_SMA_PERIOD,
 } = require('./src/analysis');
+const {
+  startYahooHistoryUpdater,
+  getYahooHistoryUpdaterInfo,
+} = require('./src/yahooHistoryUpdater');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +69,19 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/yahoo-sync-status
+ * Returns status of the background Yahoo history updater.
+ */
+app.get('/api/yahoo-sync-status', async (_req, res) => {
+  try {
+    const info = await getYahooHistoryUpdaterInfo();
+    res.json({ ok: true, ...info, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Catch-all: serve index.html for any unknown path (SPA fallback)
 app.use((_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -72,4 +89,9 @@ app.use((_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`InvestFinder server running → http://localhost:${PORT}`);
+
+  startYahooHistoryUpdater({
+    cooldownMs: Number(process.env.YAHOO_COOLDOWN_MS || 60_000),
+  });
+  console.log('Yahoo history updater started in background.');
 });

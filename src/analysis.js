@@ -17,6 +17,7 @@
 const { fetchDailyCloses } = require('./dataService');
 const { getEtfUniverse, normalizeProviderFilter } = require('./etfUniverseService');
 const { detectBreakoutSignal } = require('./signals');
+const { getTickerHistory, upsertTickerHistory } = require('./yahooHistoryStore');
 
 const DEFAULT_SMA_PERIOD = 200;
 const MIN_SMA_PERIOD = 2;
@@ -76,7 +77,21 @@ async function getPriceHistory(etf, bypassCache) {
     }
   }
 
+  if (!bypassCache) {
+    const stored = await getTickerHistory(etf.ticker);
+    if (stored && Array.isArray(stored.dates) && Array.isArray(stored.closes) && stored.dates.length > 0) {
+      const snapshot = { dates: stored.dates, closes: stored.closes };
+      priceCache.set(key, {
+        dates: snapshot.dates,
+        closes: snapshot.closes,
+        expiresAt: now + CACHE_TTL_MS,
+      });
+      return snapshot;
+    }
+  }
+
   const history = await fetchDailyCloses(etf.ticker);
+  await upsertTickerHistory(etf.ticker, history);
 
   priceCache.set(key, {
     dates: history.dates,

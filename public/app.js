@@ -37,6 +37,15 @@ const thSmaValue = document.getElementById('thSmaValue');
 const errorsSection = document.getElementById('errorsSection');
 const errorsBody = document.getElementById('errorsBody');
 const errorBadge = document.getElementById('errorBadge');
+const syncStatusSection = document.getElementById('syncStatusSection');
+const syncStateBadge = document.getElementById('syncStateBadge');
+const syncProcessed = document.getElementById('syncProcessed');
+const syncRateHits = document.getElementById('syncRateHits');
+const syncCooldown = document.getElementById('syncCooldown');
+const syncLastTicker = document.getElementById('syncLastTicker');
+const syncTickerCount = document.getElementById('syncTickerCount');
+const syncOldestUpdate = document.getElementById('syncOldestUpdate');
+const syncStatusNote = document.getElementById('syncStatusNote');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
@@ -47,6 +56,7 @@ const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 let knownTotal = '…';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
 let currentProviderFilter = 'all';
+let syncStatusInterval = null;
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
 
@@ -66,6 +76,24 @@ function fmtDate(isoDate) {
   if (!isoDate) return '–';
   const d = new Date(isoDate + 'T00:00:00');
   return d.toLocaleDateString('de-DE');
+}
+
+function fmtDateTime(isoString) {
+  if (!isoString) return '-';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '-';
+  return `${date.toLocaleDateString('de-DE')} ${date.toLocaleTimeString('de-DE')}`;
+}
+
+function fmtDuration(ms) {
+  const safeMs = Number(ms) || 0;
+  if (safeMs <= 0) return '0s';
+
+  const totalSec = Math.ceil(safeMs / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (min === 0) return `${sec}s`;
+  return `${min}m ${sec}s`;
 }
 
 function escHtml(str) {
@@ -104,6 +132,78 @@ function updateSmaLabels(smaPeriod) {
   selectedSmaLabel.textContent = label;
   sumSma.textContent = label;
   thSmaValue.textContent = `${label} (heute)`;
+}
+
+function setSyncBadgeState({ running, isCoolingDown }) {
+  syncStateBadge.classList.remove('badge-sync-active', 'badge-sync-cooldown', 'badge-sync-stopped');
+
+  if (!running) {
+    syncStateBadge.textContent = 'gestoppt';
+    syncStateBadge.classList.add('badge-sync-stopped');
+    return;
+  }
+
+  if (isCoolingDown) {
+    syncStateBadge.textContent = 'cooldown';
+    syncStateBadge.classList.add('badge-sync-cooldown');
+    return;
+  }
+
+  syncStateBadge.textContent = 'aktiv';
+  syncStateBadge.classList.add('badge-sync-active');
+}
+
+function renderSyncStatus(payload) {
+  const status = payload?.status || {};
+  const summary = payload?.summary || {};
+
+  setVisible(syncStatusSection, true);
+  setSyncBadgeState(status);
+
+  syncProcessed.textContent = String(status.processedTickers ?? 0);
+  syncRateHits.textContent = String(status.rateLimitHits ?? 0);
+  syncCooldown.textContent = fmtDuration(status.cooldownRemainingMs);
+  syncLastTicker.textContent = status.lastTicker || '-';
+  syncTickerCount.textContent = String(summary.tickerCount ?? 0);
+  syncOldestUpdate.textContent = fmtDateTime(summary.oldestUpdate);
+
+  const checkedAt = fmtDateTime(payload.checkedAt);
+  if (!status.running) {
+    syncStatusNote.textContent = `Synchronisierung ist aktuell nicht aktiv. Letzter Check: ${checkedAt}.`;
+  } else if (status.isCoolingDown) {
+    syncStatusNote.textContent = `Yahoo-Cooldown aktiv. Fortsetzung in ${fmtDuration(status.cooldownRemainingMs)} (Stand: ${checkedAt}).`;
+  } else {
+    syncStatusNote.textContent = `Synchronisierung laeuft. Letzter Check: ${checkedAt}.`;
+  }
+}
+
+async function fetchAndRenderSyncStatus() {
+  try {
+    const response = await fetch('/api/yahoo-sync-status');
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Unbekannter Sync-Status-Fehler');
+    }
+    renderSyncStatus(data);
+  } catch (err) {
+    setVisible(syncStatusSection, true);
+    syncStateBadge.classList.remove('badge-sync-active', 'badge-sync-cooldown');
+    syncStateBadge.classList.add('badge-sync-stopped');
+    syncStateBadge.textContent = 'unbekannt';
+    syncStatusNote.textContent = `Sync-Status konnte nicht geladen werden: ${err.message}`;
+  }
+}
+
+function startSyncStatusPolling() {
+  if (syncStatusInterval) {
+    clearInterval(syncStatusInterval);
+  }
+
+  fetchAndRenderSyncStatus();
+  syncStatusInterval = setInterval(fetchAndRenderSyncStatus, 15000);
 }
 
 /* ── Render functions ────────────────────────────────────────────────────── */
@@ -314,3 +414,4 @@ chkShowErrors.addEventListener('change', () => {
 
 etfCountEl.textContent = knownTotal;
 updateSmaLabels(currentSmaPeriod);
+startSyncStatusPolling();

@@ -103,6 +103,43 @@
       </div>
     </div>
 
+    <!-- ── Yahoo Sync Status ─────────────────────────────────────────────── -->
+    <section id="syncStatusSection" class="sync-status-section hidden">
+      <h2 class="section-title">
+        <span>Yahoo-Synchronisierung</span>
+        <span class="badge" id="syncStateBadge">aktiv</span>
+      </h2>
+      <div class="sync-grid">
+        <div class="sync-item">
+          <span class="sync-label">Verarbeitete ETFs</span>
+          <span class="sync-value" id="syncProcessed">0</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">Rate-Limit Treffer</span>
+          <span class="sync-value" id="syncRateHits">0</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">Cooldown Rest</span>
+          <span class="sync-value" id="syncCooldown">0s</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">Zuletzt verarbeitet</span>
+          <span class="sync-value" id="syncLastTicker">-</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">Tickers im Cache</span>
+          <span class="sync-value" id="syncTickerCount">0</span>
+        </div>
+        <div class="sync-item">
+          <span class="sync-label">Aeltestes Update</span>
+          <span class="sync-value" id="syncOldestUpdate">-</span>
+        </div>
+      </div>
+      <p class="sync-note" id="syncStatusNote">
+        Status wird geladen...
+      </p>
+    </section>
+
     <!-- ── Results Table ─────────────────────────────────────────────────── -->
     <section id="resultsSection" class="results-section hidden">
       <h2 class="section-title">

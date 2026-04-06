@@ -10,6 +10,10 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 🔢 Calculates selectable SMA periods (e.g. 20, 50, 100, 200) per ETF
 - ✅ Detects breakout: `yesterday.close < yesterday.SMA(N)` **AND** `today.close > today.SMA(N)`
 - ⚡ In-memory caching for raw price history (6 h TTL) to avoid repeated Yahoo calls when SMA changes
+- 💾 Persistente Yahoo-Preis-Datenbank in `src/data/provider-cache/yahoo-history-db.json`
+- 🔄 Background-Synchronisierung beim Start: ETFs mit aeltestem `updatedAt` werden zuerst aktualisiert
+- 🧊 Automatischer Cooldown bei Yahoo-Rate-Limit (HTTP 429) mit anschliessender Fortsetzung
+- 🖥️ Live-Sync-Status im Frontend (inkl. Cooldown-Restzeit und Cache-Stand)
 - 🧾 Includes ETF master data per hit: **Provider**, **Ticker**, **Name**, **ISIN**, optional **WKN**
 - 🗂️ Separate master-data layer with static ticker mapping + in-memory cache (24 h TTL)
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
@@ -51,6 +55,9 @@ Then open **http://localhost:3000** in your browser, choose SMA period + provide
 
 The scan fetches ~420 days of daily price history for each ETF from Yahoo Finance and processes them in small batches with a short delay to stay within rate limits. A full scan typically takes **30–90 seconds**.
 
+Beim Serverstart wird zusaetzlich ein Hintergrundprozess gestartet, der den persistenten Yahoo-Cache nach und nach aktualisiert.
+Dieser Prozess priorisiert ETFs mit dem aeltesten Aktualisierungszeitpunkt und pausiert automatisch in eine Cooldown-Phase, falls Yahoo ein Rate-Limit signalisiert.
+
 ---
 
 ## Project Structure
@@ -61,6 +68,8 @@ InvestFinder/
 ├── src/
 │   ├── analysis.js     # Scan orchestration, SMA validation, caching strategy
 │   ├── dataService.js  # Yahoo Finance API calls (daily OHLCV data)
+│   ├── yahooHistoryStore.js # Persistente Yahoo-Historie (JSON-Store)
+│   ├── yahooHistoryUpdater.js # Hintergrund-Update mit Cooldown/Resume
 │   ├── etfList.js      # iShares data source (provider-tagged ETF master data)
 │   ├── xtrackersList.js # Xtrackers data source (provider-tagged ETF master data)
 │   ├── etfUniverseService.js # Provider-specific caching + merge + deduplication
@@ -129,6 +138,33 @@ Scans ETFs from selected providers and returns matches.
 }
 ```
 
+### `GET /api/yahoo-sync-status`
+
+Liefert den Status der Hintergrund-Synchronisierung inklusive Cooldown-Status und Cache-Zusammenfassung.
+
+Beispiel:
+
+```jsonc
+{
+  "ok": true,
+  "status": {
+    "running": true,
+    "isCoolingDown": false,
+    "cooldownRemainingMs": 0,
+    "processedTickers": 42,
+    "rateLimitHits": 1,
+    "lastTicker": "IWDA.AS"
+  },
+  "summary": {
+    "tickerCount": 120,
+    "totalPoints": 35640,
+    "oldestUpdate": "2026-04-05T10:00:00.000Z",
+    "newestUpdate": "2026-04-06T08:12:00.000Z"
+  },
+  "checkedAt": "2026-04-06T08:12:05.000Z"
+}
+```
+
 ---
 
 ## Breakout Logic
@@ -147,6 +183,8 @@ Signal fires when:
 ## Notes
 
 - Yahoo Finance is a **public, unofficial API** – no API key is required but it is subject to rate limits. The app processes ETFs in batches of 5 with a 300 ms delay to mitigate this.
+- Die persistente Yahoo-Datenbank liegt lokal unter `src/data/provider-cache/yahoo-history-db.json` und wird fortlaufend erweitert/aktualisiert.
+- Das Cooldown-Intervall ist ueber `YAHOO_COOLDOWN_MS` konfigurierbar (Default: 60000 ms).
 - ETF universes are cached **separately per provider** and then merged internally; this avoids unnecessary reloads and makes provider-level scaling easy.
 - Bei SMA-Aenderungen werden vorhandene Kursdaten aus dem lokalen Cache wiederverwendet. Dadurch sind Folgescans (anderes N) deutlich schneller und vermeiden unnoetige API-Calls.
 - Duplicate entries are prevented during merge via unique identity (ISIN first, fallback provider+ticker).
