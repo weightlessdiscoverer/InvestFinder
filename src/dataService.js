@@ -11,12 +11,75 @@
 
 'use strict';
 
-const fetch = require('node-fetch');
-
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
 // How many calendar days of history to request (covers ~300 trading days)
 const HISTORY_DAYS = 420;
+
+const REQUEST_HEADERS = {
+  // Mimic a browser request to reduce 429/403 responses
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+    '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Accept: 'application/json',
+};
+
+function createHttpErrorMessage(status, ticker) {
+  if (status === 429) {
+    return `Rate-limited by Yahoo Finance for ticker ${ticker}`;
+  }
+  return `Yahoo Finance returned HTTP ${status} for ticker ${ticker}`;
+}
+
+function assertResponseOk(response, ticker) {
+  if (response.ok) {
+    return;
+  }
+  throw new Error(createHttpErrorMessage(response.status, ticker));
+}
+
+function getChartResult(json, ticker) {
+  const result = json?.chart?.result?.[0];
+  if (result) {
+    return result;
+  }
+
+  const errorMsg = json?.chart?.error?.description || 'Unknown error';
+  throw new Error(`No data for ticker ${ticker}: ${errorMsg}`);
+}
+
+function getSeriesFromResult(result) {
+  return {
+    timestamps: result.timestamp,
+    closes: result.indicators?.quote?.[0]?.close,
+  };
+}
+
+function assertSeriesNotEmpty(timestamps, closes, ticker) {
+  if (!timestamps || !closes || timestamps.length === 0) {
+    throw new Error(`Empty price data for ticker ${ticker}`);
+  }
+}
+
+function extractRawChartData(json, ticker) {
+  const result = getChartResult(json, ticker);
+  const { timestamps, closes } = getSeriesFromResult(result);
+  assertSeriesNotEmpty(timestamps, closes, ticker);
+
+  return { timestamps, closes };
+}
+
+function normalizePriceSeries(timestamps, closes) {
+  const pairs = timestamps
+    .map((ts, i) => ({ date: new Date(ts * 1000), close: closes[i] }))
+    .filter(p => p.close != null && !isNaN(p.close))
+    .sort((a, b) => a.date - b.date);
+
+  return {
+    dates: pairs.map(p => p.date.toISOString().slice(0, 10)),
+    closes: pairs.map(p => p.close),
+  };
+}
 
 /**
  * Build the Yahoo Finance chart URL for a given ticker.
@@ -46,53 +109,15 @@ function buildUrl(ticker) {
  */
 async function fetchDailyCloses(ticker) {
   const url = buildUrl(ticker);
-
   const response = await fetch(url, {
-    headers: {
-      // Mimic a browser request to reduce 429/403 responses
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Accept: 'application/json',
-    },
-    timeout: 15000,
+    headers: REQUEST_HEADERS,
+    signal: AbortSignal.timeout(15000),
   });
-
-  if (response.status === 429) {
-    throw new Error(`Rate-limited by Yahoo Finance for ticker ${ticker}`);
-  }
-  if (!response.ok) {
-    throw new Error(
-      `Yahoo Finance returned HTTP ${response.status} for ticker ${ticker}`
-    );
-  }
+  assertResponseOk(response, ticker);
 
   const json = await response.json();
-
-  // Validate response structure
-  const result = json?.chart?.result?.[0];
-  if (!result) {
-    const errorMsg = json?.chart?.error?.description || 'Unknown error';
-    throw new Error(`No data for ticker ${ticker}: ${errorMsg}`);
-  }
-
-  const timestamps = result.timestamp;
-  const closes = result.indicators?.quote?.[0]?.close;
-
-  if (!timestamps || !closes || timestamps.length === 0) {
-    throw new Error(`Empty price data for ticker ${ticker}`);
-  }
-
-  // Zip timestamps and closes, filter out null/NaN, sort ascending
-  const pairs = timestamps
-    .map((ts, i) => ({ date: new Date(ts * 1000), close: closes[i] }))
-    .filter(p => p.close != null && !isNaN(p.close))
-    .sort((a, b) => a.date - b.date);
-
-  return {
-    dates: pairs.map(p => p.date.toISOString().slice(0, 10)),
-    closes: pairs.map(p => p.close),
-  };
+  const { timestamps, closes } = extractRawChartData(json, ticker);
+  return normalizePriceSeries(timestamps, closes);
 }
 
 module.exports = { fetchDailyCloses };

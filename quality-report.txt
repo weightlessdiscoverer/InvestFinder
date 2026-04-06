@@ -1,6 +1,6 @@
 === 1. HEADER ===
 Projektname: InvestFinder
-Analysezeitpunkt: 2026-04-06T08:12:37.928Z
+Analysezeitpunkt: 2026-04-06T08:24:14.256Z
 Node.js-Version: v20.19.0
 Analysierte Wurzelpfade: server.js, src, public
 Analysierte Dateipfade:
@@ -18,10 +18,24 @@ Analysierte Dateipfade:
 - public/style.css
 
 === 2. TESTABDECKUNG ===
-Gefundene Testdateien: 0
-Status: KEINE TESTS VORHANDEN
+Gefundene Testdateien: 1
+Status: Coverage ueber Node --experimental-test-coverage erfolgreich gelesen.
 Empfohlene Grenzwerte: Statements >= 80%, Branches >= 70%, Functions >= 80%, Lines >= 80%
-Handlungsempfehlung (Prioritaet): src/analysis.js > src/signals.js > src/indicators.js > src/dataService.js
+Gesamt-Coverage:
+- Statements: 85.8% | Ziel >= 80% | Status: OK
+- Branches: 79.1% | Ziel >= 70% | Status: OK
+- Functions: 94.03% | Ziel >= 80% | Status: OK
+- Lines: 85.8% | Ziel >= 80% | Status: OK
+Coverage je Datei:
+- src/analysis.js: S=42.01% B=100% F=25% L=42.01%
+- src/dataService.js: S=99.19% B=92% F=100% L=99.19%
+- src/etfList.js: S=100% B=100% F=100% L=100%
+- src/etfUniverseService.js: S=94.5% B=65.22% F=100% L=94.5%
+- src/indicators.js: S=100% B=100% F=100% L=100%
+- src/masterDataService.js: S=96.11% B=54.05% F=100% L=96.11%
+- src/signals.js: S=89.87% B=80% F=100% L=89.87%
+- src/xtrackersList.js: S=100% B=100% F=100% L=100%
+- test/core.test.js: S=99.47% B=100% F=96.3% L=99.47%
 
 === 3. CODE-KOMPLEXITAET ===
 Grenzwerte: <=5 GUT | 6-10 AKZEPTABEL | 11-20 WARNUNG | >20 KRITISCH
@@ -31,9 +45,16 @@ Datei src/analysis.js: Modul-Komplexitaet 12 (WARNUNG)
   - getPriceHistory (Zeile 68): 4 (GUT)
   - scanETF (Zeile 97): 1 (GUT)
   - scanAllETFs (Zeile 164): 1 (GUT)
-Datei src/dataService.js: Modul-Komplexitaet 24 (KRITISCH)
-  - buildUrl (Zeile 26): 2 (GUT)
-  - fetchDailyCloses (Zeile 47): 22 (KRITISCH)
+Datei src/dataService.js: Modul-Komplexitaet 31 (KRITISCH)
+  - createHttpErrorMessage (Zeile 27): 4 (GUT)
+  - assertResponseOk (Zeile 34): 2 (GUT)
+  - getChartResult (Zeile 41): 10 (AKZEPTABEL)
+  - getSeriesFromResult (Zeile 51): 4 (GUT)
+  - assertSeriesNotEmpty (Zeile 58): 5 (GUT)
+  - extractRawChartData (Zeile 64): 1 (GUT)
+  - normalizePriceSeries (Zeile 72): 2 (GUT)
+  - buildUrl (Zeile 89): 2 (GUT)
+  - fetchDailyCloses (Zeile 110): 1 (GUT)
 Datei src/etfList.js: Modul-Komplexitaet 0 (GUT)
 Datei src/etfUniverseService.js: Modul-Komplexitaet 17 (WARNUNG)
   - normalizeProviderFilter (Zeile 28): 3 (GUT)
@@ -42,37 +63,42 @@ Datei src/etfUniverseService.js: Modul-Komplexitaet 17 (WARNUNG)
   - getEtfUniverse (Zeile 85): 1 (GUT)
 Datei src/indicators.js: Modul-Komplexitaet 4 (GUT)
   - computeSMA (Zeile 25): 4 (GUT)
-Datei src/masterDataService.js: Modul-Komplexitaet 29 (KRITISCH)
+Datei src/masterDataService.js: Modul-Komplexitaet 34 (KRITISCH)
   - isValidIsinFormat (Zeile 27): 2 (GUT)
   - normalizeTicker (Zeile 35): 2 (GUT)
-  - loadMasterDataFromFile (Zeile 45): 17 (WARNUNG)
-  - getMasterDataIndex (Zeile 95): 1 (GUT)
-  - warmMasterDataCache (Zeile 120): 1 (GUT)
-  - getIdentifiersByTicker (Zeile 131): 6 (AKZEPTABEL)
+  - normalizeIsin (Zeile 39): 6 (AKZEPTABEL)
+  - normalizeWkn (Zeile 50): 3 (GUT)
+  - buildMasterDataItem (Zeile 55): 3 (GUT)
+  - parseMasterDataContent (Zeile 63): 2 (GUT)
+  - insertEntryIntoIndex (Zeile 71): 3 (GUT)
+  - loadMasterDataFromFile (Zeile 91): 5 (GUT)
+  - getMasterDataIndex (Zeile 117): 1 (GUT)
+  - warmMasterDataCache (Zeile 142): 1 (GUT)
+  - getIdentifiersByTicker (Zeile 153): 6 (AKZEPTABEL)
 Datei src/signals.js: Modul-Komplexitaet 1 (GUT)
   - detectBreakoutSignal (Zeile 30): 1 (GUT)
 Datei src/xtrackersList.js: Modul-Komplexitaet 0 (GUT)
 Top-5 komplexeste Funktionen/Module:
-- src/dataService.js:47 fetchDailyCloses -> 22 (KRITISCH)
-- src/masterDataService.js:45 loadMasterDataFromFile -> 17 (WARNUNG)
+- src/dataService.js:41 getChartResult -> 10 (AKZEPTABEL)
 - src/etfUniverseService.js:48 getProviderEtfs -> 10 (AKZEPTABEL)
 - src/analysis.js:43 normalizeSmaPeriod -> 6 (AKZEPTABEL)
-- src/masterDataService.js:131 getIdentifiersByTicker -> 6 (AKZEPTABEL)
+- src/masterDataService.js:39 normalizeIsin -> 6 (AKZEPTABEL)
+- src/masterDataService.js:153 getIdentifiersByTicker -> 6 (AKZEPTABEL)
 
 === 4. CODE-METRIKEN ===
 - server.js: LOC=76, SLOC=47, Funktionen=0, TODO/FIXME=0
 - src/analysis.js: LOC=220, SLOC=142, Funktionen=4, TODO/FIXME=0
-- src/dataService.js: LOC=99, SLOC=56, Funktionen=2, TODO/FIXME=0
+- src/dataService.js: LOC=124, SLOC=80, Funktionen=9, TODO/FIXME=0
 - src/etfList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
 - src/etfUniverseService.js: LOC=110, SLOC=67, Funktionen=4, TODO/FIXME=0
 - src/indicators.js: LOC=45, SLOC=16, Funktionen=1, TODO/FIXME=0
-- src/masterDataService.js: LOC=159, SLOC=94, Funktionen=6, TODO/FIXME=0
+- src/masterDataService.js: LOC=181, SLOC=113, Funktionen=11, TODO/FIXME=0
 - src/signals.js: LOC=80, SLOC=44, Funktionen=1, TODO/FIXME=0
 - src/xtrackersList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
 Datei-Risiko-Scores (heuristisch):
 - src/analysis.js: Score=4 | Risiko=MITTEL
+- src/dataService.js: Score=4 | Risiko=MITTEL
 - src/masterDataService.js: Score=4 | Risiko=MITTEL
-- src/dataService.js: Score=3 | Risiko=MITTEL
 - src/etfUniverseService.js: Score=3 | Risiko=MITTEL
 - server.js: Score=0 | Risiko=NIEDRIG
 - src/etfList.js: Score=0 | Risiko=NIEDRIG
@@ -93,7 +119,7 @@ require()-Imports je Datei:
   - Zeile 18: require('./etfUniverseService')
   - Zeile 19: require('./signals')
 - src/dataService.js:
-  - Zeile 14: require('node-fetch')
+  (keine require-Imports)
 - src/etfList.js:
   (keine require-Imports)
 - src/etfUniverseService.js:
@@ -112,12 +138,8 @@ require()-Imports je Datei:
 Zirkulaere Abhaengigkeiten: keine gefunden
 Externe npm-Pakete (package.json):
 - cors: ^2.8.5
-- express: ^4.18.2
+- express: ^5.2.1
 - express-rate-limit: ^8.3.2
-- node-fetch: ^2.7.0
-Security-Hinweise zu Dependencies:
-- WARNUNG: node-fetch Version ^2.7.0 erkannt (potenzielles Sicherheits-/Wartungsrisiko bei < v3).
-- WARNUNG: express Version ^4.18.2 erkannt (Pruefung auf bekannte CVEs und Update-Pfad zu v5 empfohlen).
 
 === 6. SICHERHEITSHINWEISE ===
 - Keine Nutzung von eval(), Function(), exec() oder child_process gefunden
@@ -127,12 +149,7 @@ Input-Validierung in API-Pfad:
 - src/analysis.js: vorhanden
 
 === 7. HANDLUNGSEMPFEHLUNGEN (ZUSAMMENFASSUNG) ===
-Findings gesamt: KRITISCH=1, WARNUNG=4, INFO=1
-[KRITISCH] Hohe Komplexitaet (22) in Funktion fetchDailyCloses. Refactoring empfohlen. | Datei: src/dataService.js:47
-[WARNUNG] Keine automatisierten Tests vorhanden. Test-Priorisierung: src/analysis.js -> src/signals.js -> src/indicators.js -> src/dataService.js | Datei: src/analysis.js
-[WARNUNG] Hohe Komplexitaet (17) in Funktion loadMasterDataFromFile. Refactoring empfohlen. | Datei: src/masterDataService.js:45
-[WARNUNG] node-fetch Version ^2.7.0 erkannt (potenzielles Sicherheits-/Wartungsrisiko bei < v3). | Datei: package.json
-[WARNUNG] express Version ^4.18.2 erkannt (Pruefung auf bekannte CVEs und Update-Pfad zu v5 empfohlen). | Datei: package.json
+Findings gesamt: KRITISCH=0, WARNUNG=0, INFO=1
 [INFO] Input-Validierung in server.js und src/analysis.js erkannt. | Datei: server.js
 
 === 8. DYNAMISCHE SMOKE-CHECKS ===

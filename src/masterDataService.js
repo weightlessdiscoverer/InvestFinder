@@ -36,6 +36,52 @@ function normalizeTicker(ticker) {
   return String(ticker || '').trim().toUpperCase();
 }
 
+function normalizeIsin(isinValue, ticker) {
+  const isinRaw = isinValue ? String(isinValue).trim().toUpperCase() : null;
+  const isin = isValidIsinFormat(isinRaw) ? isinRaw : null;
+
+  if (isinRaw && !isin) {
+    console.warn(`[masterDataService] Invalid ISIN format ignored for ${ticker}: ${isinRaw}`);
+  }
+
+  return isin;
+}
+
+function normalizeWkn(wknValue) {
+  const wknRaw = wknValue ? String(wknValue).trim().toUpperCase() : null;
+  return wknRaw || null;
+}
+
+function buildMasterDataItem(entry, parsedSource, ticker) {
+  return {
+    isin: normalizeIsin(entry.isin, ticker),
+    wkn: normalizeWkn(entry.wkn),
+    source: entry.source ? String(entry.source) : parsedSource || 'Statisches Mapping',
+  };
+}
+
+function parseMasterDataContent(raw) {
+  const parsed = JSON.parse(raw);
+  return {
+    parsed,
+    items: Array.isArray(parsed.items) ? parsed.items : [],
+  };
+}
+
+function insertEntryIntoIndex(byTicker, entry, parsedSource) {
+  const ticker = normalizeTicker(entry.ticker);
+  if (!ticker) {
+    return;
+  }
+
+  if (byTicker.has(ticker)) {
+    console.warn(`[masterDataService] Duplicate ticker in master data ignored: ${ticker}`);
+    return;
+  }
+
+  byTicker.set(ticker, buildMasterDataItem(entry, parsedSource, ticker));
+}
+
 /**
  * Lädt Mapping-Datei und baut einen Index nach Ticker auf.
  * Doppelte Ticker werden verworfen, um falsche Zuordnungen zu verhindern.
@@ -44,35 +90,11 @@ function normalizeTicker(ticker) {
  */
 async function loadMasterDataFromFile() {
   const raw = await fs.readFile(MASTER_DATA_FILE, 'utf8');
-  const parsed = JSON.parse(raw);
-
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
+  const { parsed, items } = parseMasterDataContent(raw);
   const byTicker = new Map();
 
   for (const entry of items) {
-    const ticker = normalizeTicker(entry.ticker);
-    if (!ticker) continue;
-
-    if (byTicker.has(ticker)) {
-      console.warn(`[masterDataService] Duplicate ticker in master data ignored: ${ticker}`);
-      continue;
-    }
-
-    const isinRaw = entry.isin ? String(entry.isin).trim().toUpperCase() : null;
-    const isin = isValidIsinFormat(isinRaw) ? isinRaw : null;
-
-    if (isinRaw && !isin) {
-      console.warn(`[masterDataService] Invalid ISIN format ignored for ${ticker}: ${isinRaw}`);
-    }
-
-    const wknRaw = entry.wkn ? String(entry.wkn).trim().toUpperCase() : null;
-    const wkn = wknRaw || null;
-
-    byTicker.set(ticker, {
-      isin,
-      wkn,
-      source: entry.source ? String(entry.source) : parsed.source || 'Statisches Mapping',
-    });
+    insertEntryIntoIndex(byTicker, entry, parsed.source);
   }
 
   return {

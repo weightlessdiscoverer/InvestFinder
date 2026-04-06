@@ -42,6 +42,9 @@ npm install
 
 # 2. Start the server
 npm start
+
+# Optional: run automated tests
+npm test
 ```
 
 Then open **http://localhost:3000** in your browser, choose SMA period + provider filter and click **"Scan starten"**.

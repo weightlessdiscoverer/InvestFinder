@@ -66,7 +66,7 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
 });
 
 // Catch-all: serve index.html for any unknown path (SPA fallback)
-app.get('*', (_req, res) => {
+app.use((_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

@@ -436,59 +436,92 @@ function analyzeCoverage(testFiles) {
     };
   }
 
-  const npmTest = spawnSync('npm', ['test', '--', '--coverage', '--coverageReporters=json-summary'], {
+  const coverageRun = spawnSync('node', ['--test', '--experimental-test-coverage'], {
     cwd: PROJECT_ROOT,
     encoding: 'utf8',
     timeout: 180000,
   });
 
-  const summaryPath = path.join(PROJECT_ROOT, 'coverage', 'coverage-summary.json');
-  if (npmTest.status !== 0 || !fs.existsSync(summaryPath)) {
+  const output = `${coverageRun.stdout || ''}\n${coverageRun.stderr || ''}`.trim();
+
+  if (coverageRun.status !== 0) {
+    const coverageUnsupported = /bad option: --experimental-test-coverage/i.test(output);
     return {
       hasTests: true,
-      reason: 'Tests vorhanden, aber Coverage konnte nicht automatisch ermittelt werden.',
+      reason: coverageUnsupported
+        ? 'Tests vorhanden, aber native Node-Coverage wird von dieser Node-Version nicht unterstuetzt.'
+        : 'Tests vorhanden, aber Coverage-Lauf ist fehlgeschlagen.',
       metricsByFile: [],
       total: null,
-      rawOutput: `${npmTest.stdout || ''}\n${npmTest.stderr || ''}`.trim(),
+      rawOutput: output,
     };
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-  } catch (err) {
+  const lines = output.split(/\r?\n/);
+  const startIdx = lines.findIndex(line => /start of coverage report/i.test(line));
+  const endIdx = lines.findIndex(line => /end of coverage report/i.test(line));
+
+  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
     return {
       hasTests: true,
-      reason: `Coverage-Datei konnte nicht gelesen werden: ${err.message}`,
+      reason: 'Tests erfolgreich, aber kein Coverage-Report im Node-Output gefunden.',
       metricsByFile: [],
       total: null,
+      rawOutput: output,
     };
   }
 
+  const tableLines = lines.slice(startIdx + 1, endIdx);
   const metricsByFile = [];
-  for (const [file, data] of Object.entries(parsed)) {
-    if (file === 'total') continue;
+  let total = null;
+
+  for (const rawLine of tableLines) {
+    const cleanLine = rawLine
+      .replace(/^\s*ℹ\s*/, '')
+      .replace(/^#\s+/, '')
+      .trim();
+    if (!cleanLine || cleanLine.startsWith('-') || cleanLine.startsWith('file ')) {
+      continue;
+    }
+
+    const match = cleanLine.match(/^(.+?)\s*\|\s*([0-9.]+)\s*\|\s*([0-9.]+)\s*\|\s*([0-9.]+)\s*\|/);
+    if (!match) {
+      continue;
+    }
+
+    const row = {
+      file: match[1].trim(),
+      lines: Number(match[2]),
+      branches: Number(match[3]),
+      functions: Number(match[4]),
+    };
+
+    if (row.file.toLowerCase() === 'all files') {
+      total = {
+        statements: row.lines,
+        branches: row.branches,
+        functions: row.functions,
+        lines: row.lines,
+      };
+      continue;
+    }
+
     metricsByFile.push({
-      file,
-      statements: data.statements?.pct ?? null,
-      branches: data.branches?.pct ?? null,
-      functions: data.functions?.pct ?? null,
-      lines: data.lines?.pct ?? null,
+      file: row.file,
+      statements: row.lines,
+      branches: row.branches,
+      functions: row.functions,
+      lines: row.lines,
     });
   }
 
   return {
     hasTests: true,
-    reason: 'Coverage erfolgreich gelesen.',
+    reason: total
+      ? 'Coverage ueber Node --experimental-test-coverage erfolgreich gelesen.'
+      : 'Coverage-Tabelle erkannt, aber Summenzeile (all files) fehlt.',
     metricsByFile,
-    total: parsed.total
-      ? {
-          statements: parsed.total.statements?.pct ?? null,
-          branches: parsed.total.branches?.pct ?? null,
-          functions: parsed.total.functions?.pct ?? null,
-          lines: parsed.total.lines?.pct ?? null,
-        }
-      : null,
+    total,
   };
 }
 
