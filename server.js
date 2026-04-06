@@ -116,6 +116,7 @@ app.get('/api/available-etfs', async (req, res) => {
           firstDate: record.firstDate,
           lastDate: record.lastDate,
           updatedAt: record.updatedAt,
+          dataSource: 'Yahoo Finance',
         };
       })
       .filter(Boolean)

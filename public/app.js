@@ -328,6 +328,8 @@ function renderDbEtfList(items) {
         <td class="num">${fmt(item.points, 0)}</td>
         <td><span class="date-badge">${fmtDate(item.firstDate)}</span></td>
         <td><span class="date-badge">${fmtDate(item.lastDate)}</span></td>
+        <td><span class="id-chip">${fmtDateTime(item.updatedAt)}</span></td>
+        <td><span class="id-chip">${escHtml(item.dataSource || 'Yahoo Finance')}</span></td>
       </tr>
     `)
     .join('');
