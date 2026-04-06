@@ -10,6 +10,9 @@ A locally running web app that scans iShares ETFs for **SMA200 Golden Cross sign
 - 🔢 Calculates the 200-day SMA for each ETF using live data from Yahoo Finance
 - ✅ Detects Golden Cross: `yesterday.close < yesterday.SMA200` **AND** `today.close > today.SMA200`
 - ⚡ In-memory caching (6 h TTL) to avoid rate limits on repeated scans
+- 🧾 Adds ETF identifiers per hit: **ISIN** and (if available) **WKN**
+- 🗂️ Separate master-data layer with static ticker mapping + in-memory cache (24 h TTL)
+- 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
 - 🖥️ Clean dark-mode UI with loading indicator, summary bar and sortable results table
 
 ---
@@ -52,9 +55,12 @@ The scan fetches ~420 days of daily price history for each ETF from Yahoo Financ
 InvestFinder/
 ├── server.js           # Express server – serves static files + /api/scan endpoint
 ├── src/
-│   ├── etfList.js      # Static list of ~100 iShares ETF tickers and names
+│   ├── analysis.js     # SMA200 computation, Golden Cross detection, caching
 │   ├── dataService.js  # Yahoo Finance API calls (daily OHLCV data)
-│   └── analysis.js     # SMA200 computation, Golden Cross detection, caching
+│   ├── etfList.js      # Static list of ~100 iShares ETF tickers and names
+│   ├── masterDataService.js  # Stammdaten-Layer (Ticker → ISIN/WKN), Validierung, Cache
+│   ├── data/
+│   │   └── etfMasterData.json # Statische Identifier-Quelle inkl. Herkunftsdokumentation
 ├── public/
 │   ├── index.html      # Single-page UI
 │   ├── style.css       # Dark-mode styling
@@ -90,6 +96,9 @@ Scans all iShares ETFs and returns matches.
       {
         "ticker": "IWDA.AS",
         "name": "iShares Core MSCI World UCITS ETF",
+        "isin": "IE00B4L5Y983",
+        "wkn": "A0RPWH",
+        "identifierSource": "iShares Core MSCI World UCITS ETF",
         "signal": true,
         "todayDate": "2025-01-15",
         "todayClose": 95.12,
@@ -124,5 +133,8 @@ Signal fires when:
 ## Notes
 
 - Yahoo Finance is a **public, unofficial API** – no API key is required but it is subject to rate limits. The app processes ETFs in batches of 5 with a 300 ms delay to mitigate this.
+- ISIN/WKN stammen aus `src/data/etfMasterData.json` (manuell gepflegte Stammdatenquelle). Wenn für einen ETF kein Eintrag vorhanden ist, liefert die API `"nicht verfügbar"`.
+- Die Zuordnung erfolgt über den **vollständigen** Yahoo-Ticker (z. B. `IWDA.AS` vs. `IWDA.L`), um Verwechslungen zwischen Handelsplätzen/Regionen zu vermeiden.
+- ISIN wird beim Laden validiert (`^[A-Z0-9]{12}$`). Ungültige Werte werden ignoriert und als `"nicht verfügbar"` ausgegeben.
 - Some UCITS ETF tickers (e.g. `IWDA.AS`, `CSPX.L`) may occasionally return no data if Yahoo Finance has a data gap. These appear in the "Fehlerhafte ETFs" section.
 - **This app is for informational purposes only and does not constitute financial advice.**
