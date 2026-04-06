@@ -58,6 +58,25 @@ The scan fetches ~420 days of daily price history for each ETF from Yahoo Financ
 Beim Serverstart wird zusaetzlich ein Hintergrundprozess gestartet, der den persistenten Yahoo-Cache nach und nach aktualisiert.
 Dieser Prozess priorisiert ETFs mit dem aeltesten Aktualisierungszeitpunkt und pausiert automatisch in eine Cooldown-Phase, falls Yahoo ein Rate-Limit signalisiert.
 
+### Linux Launcher (klickbar)
+
+Wenn du die App wie eine installierte Anwendung starten willst, gibt es einen Launcher mit sauberem Stop-Verhalten.
+
+```bash
+# 1) Launcher in Anwendungsmenue installieren
+npm run install:linux-launcher
+
+# 2) App starten (optional direkt per Terminal)
+npm run start:launcher
+```
+
+Alternativ kannst du im Dateimanager `scripts/start-investfinder.sh` direkt starten.
+
+Wichtig:
+
+- Das Startskript oeffnet den Browser automatisch.
+- Wenn das Launcher-Terminal geschlossen wird (oder `Strg+C`), wird der Node-Server automatisch gestoppt.
+
 ---
 
 ## Project Structure

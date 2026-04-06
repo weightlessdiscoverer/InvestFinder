@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:launcher": "bash scripts/start-investfinder.sh",
+    "install:linux-launcher": "bash scripts/install-linux-launcher.sh",
     "dev": "node server.js",
     "test": "node --test"
   },
