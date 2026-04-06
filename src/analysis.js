@@ -15,12 +15,8 @@
 'use strict';
 
 const { fetchDailyCloses } = require('./dataService');
-const ISHARES_ETFS = require('./etfList');
+const { getEtfUniverse, normalizeProviderFilter } = require('./etfUniverseService');
 const { detectBreakoutSignal } = require('./signals');
-const {
-  warmMasterDataCache,
-  getIdentifiersByTicker,
-} = require('./masterDataService');
 
 const DEFAULT_SMA_PERIOD = 200;
 const MIN_SMA_PERIOD = 2;
@@ -92,7 +88,7 @@ async function getPriceHistory(etf, bypassCache) {
 }
 
 /**
- * Scan a single ETF for a Golden Cross signal.
+ * Scan a single ETF for a breakout signal.
  *
  * @param {{ ticker: string, name: string }} etf
  * @param {{ bypassCache: boolean, smaPeriod: number }} options
@@ -112,14 +108,14 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
   try {
     const { dates, closes } = await getPriceHistory(etf, bypassCache);
     const signalResult = detectBreakoutSignal({ dates, closes, smaPeriod });
-    const identifiers = await getIdentifiersByTicker(etf.ticker);
 
     const baseResult = {
+      provider: etf.provider,
       ticker:  etf.ticker,
       name:    etf.name,
-      isin: identifiers.isin,
-      wkn: identifiers.wkn,
-      identifierSource: identifiers.source,
+      isin: etf.isin,
+      wkn: etf.wkn || 'nicht verfügbar',
+      identifierSource: `${etf.provider} statische Stammdatenquelle`,
       smaPeriod,
       smaLabel: `SMA${smaPeriod}`,
     };
@@ -142,8 +138,11 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
     return result;
   } catch (err) {
     const result = {
+      provider: etf.provider,
       ticker: etf.ticker,
       name:   etf.name,
+      isin: etf.isin || 'nicht verfügbar',
+      wkn: etf.wkn || 'nicht verfügbar',
       smaPeriod,
       smaLabel: `SMA${smaPeriod}`,
       status: 'error',
@@ -159,14 +158,21 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
  * Scan all iShares ETFs concurrently (with a concurrency limit to respect
  * Yahoo Finance rate limits) and return only those with a breakout signal.
  *
- * @param {{ bypassCache?: boolean, smaPeriod?: number|string }} options
+ * @param {{ bypassCache?: boolean, smaPeriod?: number|string, providerFilter?: string }} options
  * @returns {Promise<{ matches: object[], errors: object[], total: number }>}
  */
-async function scanAllETFs({ bypassCache = false, smaPeriod: smaPeriodInput } = {}) {
+async function scanAllETFs({
+  bypassCache = false,
+  smaPeriod: smaPeriodInput,
+  providerFilter = 'all',
+} = {}) {
   const smaPeriod = normalizeSmaPeriod(smaPeriodInput);
+  const normalizedProviderFilter = normalizeProviderFilter(providerFilter);
 
-  // Load and cache static identifier master data once per scan run.
-  await warmMasterDataCache({ bypassCache });
+  const etfUniverse = await getEtfUniverse({
+    providerFilter: normalizedProviderFilter,
+    bypassCache,
+  });
 
   // Process ETFs in batches to avoid triggering rate limits
   const BATCH_SIZE = 5;
@@ -174,15 +180,15 @@ async function scanAllETFs({ bypassCache = false, smaPeriod: smaPeriodInput } = 
 
   const allResults = [];
 
-  for (let i = 0; i < ISHARES_ETFS.length; i += BATCH_SIZE) {
-    const batch = ISHARES_ETFS.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < etfUniverse.length; i += BATCH_SIZE) {
+    const batch = etfUniverse.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(etf => scanETF(etf, { bypassCache, smaPeriod }))
     );
     allResults.push(...batchResults);
 
     // Polite delay between batches (skip after last batch)
-    if (i + BATCH_SIZE < ISHARES_ETFS.length) {
+    if (i + BATCH_SIZE < etfUniverse.length) {
       await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
     }
   }
@@ -193,17 +199,19 @@ async function scanAllETFs({ bypassCache = false, smaPeriod: smaPeriodInput } = 
   );
 
   return {
+    providerFilter: normalizedProviderFilter,
     smaPeriod,
     smaLabel: `SMA${smaPeriod}`,
     matches,
     errors,
-    total: ISHARES_ETFS.length,
+    total: etfUniverse.length,
     scanned: allResults.length,
   };
 }
 
 module.exports = {
   scanAllETFs,
+  normalizeProviderFilter,
   normalizeSmaPeriod,
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,

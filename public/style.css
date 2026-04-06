@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   style.css  –  InvestFinder ETF Golden Cross Scanner
+  style.css  –  InvestFinder Multi-Provider ETF Scanner
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── CSS Variables ──────────────────────────────────────────────────────── */
@@ -106,6 +106,22 @@ a:hover { text-decoration: underline; }
 }
 
 .sma-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.2);
+}
+
+.provider-select {
+  min-width: 145px;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+}
+
+.provider-select:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.2);

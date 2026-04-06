@@ -1,8 +1,9 @@
 /**
- * app.js  –  Frontend logic for the InvestFinder ETF SMA Breakout Scanner.
+ * app.js  –  Frontend logic for the InvestFinder Multi-Provider ETF Scanner.
  *
  * Responsibilities:
  *  - Handle "Scan starten" / "Neu laden" button clicks
+ *  - Handle SMA and provider filter input
  *  - Call the backend API (/api/scan)
  *  - Show / hide loading indicator
  *  - Render results table and error list
@@ -11,56 +12,48 @@
 'use strict';
 
 /* ── DOM references ─────────────────────────────────────────────────────── */
-const btnScan         = document.getElementById('btnScan');
-const btnRefresh      = document.getElementById('btnRefresh');
-const smaPeriodInput  = document.getElementById('smaPeriodInput');
-const chkShowErrors   = document.getElementById('chkShowErrors');
-const etfCountEl      = document.getElementById('etfCount');
+const btnScan = document.getElementById('btnScan');
+const btnRefresh = document.getElementById('btnRefresh');
+const smaPeriodInput = document.getElementById('smaPeriodInput');
+const providerFilter = document.getElementById('providerFilter');
+const chkShowErrors = document.getElementById('chkShowErrors');
+const etfCountEl = document.getElementById('etfCount');
 const selectedSmaLabel = document.getElementById('selectedSmaLabel');
-const loadingSection  = document.getElementById('loadingSection');
-const loadingStatus   = document.getElementById('loadingStatus');
-const errorBanner     = document.getElementById('errorBanner');
-const errorMessage    = document.getElementById('errorMessage');
-const summaryBar      = document.getElementById('summaryBar');
-const sumScanned      = document.getElementById('sumScanned');
-const sumMatches      = document.getElementById('sumMatches');
-const sumSma          = document.getElementById('sumSma');
-const sumErrors       = document.getElementById('sumErrors');
-const sumTime         = document.getElementById('sumTime');
-const resultsSection  = document.getElementById('resultsSection');
-const resultsBody     = document.getElementById('resultsBody');
-const noMatches       = document.getElementById('noMatches');
-const matchBadge      = document.getElementById('matchBadge');
-const thSmaValue      = document.getElementById('thSmaValue');
-const errorsSection   = document.getElementById('errorsSection');
-const errorsBody      = document.getElementById('errorsBody');
-const errorBadge      = document.getElementById('errorBadge');
+const loadingSection = document.getElementById('loadingSection');
+const loadingStatus = document.getElementById('loadingStatus');
+const errorBanner = document.getElementById('errorBanner');
+const errorMessage = document.getElementById('errorMessage');
+const summaryBar = document.getElementById('summaryBar');
+const sumScanned = document.getElementById('sumScanned');
+const sumMatches = document.getElementById('sumMatches');
+const sumSma = document.getElementById('sumSma');
+const sumErrors = document.getElementById('sumErrors');
+const sumTime = document.getElementById('sumTime');
+const resultsSection = document.getElementById('resultsSection');
+const resultsBody = document.getElementById('resultsBody');
+const noMatches = document.getElementById('noMatches');
+const matchBadge = document.getElementById('matchBadge');
+const thSmaValue = document.getElementById('thSmaValue');
+const errorsSection = document.getElementById('errorsSection');
+const errorsBody = document.getElementById('errorsBody');
+const errorBadge = document.getElementById('errorBadge');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
 const DEFAULT_SMA_PERIOD = 200;
+const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 
-/** Total number of ETFs in the universe (filled after first response). */
+/** Total number of ETFs in the current filter (filled after first response). */
 let knownTotal = '…';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
+let currentProviderFilter = 'all';
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
 
-/**
- * Show/hide an element using the .hidden CSS class.
- * @param {HTMLElement} el
- * @param {boolean} visible
- */
 function setVisible(el, visible) {
   el.classList.toggle('hidden', !visible);
 }
 
-/**
- * Format a number to a fixed number of decimal places.
- * @param {number|null} val
- * @param {number} decimals
- * @returns {string}
- */
 function fmt(val, decimals = 2) {
   if (val == null || isNaN(val)) return '–';
   return val.toLocaleString('de-DE', {
@@ -69,22 +62,12 @@ function fmt(val, decimals = 2) {
   });
 }
 
-/**
- * Format an ISO date string to locale date (dd.mm.yyyy).
- * @param {string|null} isoDate
- * @returns {string}
- */
 function fmtDate(isoDate) {
   if (!isoDate) return '–';
   const d = new Date(isoDate + 'T00:00:00');
   return d.toLocaleDateString('de-DE');
 }
 
-/**
- * Escape HTML special characters.
- * @param {string} str
- * @returns {string}
- */
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -93,11 +76,6 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-/**
- * Parse and validate SMA period from user input.
- * @returns {number}
- * @throws {Error}
- */
 function getSelectedSmaPeriod() {
   const raw = String(smaPeriodInput.value || '').trim();
   const parsed = Number(raw);
@@ -113,10 +91,14 @@ function getSelectedSmaPeriod() {
   return parsed;
 }
 
-/**
- * Updates labels that reference the currently selected SMA period.
- * @param {number} smaPeriod
- */
+function getSelectedProviderFilter() {
+  const value = String(providerFilter.value || 'all').trim().toLowerCase();
+  if (!ALLOWED_PROVIDER_FILTERS.has(value)) {
+    throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur iShares, nur Xtrackers.');
+  }
+  return value;
+}
+
 function updateSmaLabels(smaPeriod) {
   const label = `SMA${smaPeriod}`;
   selectedSmaLabel.textContent = label;
@@ -126,10 +108,6 @@ function updateSmaLabels(smaPeriod) {
 
 /* ── Render functions ────────────────────────────────────────────────────── */
 
-/**
- * Render the matches (SMA breakout signals) into the results table.
- * @param {object[]} matches
- */
 function renderMatches(matches) {
   matchBadge.textContent = matches.length;
   setVisible(resultsSection, true);
@@ -142,7 +120,6 @@ function renderMatches(matches) {
 
   setVisible(noMatches, false);
 
-  // Sort by percentage distance above selected SMA descending.
   const sorted = [...matches].sort((a, b) => {
     const spreadA = a.todaySMA ? (a.todayClose - a.todaySMA) / a.todaySMA : 0;
     const spreadB = b.todaySMA ? (b.todayClose - b.todaySMA) / b.todaySMA : 0;
@@ -162,8 +139,9 @@ function renderMatches(matches) {
 
       return `
         <tr>
-          <td><span class="ticker-chip">${escHtml(r.ticker)}</span></td>
+          <td><span class="id-chip">${escHtml(r.provider || 'nicht verfügbar')}</span></td>
           <td>${escHtml(r.name)}</td>
+          <td><span class="ticker-chip">${escHtml(r.ticker)}</span></td>
           <td><span class="id-chip">${escHtml(isin)}</span></td>
           <td><span class="id-chip">${escHtml(wkn)}</span></td>
           <td><span class="id-chip">${escHtml(r.smaLabel || `SMA${currentSmaPeriod}`)}</span></td>
@@ -176,10 +154,6 @@ function renderMatches(matches) {
     .join('');
 }
 
-/**
- * Render the errors table.
- * @param {object[]} errors
- */
 function renderErrors(errors) {
   errorBadge.textContent = errors.length;
   const show = chkShowErrors.checked && errors.length > 0;
@@ -188,6 +162,7 @@ function renderErrors(errors) {
   errorsBody.innerHTML = errors
     .map(e => `
       <tr>
+        <td><span class="id-chip">${escHtml(e.provider || 'nicht verfügbar')}</span></td>
         <td><span class="ticker-chip">${escHtml(e.ticker)}</span></td>
         <td>${escHtml(e.name)}</td>
         <td style="color: var(--color-text-muted); font-size: 0.82rem;">${escHtml(e.error || '–')}</td>
@@ -195,16 +170,12 @@ function renderErrors(errors) {
     .join('');
 }
 
-/**
- * Update the summary bar with scan statistics.
- * @param {{ total: number, scanned: number, matches: object[], errors: object[], scannedAt: string }} data
- */
 function renderSummary(data) {
-  sumScanned.textContent  = data.scanned ?? '–';
-  sumMatches.textContent  = data.matches.length;
-  sumSma.textContent      = data.smaLabel || `SMA${currentSmaPeriod}`;
-  sumErrors.textContent   = data.errors.length;
-  sumTime.textContent     = data.scannedAt
+  sumScanned.textContent = data.scanned ?? '–';
+  sumMatches.textContent = data.matches.length;
+  sumSma.textContent = data.smaLabel || `SMA${currentSmaPeriod}`;
+  sumErrors.textContent = data.errors.length;
+  sumTime.textContent = data.scannedAt
     ? new Date(data.scannedAt).toLocaleTimeString('de-DE')
     : '–';
   setVisible(summaryBar, true);
@@ -212,7 +183,6 @@ function renderSummary(data) {
 
 /* ── Scan logic ──────────────────────────────────────────────────────────── */
 
-/** Animated loading status messages to keep the UI lively during the scan. */
 const STATUS_MESSAGES = [
   'Lade Kursdaten …',
   'Berechne SMA …',
@@ -237,14 +207,13 @@ function stopStatusAnimation() {
   }
 }
 
-/**
- * Perform the ETF scan by calling the backend API.
- * @param {boolean} bypassCache  When true, forces a fresh scan ignoring the cache.
- */
 async function runScan(bypassCache = false) {
   let smaPeriod;
+  let provider;
+
   try {
     smaPeriod = getSelectedSmaPeriod();
+    provider = getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
     setVisible(errorBanner, true);
@@ -252,23 +221,26 @@ async function runScan(bypassCache = false) {
   }
 
   currentSmaPeriod = smaPeriod;
+  currentProviderFilter = provider;
   updateSmaLabels(currentSmaPeriod);
 
-  // Reset UI state
   setVisible(errorBanner, false);
   setVisible(loadingSection, true);
   setVisible(resultsSection, false);
   setVisible(errorsSection, false);
   setVisible(summaryBar, false);
-  btnScan.disabled    = true;
+  btnScan.disabled = true;
   btnRefresh.disabled = true;
   startStatusAnimation();
 
   try {
-    const params = new URLSearchParams({ sma: String(currentSmaPeriod) });
+    const params = new URLSearchParams({
+      sma: String(currentSmaPeriod),
+      provider: currentProviderFilter,
+    });
     if (bypassCache) params.set('cache', 'false');
-    const url = `/api/scan?${params.toString()}`;
-    const response = await fetch(url);
+
+    const response = await fetch(`/api/scan?${params.toString()}`);
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -281,26 +253,28 @@ async function runScan(bypassCache = false) {
       throw new Error(data.error || 'Unbekannter Serverfehler');
     }
 
-    // Update total ETF count in the hint
     etfCountEl.textContent = data.results?.total ?? knownTotal;
     knownTotal = data.results?.total ?? knownTotal;
 
-    // Render results
     if (data.results?.smaPeriod) {
       currentSmaPeriod = data.results.smaPeriod;
       updateSmaLabels(currentSmaPeriod);
     }
+    if (data.results?.providerFilter) {
+      currentProviderFilter = data.results.providerFilter;
+      providerFilter.value = currentProviderFilter;
+    }
+
     renderSummary({ ...data.results, scannedAt: data.scannedAt });
     renderMatches(data.results.matches ?? []);
     renderErrors(data.results.errors ?? []);
-
   } catch (err) {
     errorMessage.textContent = `Fehler beim Scan: ${err.message}`;
     setVisible(errorBanner, true);
   } finally {
     stopStatusAnimation();
     setVisible(loadingSection, false);
-    btnScan.disabled    = false;
+    btnScan.disabled = false;
     btnRefresh.disabled = false;
   }
 }
@@ -312,9 +286,18 @@ btnRefresh.addEventListener('click', () => runScan(true));
 
 smaPeriodInput.addEventListener('change', () => {
   try {
-    const nextSma = getSelectedSmaPeriod();
-    currentSmaPeriod = nextSma;
-    updateSmaLabels(nextSma);
+    currentSmaPeriod = getSelectedSmaPeriod();
+    updateSmaLabels(currentSmaPeriod);
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+providerFilter.addEventListener('change', () => {
+  try {
+    currentProviderFilter = getSelectedProviderFilter();
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -323,14 +306,11 @@ smaPeriodInput.addEventListener('change', () => {
 });
 
 chkShowErrors.addEventListener('change', () => {
-  // Rerender errors section visibility based on checkbox state
-  const errorCount = parseInt(errorBadge.textContent) || 0;
+  const errorCount = parseInt(errorBadge.textContent, 10) || 0;
   setVisible(errorsSection, chkShowErrors.checked && errorCount > 0);
 });
 
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 
-// Show the total ETF count once the page loads (fetched from etfList length)
-// We reveal it from the API response; show a placeholder for now.
 etfCountEl.textContent = knownTotal;
 updateSmaLabels(currentSmaPeriod);

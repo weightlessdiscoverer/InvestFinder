@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 const {
   scanAllETFs,
   normalizeSmaPeriod,
+  normalizeProviderFilter,
   DEFAULT_SMA_PERIOD,
 } = require('./src/analysis');
 
@@ -41,19 +42,22 @@ const scanLimiter = rateLimit({
  * Query params:
  *   - cache=false  – bypass in-memory cache (default: use cache)
  *   - sma=200      – SMA period (integer > 1, default: 200)
+ *   - provider=all | ishares | xtrackers
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
 
   let smaPeriod;
+  let providerFilter;
   try {
     smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
+    providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
   }
 
   try {
-    const results = await scanAllETFs({ bypassCache, smaPeriod });
+    const results = await scanAllETFs({ bypassCache, smaPeriod, providerFilter });
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {
     console.error('[/api/scan] Error:', err.message);

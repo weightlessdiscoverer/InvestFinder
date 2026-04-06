@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InvestFinder – iShares ETF SMA Breakout Scanner</title>
+  <title>InvestFinder – Multi-Provider ETF SMA Breakout Scanner</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
         <span class="logo-icon">📈</span>
         <h1>InvestFinder</h1>
       </div>
-      <p class="subtitle">iShares ETF &mdash; SMA Breakout Scanner</p>
+      <p class="subtitle">iShares + Xtrackers ETF &mdash; SMA Breakout Scanner</p>
     </header>
 
     <!-- ── Scan Controls ────────────────────────────────────────────────── -->
@@ -39,6 +39,12 @@
           <option value="100"></option>
           <option value="200"></option>
         </datalist>
+        <label class="input-label" for="providerFilter">Anbieter</label>
+        <select id="providerFilter" class="provider-select" title="ETF-Anbieter filtern">
+          <option value="all" selected>Alle</option>
+          <option value="ishares">nur iShares</option>
+          <option value="xtrackers">nur Xtrackers</option>
+        </select>
         <button id="btnScan" class="btn btn-primary">
           <span class="btn-icon">🔍</span> Scan starten
         </button>
@@ -51,7 +57,7 @@
         </label>
       </div>
       <p class="hint">
-        Scannt <strong id="etfCount">…</strong> iShares ETFs auf ein
+        Scannt <strong id="etfCount">…</strong> ETFs (iShares/Xtrackers) auf ein
         <strong id="selectedSmaLabel">SMA200</strong>-Breakout-Signal (Tagesbasis).
       </p>
     </section>
@@ -108,8 +114,9 @@
         <table id="resultsTable" class="results-table">
           <thead>
             <tr>
-              <th>Ticker</th>
+              <th>Anbieter</th>
               <th>Name</th>
+              <th>Ticker</th>
               <th>ISIN</th>
               <th>WKN</th>
               <th>SMA-Periode</th>
@@ -139,6 +146,7 @@
         <table class="results-table">
           <thead>
             <tr>
+              <th>Anbieter</th>
               <th>Ticker</th>
               <th>Name</th>
               <th>Fehler</th>
@@ -153,7 +161,9 @@
     <footer class="app-footer">
       <p>
         Datenquelle: <a href="https://finance.yahoo.com" target="_blank" rel="noopener">Yahoo Finance</a>
-        &nbsp;|&nbsp; ETF-Anbieter: <a href="https://www.ishares.com" target="_blank" rel="noopener">BlackRock iShares</a>
+        &nbsp;|&nbsp; ETF-Anbieter:
+        <a href="https://www.ishares.com" target="_blank" rel="noopener">BlackRock iShares</a>
+        / <a href="https://etf.dws.com" target="_blank" rel="noopener">Xtrackers</a>
       </p>
       <p class="disclaimer">
         Diese App dient ausschließlich Informationszwecken und stellt keine Anlageberatung dar.
