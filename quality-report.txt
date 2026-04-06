@@ -1,0 +1,141 @@
+=== 1. HEADER ===
+Projektname: InvestFinder
+Analysezeitpunkt: 2026-04-06T08:12:37.928Z
+Node.js-Version: v20.19.0
+Analysierte Wurzelpfade: server.js, src, public
+Analysierte Dateipfade:
+- server.js
+- src/analysis.js
+- src/dataService.js
+- src/etfList.js
+- src/etfUniverseService.js
+- src/indicators.js
+- src/masterDataService.js
+- src/signals.js
+- src/xtrackersList.js
+- public/app.js
+- public/index.html
+- public/style.css
+
+=== 2. TESTABDECKUNG ===
+Gefundene Testdateien: 0
+Status: KEINE TESTS VORHANDEN
+Empfohlene Grenzwerte: Statements >= 80%, Branches >= 70%, Functions >= 80%, Lines >= 80%
+Handlungsempfehlung (Prioritaet): src/analysis.js > src/signals.js > src/indicators.js > src/dataService.js
+
+=== 3. CODE-KOMPLEXITAET ===
+Grenzwerte: <=5 GUT | 6-10 AKZEPTABEL | 11-20 WARNUNG | >20 KRITISCH
+Datei server.js: Modul-Komplexitaet 0 (GUT)
+Datei src/analysis.js: Modul-Komplexitaet 12 (WARNUNG)
+  - normalizeSmaPeriod (Zeile 43): 6 (AKZEPTABEL)
+  - getPriceHistory (Zeile 68): 4 (GUT)
+  - scanETF (Zeile 97): 1 (GUT)
+  - scanAllETFs (Zeile 164): 1 (GUT)
+Datei src/dataService.js: Modul-Komplexitaet 24 (KRITISCH)
+  - buildUrl (Zeile 26): 2 (GUT)
+  - fetchDailyCloses (Zeile 47): 22 (KRITISCH)
+Datei src/etfList.js: Modul-Komplexitaet 0 (GUT)
+Datei src/etfUniverseService.js: Modul-Komplexitaet 17 (WARNUNG)
+  - normalizeProviderFilter (Zeile 28): 3 (GUT)
+  - getSourceForProvider (Zeile 36): 3 (GUT)
+  - getProviderEtfs (Zeile 48): 10 (AKZEPTABEL)
+  - getEtfUniverse (Zeile 85): 1 (GUT)
+Datei src/indicators.js: Modul-Komplexitaet 4 (GUT)
+  - computeSMA (Zeile 25): 4 (GUT)
+Datei src/masterDataService.js: Modul-Komplexitaet 29 (KRITISCH)
+  - isValidIsinFormat (Zeile 27): 2 (GUT)
+  - normalizeTicker (Zeile 35): 2 (GUT)
+  - loadMasterDataFromFile (Zeile 45): 17 (WARNUNG)
+  - getMasterDataIndex (Zeile 95): 1 (GUT)
+  - warmMasterDataCache (Zeile 120): 1 (GUT)
+  - getIdentifiersByTicker (Zeile 131): 6 (AKZEPTABEL)
+Datei src/signals.js: Modul-Komplexitaet 1 (GUT)
+  - detectBreakoutSignal (Zeile 30): 1 (GUT)
+Datei src/xtrackersList.js: Modul-Komplexitaet 0 (GUT)
+Top-5 komplexeste Funktionen/Module:
+- src/dataService.js:47 fetchDailyCloses -> 22 (KRITISCH)
+- src/masterDataService.js:45 loadMasterDataFromFile -> 17 (WARNUNG)
+- src/etfUniverseService.js:48 getProviderEtfs -> 10 (AKZEPTABEL)
+- src/analysis.js:43 normalizeSmaPeriod -> 6 (AKZEPTABEL)
+- src/masterDataService.js:131 getIdentifiersByTicker -> 6 (AKZEPTABEL)
+
+=== 4. CODE-METRIKEN ===
+- server.js: LOC=76, SLOC=47, Funktionen=0, TODO/FIXME=0
+- src/analysis.js: LOC=220, SLOC=142, Funktionen=4, TODO/FIXME=0
+- src/dataService.js: LOC=99, SLOC=56, Funktionen=2, TODO/FIXME=0
+- src/etfList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
+- src/etfUniverseService.js: LOC=110, SLOC=67, Funktionen=4, TODO/FIXME=0
+- src/indicators.js: LOC=45, SLOC=16, Funktionen=1, TODO/FIXME=0
+- src/masterDataService.js: LOC=159, SLOC=94, Funktionen=6, TODO/FIXME=0
+- src/signals.js: LOC=80, SLOC=44, Funktionen=1, TODO/FIXME=0
+- src/xtrackersList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
+Datei-Risiko-Scores (heuristisch):
+- src/analysis.js: Score=4 | Risiko=MITTEL
+- src/masterDataService.js: Score=4 | Risiko=MITTEL
+- src/dataService.js: Score=3 | Risiko=MITTEL
+- src/etfUniverseService.js: Score=3 | Risiko=MITTEL
+- server.js: Score=0 | Risiko=NIEDRIG
+- src/etfList.js: Score=0 | Risiko=NIEDRIG
+- src/indicators.js: Score=0 | Risiko=NIEDRIG
+- src/signals.js: Score=0 | Risiko=NIEDRIG
+- src/xtrackersList.js: Score=0 | Risiko=NIEDRIG
+
+=== 5. ABHAENGIGKEITSANALYSE ===
+require()-Imports je Datei:
+- server.js:
+  - Zeile 9: require('express')
+  - Zeile 10: require('cors')
+  - Zeile 11: require('path')
+  - Zeile 12: require('express-rate-limit')
+  - Zeile 18: require('./src/analysis')
+- src/analysis.js:
+  - Zeile 17: require('./dataService')
+  - Zeile 18: require('./etfUniverseService')
+  - Zeile 19: require('./signals')
+- src/dataService.js:
+  - Zeile 14: require('node-fetch')
+- src/etfList.js:
+  (keine require-Imports)
+- src/etfUniverseService.js:
+  - Zeile 13: require('./etfList')
+  - Zeile 14: require('./xtrackersList')
+  - Zeile 15: require('./masterDataService')
+- src/indicators.js:
+  (keine require-Imports)
+- src/masterDataService.js:
+  - Zeile 13: require('fs/promises')
+  - Zeile 14: require('path')
+- src/signals.js:
+  - Zeile 8: require('./indicators')
+- src/xtrackersList.js:
+  (keine require-Imports)
+Zirkulaere Abhaengigkeiten: keine gefunden
+Externe npm-Pakete (package.json):
+- cors: ^2.8.5
+- express: ^4.18.2
+- express-rate-limit: ^8.3.2
+- node-fetch: ^2.7.0
+Security-Hinweise zu Dependencies:
+- WARNUNG: node-fetch Version ^2.7.0 erkannt (potenzielles Sicherheits-/Wartungsrisiko bei < v3).
+- WARNUNG: express Version ^4.18.2 erkannt (Pruefung auf bekannte CVEs und Update-Pfad zu v5 empfohlen).
+
+=== 6. SICHERHEITSHINWEISE ===
+- Keine Nutzung von eval(), Function(), exec() oder child_process gefunden
+- Keine offensichtlichen hardcoded Secrets gefunden
+Input-Validierung in API-Pfad:
+- server.js: vorhanden
+- src/analysis.js: vorhanden
+
+=== 7. HANDLUNGSEMPFEHLUNGEN (ZUSAMMENFASSUNG) ===
+Findings gesamt: KRITISCH=1, WARNUNG=4, INFO=1
+[KRITISCH] Hohe Komplexitaet (22) in Funktion fetchDailyCloses. Refactoring empfohlen. | Datei: src/dataService.js:47
+[WARNUNG] Keine automatisierten Tests vorhanden. Test-Priorisierung: src/analysis.js -> src/signals.js -> src/indicators.js -> src/dataService.js | Datei: src/analysis.js
+[WARNUNG] Hohe Komplexitaet (17) in Funktion loadMasterDataFromFile. Refactoring empfohlen. | Datei: src/masterDataService.js:45
+[WARNUNG] node-fetch Version ^2.7.0 erkannt (potenzielles Sicherheits-/Wartungsrisiko bei < v3). | Datei: package.json
+[WARNUNG] express Version ^4.18.2 erkannt (Pruefung auf bekannte CVEs und Update-Pfad zu v5 empfohlen). | Datei: package.json
+[INFO] Input-Validierung in server.js und src/analysis.js erkannt. | Datei: server.js
+
+=== 8. DYNAMISCHE SMOKE-CHECKS ===
+[OK] analysis.normalizeSmaPeriod(50) | Rueckgabewert: 50
+[OK] signals.detectBreakoutSignal(smoke) | signal=true
+[OK] etfUniverseService.normalizeProviderFilter(all) | Rueckgabewert: all
