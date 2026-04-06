@@ -455,6 +455,24 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.03em;
 }
 
+.ticker-link {
+  text-decoration: none;
+}
+
+.ticker-link:hover .ticker-chip {
+  border-color: rgba(79, 142, 247, 0.65);
+  box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.15);
+}
+
+.ticker-link:focus-visible {
+  outline: none;
+}
+
+.ticker-link:focus-visible .ticker-chip {
+  border-color: rgba(79, 142, 247, 0.85);
+  box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.25);
+}
+
 .id-chip {
   display: inline-block;
   background: var(--color-surface-2);

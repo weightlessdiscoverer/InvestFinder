@@ -112,6 +112,21 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function buildYahooQuoteUrl(ticker) {
+  const symbol = String(ticker || '').trim().toUpperCase();
+  return `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`;
+}
+
+function renderTickerLink(ticker) {
+  const symbol = String(ticker || '').trim().toUpperCase();
+  if (!symbol) {
+    return '<span class="ticker-chip">-</span>';
+  }
+
+  const safeSymbol = escHtml(symbol);
+  return `<a class="ticker-link" href="${buildYahooQuoteUrl(symbol)}" target="_blank" rel="noopener noreferrer"><span class="ticker-chip">${safeSymbol}</span></a>`;
+}
+
 function getSelectedSmaPeriod() {
   const raw = String(smaPeriodInput.value || '').trim();
   const parsed = Number(raw);
@@ -264,7 +279,7 @@ function renderMatches(matches) {
         <tr>
           <td><span class="id-chip">${escHtml(r.provider || 'nicht verfügbar')}</span></td>
           <td>${escHtml(r.name)}</td>
-          <td><span class="ticker-chip">${escHtml(r.ticker)}</span></td>
+          <td>${renderTickerLink(r.ticker)}</td>
           <td><span class="id-chip">${escHtml(isin)}</span></td>
           <td><span class="id-chip">${escHtml(wkn)}</span></td>
           <td><span class="id-chip">${escHtml(r.smaLabel || `SMA${currentSmaPeriod}`)}</span></td>
@@ -321,7 +336,7 @@ function renderDbEtfList(items) {
       <tr>
         <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
         <td>${escHtml(item.name || 'nicht verfügbar')}</td>
-        <td><span class="ticker-chip">${escHtml(item.ticker || '-')}</span></td>
+        <td>${renderTickerLink(item.ticker)}</td>
         <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
         <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
         <td class="num">${fmt(item.points, 0)}</td>
