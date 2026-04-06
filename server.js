@@ -9,6 +9,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const { scanAllETFs } = require('./src/analysis');
 
 const app = express();
@@ -19,6 +20,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors());
 app.use(express.json());
 
+// Rate-limit the scan endpoint: max 10 requests per 5 minutes per IP
+const scanLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Too many scan requests. Please wait a few minutes and try again.' },
+});
+
 /**
  * GET /api/scan
  * Scans all iShares ETFs for a SMA200 golden-cross signal on the current day.
@@ -27,7 +37,7 @@ app.use(express.json());
  * Query params:
  *   - cache=false  – bypass in-memory cache (default: use cache)
  */
-app.get('/api/scan', async (req, res) => {
+app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
   try {
     const results = await scanAllETFs({ bypassCache });

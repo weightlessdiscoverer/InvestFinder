@@ -56,7 +56,7 @@ const ISHARES_ETFS = [
   { ticker: 'INDA',     name: 'iShares MSCI India ETF' },
   { ticker: 'EWY',      name: 'iShares MSCI South Korea ETF' },
   { ticker: 'EWA',      name: 'iShares MSCI Australia ETF' },
-  { ticker: 'EWT',      name: 'iShares MSCI Taiwan Semiconductor ETF' },
+  { ticker: 'EWT',      name: 'iShares MSCI Taiwan ETF' },
   { ticker: 'EWC',      name: 'iShares MSCI Canada ETF' },
   { ticker: 'EIDO',     name: 'iShares MSCI Indonesia ETF' },
   { ticker: 'EPOL',     name: 'iShares MSCI Poland ETF' },
@@ -87,7 +87,6 @@ const ISHARES_ETFS = [
 
   // ── Bonds (US) ──────────────────────────────────────────────────────────────
   { ticker: 'AGG',      name: 'iShares Core US Aggregate Bond ETF' },
-  { ticker: 'BND',      name: 'iShares Core Total Bond Market ETF (alias)' },
   { ticker: 'TLT',      name: 'iShares 20+ Year Treasury Bond ETF' },
   { ticker: 'IEF',      name: 'iShares 7-10 Year Treasury Bond ETF' },
   { ticker: 'SHY',      name: 'iShares 1-3 Year Treasury Bond ETF' },
@@ -130,7 +129,6 @@ const ISHARES_ETFS = [
   { ticker: 'SLV',      name: 'iShares Silver Trust' },
   { ticker: 'CSPX.L',   name: 'iShares Core S&P 500 UCITS ETF (Acc)' },
   { ticker: 'CSNDX.L',  name: 'iShares Nasdaq 100 UCITS ETF' },
-  { ticker: 'QQQ',      name: 'Invesco QQQ (tracked by iShares partner)' },
 ];
 
 module.exports = ISHARES_ETFS;

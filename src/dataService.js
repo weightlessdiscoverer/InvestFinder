@@ -85,7 +85,7 @@ async function fetchDailyCloses(ticker) {
 
   // Zip timestamps and closes, filter out null/NaN, sort ascending
   const pairs = timestamps
-    .map((ts, i) => ({ date: new Date(ts * 1000), close: closes[i] })  )
+    .map((ts, i) => ({ date: new Date(ts * 1000), close: closes[i] }))
     .filter(p => p.close != null && !isNaN(p.close))
     .sort((a, b) => a.date - b.date);
 
