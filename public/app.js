@@ -2,7 +2,7 @@
  * app.js  –  Frontend logic for the InvestFinder Multi-Provider ETF Scanner.
  *
  * Responsibilities:
- *  - Handle "Scan starten" / "Neu laden" button clicks
+ *  - Handle "Scan starten" button click
  *  - Handle SMA and provider filter input
  *  - Call the backend API (/api/scan)
  *  - Show / hide loading indicator
@@ -13,7 +13,6 @@
 
 /* ── DOM references ─────────────────────────────────────────────────────── */
 const btnScan = document.getElementById('btnScan');
-const btnRefresh = document.getElementById('btnRefresh');
 const smaPeriodInput = document.getElementById('smaPeriodInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
@@ -384,7 +383,7 @@ function stopStatusAnimation() {
   }
 }
 
-async function runScan(bypassCache = false) {
+async function runScan() {
   let smaPeriod;
   let provider;
 
@@ -407,7 +406,6 @@ async function runScan(bypassCache = false) {
   setVisible(errorsSection, false);
   setVisible(summaryBar, false);
   btnScan.disabled = true;
-  btnRefresh.disabled = true;
   startStatusAnimation();
 
   try {
@@ -415,7 +413,6 @@ async function runScan(bypassCache = false) {
       sma: String(currentSmaPeriod),
       provider: currentProviderFilter,
     });
-    if (bypassCache) params.set('cache', 'false');
 
     const response = await fetch(`/api/scan?${params.toString()}`);
 
@@ -452,14 +449,12 @@ async function runScan(bypassCache = false) {
     stopStatusAnimation();
     setVisible(loadingSection, false);
     btnScan.disabled = false;
-    btnRefresh.disabled = false;
   }
 }
 
 /* ── Event listeners ─────────────────────────────────────────────────────── */
 
-btnScan.addEventListener('click', () => runScan(false));
-btnRefresh.addEventListener('click', () => runScan(true));
+btnScan.addEventListener('click', () => runScan());
 
 smaPeriodInput.addEventListener('change', () => {
   try {
