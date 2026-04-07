@@ -98,6 +98,94 @@ test('normalizeProviderFilter validates allowed provider values', () => {
   assert.throws(() => normalizeProviderFilter('other'), /Ungueltiger Anbieterfilter/);
 });
 
+// ── detectBreakoutSignal – additional scenarios ──────────────────────────────
+
+test('detectBreakoutSignal returns no signal when both days are above SMA', () => {
+  // SMA3 of [8, 9, 12] = (8+9+12)/3 = 9.67; both yesterday and today above → no crossover
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+    closes: [8, 9, 12, 13],
+    smaPeriod: 3,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+});
+
+test('detectBreakoutSignal returns no signal when both days are below SMA', () => {
+  // SMA3 of [10, 10, 10] = 10; both yesterday (9) and today (8) below → no crossover
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+    closes: [10, 10, 9, 8],
+    smaPeriod: 3,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+});
+
+test('detectBreakoutSignal returns correct todayClose and todaySMA values for spread calculation', () => {
+  // SMA2 of [10, 10] = 10; yesterday close=9 (below), today close=11 (above)
+  // Expected spread: (11 - 10) / 10 * 100 = 10 %
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+    closes: [10, 9, 11],
+    smaPeriod: 2,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.todayClose, 11);
+  assert.equal(result.todaySMA, 10);
+
+  // Verify the spread formula used by the client-side max-above-SMA filter
+  const spreadPct = ((result.todayClose - result.todaySMA) / result.todaySMA) * 100;
+  assert.equal(spreadPct, 10);
+});
+
+test('detectBreakoutSignal spread filter boundary: exactly at limit is a match', () => {
+  // todayClose=11, todaySMA=10 → spread=10 %; maxPct=10 → should match (<=)
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+    closes: [10, 9, 11],
+    smaPeriod: 2,
+  });
+
+  const spreadPct = ((result.todayClose - result.todaySMA) / result.todaySMA) * 100;
+  const maxPct = 10;
+  assert.equal(spreadPct <= maxPct, true, 'Kurs exakt am Limit soll als Treffer gewertet werden');
+});
+
+test('detectBreakoutSignal spread filter boundary: one tick above limit is no match', () => {
+  // todayClose=11, todaySMA=10 → spread=10 %; maxPct=9 → should NOT match
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+    closes: [10, 9, 11],
+    smaPeriod: 2,
+  });
+
+  const spreadPct = ((result.todayClose - result.todaySMA) / result.todaySMA) * 100;
+  const maxPct = 9;
+  assert.equal(spreadPct <= maxPct, false, 'Kurs ueber dem Limit soll nicht als Treffer gewertet werden');
+});
+
+test('detectBreakoutSignal computes breakoutSteepnessPct correctly', () => {
+  // closes: [10, 9, 11], SMA2: [null, 9.5, 10]
+  // yesterdaySpread = (9 - 9.5) / 9.5 * 100 = -5.263...
+  // todaySpread     = (11 - 10) / 10 * 100 = 10
+  // steepness       = 10 - (-5.263) = 15.263...
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+    closes: [10, 9, 11],
+    smaPeriod: 2,
+  });
+
+  assert.ok(result.breakoutSteepnessPct > 0, 'Steilheit muss positiv sein beim Aufwaerts-Durchstoss');
+  const expected = 10 - ((9 - 9.5) / 9.5 * 100);
+  assert.equal(result.breakoutSteepnessPct, +expected.toFixed(4));
+});
+
+// ── normalizeAssetClass ───────────────────────────────────────────────────────
+
 test('normalizeAssetClass validates allowed asset types', () => {
   assert.equal(normalizeAssetClass('etf'), 'etf');
   assert.equal(normalizeAssetClass(' DAX40 '), 'dax40');

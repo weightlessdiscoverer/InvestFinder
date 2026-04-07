@@ -17,6 +17,7 @@ const assetClassFilter = document.getElementById('assetClassFilter');
 const smaPeriodInput = document.getElementById('smaPeriodInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
+const maxAboveSmaPctInput = document.getElementById('maxAboveSmaPctInput');
 const etfCountEl = document.getElementById('etfCount');
 const assetHintLabel = document.getElementById('assetHintLabel');
 const selectedSmaLabel = document.getElementById('selectedSmaLabel');
@@ -70,6 +71,7 @@ const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 /** Total number of ETFs in the current filter (filled after first response). */
 let knownTotal = '…';
 let currentAssetClass = 'etf';
+let lastMatches = [];
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
@@ -324,11 +326,28 @@ function startSyncStatusPolling() {
 
 /* ── Render functions ────────────────────────────────────────────────────── */
 
+function getMaxAboveSmaPct() {
+  const raw = String(maxAboveSmaPctInput.value || '').trim();
+  if (raw === '') return null;
+  const parsed = parseFloat(raw);
+  return isNaN(parsed) || parsed < 0 ? null : parsed;
+}
+
 function renderMatches(matches) {
-  matchBadge.textContent = matches.length;
+  const maxPct = getMaxAboveSmaPct();
+  const filtered = maxPct == null
+    ? matches
+    : matches.filter(r => {
+        if (r.todaySMA == null || r.todayClose == null) return true;
+        const spreadPct = ((r.todayClose - r.todaySMA) / r.todaySMA) * 100;
+        return spreadPct <= maxPct;
+      });
+
+  matchBadge.textContent = filtered.length;
+  sumMatches.textContent = filtered.length;
   setVisible(resultsSection, true);
 
-  if (matches.length === 0) {
+  if (filtered.length === 0) {
     setVisible(noMatches, true);
     resultsBody.innerHTML = '';
     return;
@@ -336,7 +355,7 @@ function renderMatches(matches) {
 
   setVisible(noMatches, false);
 
-  const sorted = [...matches].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     const spreadA = a.todaySMA ? (a.todayClose - a.todaySMA) / a.todaySMA : 0;
     const spreadB = b.todaySMA ? (b.todayClose - b.todaySMA) / b.todaySMA : 0;
     return spreadB - spreadA;
@@ -392,7 +411,6 @@ function renderErrors(errors) {
 
 function renderSummary(data) {
   sumScanned.textContent = data.scanned ?? '–';
-  sumMatches.textContent = data.matches.length;
   sumSma.textContent = data.smaLabel || `SMA${currentSmaPeriod}`;
   sumErrors.textContent = data.errors.length;
   sumTime.textContent = data.scannedAt
@@ -557,8 +575,9 @@ async function runScan() {
       providerFilter.value = currentProviderFilter;
     }
 
+    lastMatches = data.results.matches ?? [];
     renderSummary({ ...data.results, scannedAt: data.scannedAt });
-    renderMatches(data.results.matches ?? []);
+    renderMatches(lastMatches);
     renderErrors(data.results.errors ?? []);
   } catch (err) {
     errorMessage.textContent = `Fehler beim Scan: ${err.message}`;
@@ -621,6 +640,12 @@ assetClassFilter.addEventListener('change', () => {
 chkShowErrors.addEventListener('change', () => {
   const errorCount = parseInt(errorBadge.textContent, 10) || 0;
   setVisible(errorsSection, chkShowErrors.checked && errorCount > 0);
+});
+
+maxAboveSmaPctInput.addEventListener('input', () => {
+  if (lastMatches.length > 0) {
+    renderMatches(lastMatches);
+  }
 });
 
 tabMainBtn.addEventListener('click', () => setActiveTab('main'));

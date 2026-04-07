@@ -57,6 +57,17 @@
           <option value="ishares">nur iShares</option>
           <option value="xtrackers">nur Xtrackers</option>
         </select>
+        <label class="input-label" for="maxAboveSmaPctInput">Max. Abstand (%)</label>
+        <input
+          id="maxAboveSmaPctInput"
+          class="sma-input"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          placeholder="kein Limit"
+          title="Maximaler Abstand des aktuellen Kurses über dem SMA-Schnittpunkt in Prozent. Leer = kein Limit."
+        />
         <button id="btnScan" class="btn btn-primary">
           <span class="btn-icon">🔍</span> Scan starten
         </button>
