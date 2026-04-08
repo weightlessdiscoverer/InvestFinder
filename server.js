@@ -14,6 +14,7 @@ const {
   scanAllETFs,
   normalizeAssetClass,
   normalizeSmaPeriod,
+  normalizeLookbackDays,
   normalizeProviderFilter,
   DEFAULT_SMA_PERIOD,
 } = require('./src/analysis');
@@ -47,12 +48,13 @@ const scanLimiter = rateLimit({
 
 /**
  * GET /api/scan
- * Scans all iShares ETFs for a breakout signal over a selectable SMA(N).
+ * Scans all ETFs for a breakout signal over a selectable SMA(N).
  * Returns JSON array of matching ETFs.
  *
  * Query params:
  *   - cache=false  – bypass in-memory cache (default: use cache)
  *   - sma=200      – SMA period (integer > 1, default: 200)
+ *   - lookbackDays – lookback period in days (0 = only yesterday vs today)
  *   - provider=all | ishares | xtrackers
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
@@ -61,10 +63,12 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
   let smaPeriod;
   let providerFilter;
   let assetClass;
+  let lookbackDays;
   try {
     smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
     providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
     assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
+    lookbackDays = normalizeLookbackDays(req.query.lookbackDays);
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
   }
@@ -75,6 +79,7 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
       smaPeriod,
       providerFilter,
       assetClass,
+      lookbackDays,
     });
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {

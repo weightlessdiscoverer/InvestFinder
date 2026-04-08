@@ -26,6 +26,8 @@ const { getTickerHistory, upsertTickerHistory } = require('./yahooHistoryStore')
 const DEFAULT_SMA_PERIOD = 200;
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
+const DEFAULT_LOOKBACK_DAYS = 0; // 0 = nur Gestern vs. Heute
+const MAX_LOOKBACK_DAYS = 365;
 
 // ── In-memory cache ──────────────────────────────────────────────────────────
 // Caches raw price history, independent of the selected SMA period.
@@ -58,6 +60,31 @@ function normalizeSmaPeriod(smaPeriodInput) {
   if (parsed > MAX_SMA_PERIOD) {
     throw new Error(
       `SMA-Periode ${parsed} ist zu gross. Maximal erlaubt: ${MAX_SMA_PERIOD}.`
+    );
+  }
+
+  return parsed;
+}
+
+/**
+ * Validiert und normalisiert den Lookback-Zeitraum in Tagen.
+ * @param {number|string|undefined|null} lookbackDaysInput
+ * @returns {number} lookbackDays, oder 0 wenn nicht gesetzt (= nur Gestern vs. Heute)
+ * @throws {Error} bei ungueltiger Eingabe
+ */
+function normalizeLookbackDays(lookbackDaysInput) {
+  if (lookbackDaysInput == null || lookbackDaysInput === '') {
+    return DEFAULT_LOOKBACK_DAYS;
+  }
+
+  const parsed = Number(lookbackDaysInput);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error('Ungueltige Lookback-Periode. Bitte eine ganze Zahl >= 0 angeben.');
+  }
+
+  if (parsed > MAX_LOOKBACK_DAYS) {
+    throw new Error(
+      `Lookback-Periode ${parsed} ist zu gross. Maximal erlaubt: ${MAX_LOOKBACK_DAYS} Tage.`
     );
   }
 
@@ -110,11 +137,11 @@ async function getPriceHistory(etf, bypassCache) {
  * Scan a single ETF for a breakout signal.
  *
  * @param {{ ticker: string, name: string }} etf
- * @param {{ bypassCache: boolean, smaPeriod: number }} options
+ * @param {{ bypassCache: boolean, smaPeriod: number, lookbackDays?: number }} options
  * @returns {Promise<object>} result object
  */
-async function scanETF(etf, { bypassCache, smaPeriod }) {
-  const cacheKey = `${etf.ticker}|${smaPeriod}`;
+async function scanETF(etf, { bypassCache, smaPeriod, lookbackDays = DEFAULT_LOOKBACK_DAYS }) {
+  const cacheKey = `${etf.ticker}|${smaPeriod}|${lookbackDays}`;
   const now = Date.now();
 
   if (!bypassCache && signalCache.has(cacheKey)) {
@@ -126,7 +153,7 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
 
   try {
     const { dates, closes } = await getPriceHistory(etf, bypassCache);
-    const signalResult = detectBreakoutSignal({ dates, closes, smaPeriod });
+    const signalResult = detectBreakoutSignal({ dates, closes, smaPeriod, lookbackDays });
 
     const baseResult = {
       assetClass: etf.assetClass || 'etf',
@@ -138,6 +165,7 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
       identifierSource: `${etf.provider} statische Stammdatenquelle`,
       smaPeriod,
       smaLabel: `SMA${smaPeriod}`,
+      ...(lookbackDays > 0 && { lookbackDays }),
     };
 
     const result = signalResult.insufficientData
@@ -165,6 +193,7 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
       wkn: etf.wkn || 'nicht verfügbar',
       smaPeriod,
       smaLabel: `SMA${smaPeriod}`,
+      ...(lookbackDays > 0 && { lookbackDays }),
       status: 'error',
       error:  err.message,
       signal: false,
@@ -175,10 +204,10 @@ async function scanETF(etf, { bypassCache, smaPeriod }) {
 }
 
 /**
- * Scan all iShares ETFs concurrently (with a concurrency limit to respect
+ * Scan all iTFs concurrently (with a concurrency limit to respect
  * Yahoo Finance rate limits) and return only those with a breakout signal.
  *
- * @param {{ bypassCache?: boolean, smaPeriod?: number|string, providerFilter?: string }} options
+ * @param {{ bypassCache?: boolean, smaPeriod?: number|string, providerFilter?: string, lookbackDays?: number|string }} options
  * @returns {Promise<{ matches: object[], errors: object[], total: number }>}
  */
 async function scanAllETFs({
@@ -186,8 +215,10 @@ async function scanAllETFs({
   smaPeriod: smaPeriodInput,
   providerFilter = 'all',
   assetClass: assetClassInput = 'etf',
+  lookbackDays: lookbackDaysInput,
 } = {}) {
   const smaPeriod = normalizeSmaPeriod(smaPeriodInput);
+  const lookbackDays = normalizeLookbackDays(lookbackDaysInput);
   const normalizedAssetClass = normalizeAssetClass(assetClassInput);
   const normalizedProviderFilter = normalizeProviderFilter(providerFilter);
 
@@ -206,7 +237,7 @@ async function scanAllETFs({
   for (let i = 0; i < etfUniverse.length; i += BATCH_SIZE) {
     const batch = etfUniverse.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(etf => scanETF(etf, { bypassCache, smaPeriod }))
+      batch.map(etf => scanETF(etf, { bypassCache, smaPeriod, lookbackDays }))
     );
     allResults.push(...batchResults);
 
@@ -226,6 +257,7 @@ async function scanAllETFs({
     providerFilter: normalizedProviderFilter,
     smaPeriod,
     smaLabel: `SMA${smaPeriod}`,
+    lookbackDays: lookbackDays > 0 ? lookbackDays : undefined,
     matches,
     errors,
     total: etfUniverse.length,
@@ -238,7 +270,10 @@ module.exports = {
   normalizeAssetClass,
   normalizeProviderFilter,
   normalizeSmaPeriod,
+  normalizeLookbackDays,
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,
   MAX_SMA_PERIOD,
+  DEFAULT_LOOKBACK_DAYS,
+  MAX_LOOKBACK_DAYS,
 };

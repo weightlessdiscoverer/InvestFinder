@@ -15,6 +15,7 @@
 const btnScan = document.getElementById('btnScan');
 const assetClassFilter = document.getElementById('assetClassFilter');
 const smaPeriodInput = document.getElementById('smaPeriodInput');
+const lookbackDaysInput = document.getElementById('lookbackDaysInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
 const maxAboveSmaPctInput = document.getElementById('maxAboveSmaPctInput');
@@ -65,6 +66,9 @@ const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
 const DEFAULT_SMA_PERIOD = 200;
+const MIN_LOOKBACK_DAYS = 0;
+const MAX_LOOKBACK_DAYS = 365;
+const DEFAULT_LOOKBACK_DAYS = 0;
 const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 
@@ -73,6 +77,7 @@ let knownTotal = '…';
 let currentAssetClass = 'etf';
 let lastMatches = [];
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
+let currentLookbackDays = DEFAULT_LOOKBACK_DAYS;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
 let currentTab = 'main';
@@ -189,6 +194,24 @@ function getSelectedSmaPeriod() {
 
   if (parsed > MAX_SMA_PERIOD) {
     throw new Error(`SMA-Periode zu gross. Maximal erlaubt: ${MAX_SMA_PERIOD}.`);
+  }
+
+  return parsed;
+}
+
+function getSelectedLookbackDays() {
+  const raw = String(lookbackDaysInput.value || '').trim();
+  if (raw === '') {
+    return DEFAULT_LOOKBACK_DAYS;
+  }
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < MIN_LOOKBACK_DAYS) {
+    throw new Error(`Ungueltige Lookback-Periode. Bitte eine ganze Zahl >= ${MIN_LOOKBACK_DAYS} eingeben.`);
+  }
+
+  if (parsed > MAX_LOOKBACK_DAYS) {
+    throw new Error(`Lookback-Periode zu gross. Maximal erlaubt: ${MAX_LOOKBACK_DAYS} Tage.`);
   }
 
   return parsed;
@@ -512,10 +535,12 @@ async function runScan() {
   let smaPeriod;
   let provider;
   let assetClass;
+  let lookbackDays;
 
   try {
     assetClass = getSelectedAssetClass();
     smaPeriod = getSelectedSmaPeriod();
+    lookbackDays = getSelectedLookbackDays();
     provider = assetClass === 'dax40' ? 'all' : getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
@@ -525,6 +550,7 @@ async function runScan() {
 
   currentAssetClass = assetClass;
   currentSmaPeriod = smaPeriod;
+  currentLookbackDays = lookbackDays;
   currentProviderFilter = provider;
   applyAssetClassUiState();
   updateSmaLabels(currentSmaPeriod);
@@ -541,6 +567,7 @@ async function runScan() {
     const params = new URLSearchParams({
       assetClass: currentAssetClass,
       sma: String(currentSmaPeriod),
+      ...(currentLookbackDays > 0 && { lookbackDays: String(currentLookbackDays) }),
       provider: currentProviderFilter,
     });
 
@@ -570,6 +597,10 @@ async function runScan() {
       currentSmaPeriod = data.results.smaPeriod;
       updateSmaLabels(currentSmaPeriod);
     }
+    if (data.results?.lookbackDays != null) {
+      currentLookbackDays = data.results.lookbackDays;
+      lookbackDaysInput.value = currentLookbackDays;
+    }
     if (data.results?.providerFilter) {
       currentProviderFilter = data.results.providerFilter;
       providerFilter.value = currentProviderFilter;
@@ -597,6 +628,16 @@ smaPeriodInput.addEventListener('change', () => {
   try {
     currentSmaPeriod = getSelectedSmaPeriod();
     updateSmaLabels(currentSmaPeriod);
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+lookbackDaysInput.addEventListener('change', () => {
+  try {
+    currentLookbackDays = getSelectedLookbackDays();
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;

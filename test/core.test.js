@@ -5,9 +5,12 @@ const assert = require('node:assert/strict');
 
 const {
   normalizeSmaPeriod,
+  normalizeLookbackDays,
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,
   MAX_SMA_PERIOD,
+  DEFAULT_LOOKBACK_DAYS,
+  MAX_LOOKBACK_DAYS,
 } = require('../src/analysis');
 const { fetchDailyCloses } = require('../src/dataService');
 const {
@@ -303,4 +306,121 @@ test('fetchDailyCloses throws useful errors for HTTP and payload issues', async 
   await assert.rejects(fetchDailyCloses('EMPTY.TICKER'), /Empty price data/);
 
   global.fetch = originalFetch;
+});
+
+// ── normalizeLookbackDays ─────────────────────────────────────────────────────
+
+test('normalizeLookbackDays returns default when input is empty', () => {
+  assert.equal(normalizeLookbackDays(), DEFAULT_LOOKBACK_DAYS);
+  assert.equal(normalizeLookbackDays(''), DEFAULT_LOOKBACK_DAYS);
+  assert.equal(normalizeLookbackDays(null), DEFAULT_LOOKBACK_DAYS);
+});
+
+test('normalizeLookbackDays accepts valid integer values', () => {
+  assert.equal(normalizeLookbackDays(0), 0);
+  assert.equal(normalizeLookbackDays(7), 7);
+  assert.equal(normalizeLookbackDays(30), 30);
+  assert.equal(normalizeLookbackDays(365), 365);
+  assert.equal(normalizeLookbackDays(String(MAX_LOOKBACK_DAYS)), MAX_LOOKBACK_DAYS);
+});
+
+test('normalizeLookbackDays rejects invalid values', () => {
+  assert.throws(() => normalizeLookbackDays(-1), /Ungueltige Lookback-Periode/);
+  assert.throws(() => normalizeLookbackDays(10.5), /Ungueltige Lookback-Periode/);
+  assert.throws(() => normalizeLookbackDays(MAX_LOOKBACK_DAYS + 1), /zu gross/);
+});
+
+// ── detectBreakoutSignal with lookbackDays parameter ──────────────────────────
+
+test('detectBreakoutSignal with lookbackDays=0 behaves like default (yesterday vs today)', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+    closes: [8, 8, 7, 12],
+    smaPeriod: 3,
+    lookbackDays: 0,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.insufficientData, false);
+  assert.equal(result.todayDate, '2026-01-04');
+  assert.equal(result.breakoutSteepnessPct !== undefined, true);
+});
+
+test('detectBreakoutSignal with lookbackDays finds most recent crossing within timeframe', () => {
+  // Crossing on 2026-01-03: 7 < SMA(3) to 12 > SMA(3)
+  // lookbackDays=10 should find it
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [8, 8, 7, 12, 11],
+    smaPeriod: 3,
+    lookbackDays: 10,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.insufficientData, false);
+  assert.equal(result.lookbackDays, 10);
+  assert.equal(result.breakoutDate, '2026-01-04');
+  assert.equal(result.todayDate, '2026-01-05');
+});
+
+test('detectBreakoutSignal with lookbackDays returns false when no crossing found', () => {
+  // No crossing: all closes above SMA
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [10, 11, 12, 13, 14],
+    smaPeriod: 3,
+    lookbackDays: 10,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+  assert.equal(result.lookbackDays, 10);
+});
+
+test('detectBreakoutSignal with lookbackDays respects timeframe limit', () => {
+  // Crossing at index 3, but lookbackDays=1 means only last 2 data points (indices 4-5)
+  // Should NOT find the crossing at index 3
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06'],
+    closes: [8, 8, 7, 12, 11, 10],
+    smaPeriod: 3,
+    lookbackDays: 1,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+  assert.equal(result.lookbackDays, 1);
+});
+
+test('detectBreakoutSignal with lookbackDays finds most recent of multiple crossings', () => {
+  // First crossing: index 3 (7 < 8.5 and 12 > 9.5)
+  // Second crossing: index 5 (9 < 10.5 and 13 > 11) – newer, should be returned
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06'],
+    closes: [10, 10, 7, 12, 9, 13],
+    smaPeriod: 2,
+    lookbackDays: 10,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.breakoutDate, '2026-01-06');
+  assert.equal(result.todayDate, '2026-01-06');
+});
+
+test('detectBreakoutSignal with lookbackDays reports details for crossing date', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+    closes: [8, 8, 7, 12],
+    smaPeriod: 3,
+    lookbackDays: 10,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.breakoutDate, '2026-01-04');
+  assert.ok(result.breakoutClose !== undefined);
+  assert.ok(result.breakoutSMA !== undefined);
+  assert.ok(result.breakoutSpreadPct !== undefined);
+  assert.ok(result.todayDate !== undefined);
+  assert.ok(result.todayClose !== undefined);
+  assert.ok(result.todaySMA !== undefined);
 });

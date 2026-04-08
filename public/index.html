@@ -51,6 +51,17 @@
           <option value="100"></option>
           <option value="200"></option>
         </datalist>
+        <label class="input-label" for="lookbackDaysInput">Zeitraum (Tage)</label>
+        <input
+          id="lookbackDaysInput"
+          class="sma-input"
+          type="number"
+          min="0"
+          max="365"
+          step="1"
+          value="0"
+          title="Lookback-Periode in Tagen. 0 = nur gestern vs. heute"
+        />
         <label class="input-label" for="providerFilter">Anbieter</label>
         <select id="providerFilter" class="provider-select" title="ETF-Anbieter filtern">
           <option value="all" selected>Alle</option>
