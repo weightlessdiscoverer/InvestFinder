@@ -14,8 +14,11 @@
 /* ── DOM references ─────────────────────────────────────────────────────── */
 const btnScan = document.getElementById('btnScan');
 const assetClassFilter = document.getElementById('assetClassFilter');
+const signalModeSelect = document.getElementById('signalMode');
 const smaPeriodInput = document.getElementById('smaPeriodInput');
-const lookbackDaysInput = document.getElementById('lookbackDaysInput');
+const fastSmaPeriodInput = document.getElementById('fastSmaPeriodInput');
+const slowSmaPeriodInput = document.getElementById('slowSmaPeriodInput');
+const lookbackWeeksInput = document.getElementById('lookbackWeeksInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
 const maxAboveSmaPctInput = document.getElementById('maxAboveSmaPctInput');
@@ -66,9 +69,9 @@ const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
 const DEFAULT_SMA_PERIOD = 200;
-const MIN_LOOKBACK_DAYS = 0;
-const MAX_LOOKBACK_DAYS = 365;
-const DEFAULT_LOOKBACK_DAYS = 0;
+const MIN_LOOKBACK_WEEKS = 0;
+const MAX_LOOKBACK_WEEKS = 52;
+const DEFAULT_LOOKBACK_WEEKS = 0;
 const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 
@@ -76,8 +79,11 @@ const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 let knownTotal = '…';
 let currentAssetClass = 'etf';
 let lastMatches = [];
+let currentSignalMode = 'price-breakout';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
-let currentLookbackDays = DEFAULT_LOOKBACK_DAYS;
+let currentFastSmaPeriod = 50;
+let currentSlowSmaPeriod = 200;
+let currentLookbackWeeks = DEFAULT_LOOKBACK_WEEKS;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
 let currentTab = 'main';
@@ -199,19 +205,57 @@ function getSelectedSmaPeriod() {
   return parsed;
 }
 
-function getSelectedLookbackDays() {
-  const raw = String(lookbackDaysInput.value || '').trim();
+function getSelectedSignalMode() {
+  const mode = String(signalModeSelect.value || 'price-breakout').trim();
+  if (mode !== 'price-breakout' && mode !== 'sma-crossover') {
+    throw new Error('Ungueltiger Signaltyp. Erlaubt: Kurs ueber SMA, SMA-Crossover.');
+  }
+  return mode;
+}
+
+function getSelectedFastSmaPeriod() {
+  const raw = String(fastSmaPeriodInput.value || '').trim();
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < MIN_SMA_PERIOD) {
+    throw new Error(`Ungueltige Fast-SMA-Periode. Bitte eine ganze Zahl >= ${MIN_SMA_PERIOD} eingeben.`);
+  }
+
+  if (parsed > MAX_SMA_PERIOD) {
+    throw new Error(`Fast-SMA-Periode zu gross. Maximal erlaubt: ${MAX_SMA_PERIOD}.`);
+  }
+
+  return parsed;
+}
+
+function getSelectedSlowSmaPeriod() {
+  const raw = String(slowSmaPeriodInput.value || '').trim();
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < MIN_SMA_PERIOD) {
+    throw new Error(`Ungueltige Slow-SMA-Periode. Bitte eine ganze Zahl >= ${MIN_SMA_PERIOD} eingeben.`);
+  }
+
+  if (parsed > MAX_SMA_PERIOD) {
+    throw new Error(`Slow-SMA-Periode zu gross. Maximal erlaubt: ${MAX_SMA_PERIOD}.`);
+  }
+
+  return parsed;
+}
+
+function getSelectedLookbackWeeks() {
+  const raw = String(lookbackWeeksInput.value || '').trim();
   if (raw === '') {
-    return DEFAULT_LOOKBACK_DAYS;
+    return DEFAULT_LOOKBACK_WEEKS;
   }
   const parsed = Number(raw);
 
-  if (!Number.isInteger(parsed) || parsed < MIN_LOOKBACK_DAYS) {
-    throw new Error(`Ungueltige Lookback-Periode. Bitte eine ganze Zahl >= ${MIN_LOOKBACK_DAYS} eingeben.`);
+  if (!Number.isInteger(parsed) || parsed < MIN_LOOKBACK_WEEKS) {
+    throw new Error(`Ungueltige Lookback-Periode. Bitte eine ganze Zahl >= ${MIN_LOOKBACK_WEEKS} eingeben.`);
   }
 
-  if (parsed > MAX_LOOKBACK_DAYS) {
-    throw new Error(`Lookback-Periode zu gross. Maximal erlaubt: ${MAX_LOOKBACK_DAYS} Tage.`);
+  if (parsed > MAX_LOOKBACK_WEEKS) {
+    throw new Error(`Lookback-Periode zu gross. Maximal erlaubt: ${MAX_LOOKBACK_WEEKS} Wochen.`);
   }
 
   return parsed;
@@ -251,11 +295,26 @@ function applyAssetClassUiState() {
   dbSectionTitleLabel.textContent = '📚 ETFs mit vorhandenen DB-Daten';
 }
 
-function updateSmaLabels(smaPeriod) {
-  const label = `SMA${smaPeriod}`;
+function updateSignalLabels() {
+  const priceBreakoutGroup = document.getElementById('priceBreakoutGroup');
+  const smaCrossoverGroup = document.getElementById('smaCrossoverGroup');
+
+  if (currentSignalMode === 'sma-crossover') {
+    setVisible(priceBreakoutGroup, false);
+    setVisible(smaCrossoverGroup, true);
+    const label = `SMA${currentFastSmaPeriod} > SMA${currentSlowSmaPeriod}`;
+    selectedSmaLabel.textContent = label;
+    sumSma.textContent = label;
+    thSmaValue.textContent = `SMA${currentFastSmaPeriod}/SMA${currentSlowSmaPeriod} (heute)`;
+    return;
+  }
+
+  setVisible(priceBreakoutGroup, true);
+  setVisible(smaCrossoverGroup, false);
+  const label = `Kurs ueber SMA${currentSmaPeriod}`;
   selectedSmaLabel.textContent = label;
-  sumSma.textContent = label;
-  thSmaValue.textContent = `${label} (heute)`;
+  sumSma.textContent = `SMA${currentSmaPeriod}`;
+  thSmaValue.textContent = `SMA${currentSmaPeriod} (heute)`;
 }
 
 function setActiveTab(tab) {
@@ -356,13 +415,27 @@ function getMaxAboveSmaPct() {
   return isNaN(parsed) || parsed < 0 ? null : parsed;
 }
 
+function getResultSpreadPct(result) {
+  if (result.mode === 'sma-crossover') {
+    if (result.todayFastSMA == null || result.todaySlowSMA == null || result.todaySlowSMA === 0) {
+      return null;
+    }
+    return ((result.todayFastSMA - result.todaySlowSMA) / result.todaySlowSMA) * 100;
+  }
+
+  if (result.todaySMA == null || result.todayClose == null || result.todaySMA === 0) {
+    return null;
+  }
+  return ((result.todayClose - result.todaySMA) / result.todaySMA) * 100;
+}
+
 function renderMatches(matches) {
   const maxPct = getMaxAboveSmaPct();
   const filtered = maxPct == null
     ? matches
     : matches.filter(r => {
-        if (r.todaySMA == null || r.todayClose == null) return true;
-        const spreadPct = ((r.todayClose - r.todaySMA) / r.todaySMA) * 100;
+        const spreadPct = getResultSpreadPct(r);
+        if (spreadPct == null) return true;
         return spreadPct <= maxPct;
       });
 
@@ -379,24 +452,30 @@ function renderMatches(matches) {
   setVisible(noMatches, false);
 
   const sorted = [...filtered].sort((a, b) => {
-    const spreadA = a.todaySMA ? (a.todayClose - a.todaySMA) / a.todaySMA : 0;
-    const spreadB = b.todaySMA ? (b.todayClose - b.todaySMA) / b.todaySMA : 0;
+    const spreadA = getResultSpreadPct(a) ?? 0;
+    const spreadB = getResultSpreadPct(b) ?? 0;
     return spreadB - spreadA;
   });
 
   resultsBody.innerHTML = sorted
     .map(r => {
-      const spreadPct = r.todaySMA
-        ? ((r.todayClose - r.todaySMA) / r.todaySMA) * 100
-        : null;
+      const spreadPct = getResultSpreadPct(r);
       const spreadHtml = spreadPct != null
         ? `<span class="spread-positive">+${fmt(spreadPct, 2)} %</span>`
         : '–';
-      const steepnessHtml = r.breakoutSteepnessPct != null
-        ? `<span class="spread-positive">+${fmt(r.breakoutSteepnessPct, 2)} %</span>`
+      const steepnessRaw = r.crossoverSteepnessPct ?? r.breakoutSteepnessPct;
+      const steepnessHtml = steepnessRaw != null
+        ? `<span class="spread-positive">+${fmt(steepnessRaw, 2)} %</span>`
         : '–';
       const isin = r.isin || 'nicht verfügbar';
       const wkn = r.wkn || 'nicht verfügbar';
+      const signalLabel = r.signalLabel || r.smaLabel || `SMA${currentSmaPeriod}`;
+
+      const dateValue = r.breakoutDate || r.crossingDate || r.todayDate;
+      const priceValue = r.mode === 'sma-crossover' ? (r.todayFastSMA ?? r.crossoverFastSMA) : r.todayClose;
+      const todayLineValue = r.mode === 'sma-crossover'
+        ? `${fmt(r.todayFastSMA, 4)} / ${fmt(r.todaySlowSMA, 4)}`
+        : fmt(r.todaySMA, 4);
 
       return `
         <tr>
@@ -405,10 +484,10 @@ function renderMatches(matches) {
           <td>${renderTickerLink(r.ticker)}</td>
           <td><span class="id-chip">${escHtml(isin)}</span></td>
           <td><span class="id-chip">${escHtml(wkn)}</span></td>
-          <td><span class="id-chip">${escHtml(r.smaLabel || `SMA${currentSmaPeriod}`)}</span></td>
-          <td><span class="date-badge">${fmtDate(r.todayDate)}</span></td>
-          <td class="num">${fmt(r.todayClose, 4)}</td>
-          <td class="num">${fmt(r.todaySMA, 4)}</td>
+          <td><span class="id-chip">${escHtml(signalLabel)}</span></td>
+          <td><span class="date-badge">${fmtDate(dateValue)}</span></td>
+          <td class="num">${fmt(priceValue, 4)}</td>
+          <td class="num">${todayLineValue}</td>
           <td class="num">${steepnessHtml}</td>
           <td class="num">${spreadHtml}</td>
         </tr>`;
@@ -532,15 +611,26 @@ function stopStatusAnimation() {
 }
 
 async function runScan() {
+  let signalMode;
   let smaPeriod;
+  let fastSmaPeriod;
+  let slowSmaPeriod;
   let provider;
   let assetClass;
-  let lookbackDays;
+  let lookbackWeeks;
 
   try {
     assetClass = getSelectedAssetClass();
+    signalMode = getSelectedSignalMode();
     smaPeriod = getSelectedSmaPeriod();
-    lookbackDays = getSelectedLookbackDays();
+    fastSmaPeriod = getSelectedFastSmaPeriod();
+    slowSmaPeriod = getSelectedSlowSmaPeriod();
+    lookbackWeeks = getSelectedLookbackWeeks();
+
+    if (signalMode === 'sma-crossover' && fastSmaPeriod === slowSmaPeriod) {
+      throw new Error('Fast-SMA und Slow-SMA muessen unterschiedlich sein.');
+    }
+
     provider = assetClass === 'dax40' ? 'all' : getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
@@ -549,11 +639,14 @@ async function runScan() {
   }
 
   currentAssetClass = assetClass;
+  currentSignalMode = signalMode;
   currentSmaPeriod = smaPeriod;
-  currentLookbackDays = lookbackDays;
+  currentFastSmaPeriod = fastSmaPeriod;
+  currentSlowSmaPeriod = slowSmaPeriod;
+  currentLookbackWeeks = lookbackWeeks;
   currentProviderFilter = provider;
   applyAssetClassUiState();
-  updateSmaLabels(currentSmaPeriod);
+  updateSignalLabels();
 
   setVisible(errorBanner, false);
   setVisible(loadingSection, true);
@@ -567,7 +660,11 @@ async function runScan() {
     const params = new URLSearchParams({
       assetClass: currentAssetClass,
       sma: String(currentSmaPeriod),
-      ...(currentLookbackDays > 0 && { lookbackDays: String(currentLookbackDays) }),
+      ...(currentSignalMode === 'sma-crossover' && {
+        fastSma: String(currentFastSmaPeriod),
+        slowSma: String(currentSlowSmaPeriod),
+      }),
+      ...(currentLookbackWeeks > 0 && { lookbackWeeks: String(currentLookbackWeeks) }),
       provider: currentProviderFilter,
     });
 
@@ -593,18 +690,37 @@ async function runScan() {
       applyAssetClassUiState();
     }
 
+    if (data.results?.mode) {
+      currentSignalMode = data.results.mode;
+      signalModeSelect.value = currentSignalMode;
+    }
+
     if (data.results?.smaPeriod) {
       currentSmaPeriod = data.results.smaPeriod;
-      updateSmaLabels(currentSmaPeriod);
+      smaPeriodInput.value = currentSmaPeriod;
     }
+
+    if (data.results?.fastSmaPeriod) {
+      currentFastSmaPeriod = data.results.fastSmaPeriod;
+      fastSmaPeriodInput.value = currentFastSmaPeriod;
+    }
+
+    if (data.results?.slowSmaPeriod) {
+      currentSlowSmaPeriod = data.results.slowSmaPeriod;
+      slowSmaPeriodInput.value = currentSlowSmaPeriod;
+    }
+
     if (data.results?.lookbackDays != null) {
-      currentLookbackDays = data.results.lookbackDays;
-      lookbackDaysInput.value = currentLookbackDays;
+      currentLookbackWeeks = Math.floor(Number(data.results.lookbackDays) / 7);
+      lookbackWeeksInput.value = currentLookbackWeeks;
     }
+
     if (data.results?.providerFilter) {
       currentProviderFilter = data.results.providerFilter;
       providerFilter.value = currentProviderFilter;
     }
+
+    updateSignalLabels();
 
     lastMatches = data.results.matches ?? [];
     renderSummary({ ...data.results, scannedAt: data.scannedAt });
@@ -624,10 +740,10 @@ async function runScan() {
 
 btnScan.addEventListener('click', () => runScan());
 
-smaPeriodInput.addEventListener('change', () => {
+signalModeSelect.addEventListener('change', () => {
   try {
-    currentSmaPeriod = getSelectedSmaPeriod();
-    updateSmaLabels(currentSmaPeriod);
+    currentSignalMode = getSelectedSignalMode();
+    updateSignalLabels();
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -635,9 +751,42 @@ smaPeriodInput.addEventListener('change', () => {
   }
 });
 
-lookbackDaysInput.addEventListener('change', () => {
+smaPeriodInput.addEventListener('change', () => {
   try {
-    currentLookbackDays = getSelectedLookbackDays();
+    currentSmaPeriod = getSelectedSmaPeriod();
+    updateSignalLabels();
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+fastSmaPeriodInput.addEventListener('change', () => {
+  try {
+    currentFastSmaPeriod = getSelectedFastSmaPeriod();
+    updateSignalLabels();
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+slowSmaPeriodInput.addEventListener('change', () => {
+  try {
+    currentSlowSmaPeriod = getSelectedSlowSmaPeriod();
+    updateSignalLabels();
+    setVisible(errorBanner, false);
+  } catch (err) {
+    errorMessage.textContent = err.message;
+    setVisible(errorBanner, true);
+  }
+});
+
+lookbackWeeksInput.addEventListener('change', () => {
+  try {
+    currentLookbackWeeks = getSelectedLookbackWeeks();
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -696,7 +845,12 @@ tabDbBtn.addEventListener('click', () => setActiveTab('db'));
 
 etfCountEl.textContent = knownTotal;
 currentAssetClass = getSelectedAssetClass();
+currentSignalMode = getSelectedSignalMode();
+currentSmaPeriod = getSelectedSmaPeriod();
+currentFastSmaPeriod = getSelectedFastSmaPeriod();
+currentSlowSmaPeriod = getSelectedSlowSmaPeriod();
+currentLookbackWeeks = getSelectedLookbackWeeks();
 applyAssetClassUiState();
-updateSmaLabels(currentSmaPeriod);
+updateSignalLabels();
 startSyncStatusPolling();
 setActiveTab('main');

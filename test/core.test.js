@@ -424,3 +424,54 @@ test('detectBreakoutSignal with lookbackDays reports details for crossing date',
   assert.ok(result.todayClose !== undefined);
   assert.ok(result.todaySMA !== undefined);
 });
+
+test('detectBreakoutSignal returns no signal when fast SMA remains below slow SMA', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [15, 16, 17, 18, 19],
+    fastSmaPeriod: 2,
+    slowSmaPeriod: 3,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+});
+
+test('detectBreakoutSignal returns no signal for downward crossover (sell signal)', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [5, 6, 7, 8, 3],
+    fastSmaPeriod: 2,
+    slowSmaPeriod: 3,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+});
+
+test('detectBreakoutSignal with lookback=0 behaves like default in SMA-crossover mode', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [13, 12, 11, 10, 15],
+    fastSmaPeriod: 2,
+    slowSmaPeriod: 3,
+    lookbackDays: 0,
+  });
+
+  assert.equal(result.signal, true);
+  assert.equal(result.mode, 'sma-crossover');
+  assert.ok(result.todayFastSMA !== undefined);
+});
+
+test('detectBreakoutSignal respects lookback window limit in SMA-crossover mode', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-06'],
+    closes: [13, 12, 11, 15, 10, 9],
+    fastSmaPeriod: 2,
+    slowSmaPeriod: 3,
+    lookbackDays: 1,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+});

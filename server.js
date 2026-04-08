@@ -52,23 +52,46 @@ const scanLimiter = rateLimit({
  * Returns JSON array of matching ETFs.
  *
  * Query params:
- *   - cache=false  – bypass in-memory cache (default: use cache)
- *   - sma=200      – SMA period (integer > 1, default: 200)
- *   - lookbackDays – lookback period in days (0 = only yesterday vs today)
- *   - provider=all | ishares | xtrackers
+ *   - cache=false            – bypass in-memory cache (default: use cache)
+ *   - sma=200                – SMA period fuer Kurs-vs-SMA (integer > 1, default: 200)
+ *   - fastSma=50             – schnelle SMA-Linie fuer SMA-Crossover (optional)
+ *   - slowSma=200            – langsame SMA-Linie fuer SMA-Crossover (optional)
+ *   - lookbackDays=21        – lookback period in days (0 = only yesterday vs today)
+ *   - lookbackWeeks=3        – Alternative zu lookbackDays; wird intern *7 gerechnet
+ *   - provider=all|ishares|xtrackers
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
 
   let smaPeriod;
+  let fastSmaPeriod;
+  let slowSmaPeriod;
   let providerFilter;
   let assetClass;
   let lookbackDays;
   try {
     smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
+
+    if (req.query.fastSma != null && req.query.fastSma !== '') {
+      fastSmaPeriod = normalizeSmaPeriod(req.query.fastSma);
+    }
+
+    if (req.query.slowSma != null && req.query.slowSma !== '') {
+      slowSmaPeriod = normalizeSmaPeriod(req.query.slowSma);
+    }
+
+    let lookbackInput = req.query.lookbackDays;
+    if ((lookbackInput == null || lookbackInput === '') && req.query.lookbackWeeks != null && req.query.lookbackWeeks !== '') {
+      const weeks = Number(req.query.lookbackWeeks);
+      if (!Number.isInteger(weeks) || weeks < 0 || weeks > 52) {
+        throw new Error('Ungueltige Lookback-Wochen. Bitte eine ganze Zahl zwischen 0 und 52 angeben.');
+      }
+      lookbackInput = String(weeks * 7);
+    }
+
     providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
     assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
-    lookbackDays = normalizeLookbackDays(req.query.lookbackDays);
+    lookbackDays = normalizeLookbackDays(lookbackInput);
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
   }
@@ -77,6 +100,8 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
     const results = await scanAllETFs({
       bypassCache,
       smaPeriod,
+      fastSmaPeriod,
+      slowSmaPeriod,
       providerFilter,
       assetClass,
       lookbackDays,

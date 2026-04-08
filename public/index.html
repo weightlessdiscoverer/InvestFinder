@@ -33,34 +33,69 @@
           <option value="etf" selected>ETFs</option>
           <option value="dax40">DAX40-Einzelwerte</option>
         </select>
-        <label class="input-label" for="smaPeriodInput">SMA-Periode</label>
+        <label class="input-label" for="signalMode">Signaltyp</label>
+        <select id="signalMode" class="provider-select" title="Signal-Logik auswaehlen">
+          <option value="price-breakout" selected>Kurs ueber SMA</option>
+          <option value="sma-crossover">SMA-Crossover</option>
+        </select>
+
+        <div id="priceBreakoutGroup">
+          <label class="input-label" for="smaPeriodInput">SMA (Kurs)</label>
+          <input
+            id="smaPeriodInput"
+            class="sma-input"
+            type="number"
+            min="2"
+            max="400"
+            step="1"
+            value="200"
+            list="smaPresetList"
+            title="Nur fuer Modus 'Kurs ueber SMA'"
+          />
+          <datalist id="smaPresetList">
+            <option value="20"></option>
+            <option value="50"></option>
+            <option value="100"></option>
+            <option value="200"></option>
+          </datalist>
+        </div>
+
+        <div id="smaCrossoverGroup" class="hidden">
+          <label class="input-label" for="fastSmaPeriodInput">Fast-SMA (y)</label>
+          <input
+            id="fastSmaPeriodInput"
+            class="sma-input"
+            type="number"
+            min="2"
+            max="400"
+            step="1"
+            value="50"
+            title="Schnelle Linie fuer SMA-Crossover"
+          />
+
+          <label class="input-label" for="slowSmaPeriodInput">Slow-SMA (z)</label>
+          <input
+            id="slowSmaPeriodInput"
+            class="sma-input"
+            type="number"
+            min="2"
+            max="400"
+            step="1"
+            value="200"
+            title="Langsame Linie fuer SMA-Crossover"
+          />
+        </div>
+
+        <label class="input-label" for="lookbackWeeksInput">Zeitraum (Wochen)</label>
         <input
-          id="smaPeriodInput"
-          class="sma-input"
-          type="number"
-          min="2"
-          max="400"
-          step="1"
-          value="200"
-          list="smaPresetList"
-          title="Ganzzahl > 1, z. B. 20, 50, 100, 200"
-        />
-        <datalist id="smaPresetList">
-          <option value="20"></option>
-          <option value="50"></option>
-          <option value="100"></option>
-          <option value="200"></option>
-        </datalist>
-        <label class="input-label" for="lookbackDaysInput">Zeitraum (Tage)</label>
-        <input
-          id="lookbackDaysInput"
+          id="lookbackWeeksInput"
           class="sma-input"
           type="number"
           min="0"
-          max="365"
+          max="52"
           step="1"
           value="0"
-          title="Lookback-Periode in Tagen. 0 = nur gestern vs. heute"
+          title="Lookback-Periode in Wochen. 0 = nur gestern vs. heute"
         />
         <label class="input-label" for="providerFilter">Anbieter</label>
         <select id="providerFilter" class="provider-select" title="ETF-Anbieter filtern">
@@ -88,8 +123,8 @@
         </label>
       </div>
       <p class="hint">
-        Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">ETFs (iShares/Xtrackers)</strong> auf ein
-        <strong id="selectedSmaLabel">SMA200</strong>-Breakout-Signal (Tagesbasis).
+        Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">ETFs (iShares/Xtrackers)</strong> auf das Signal
+        <strong id="selectedSmaLabel">Kurs ueber SMA200</strong> (Tagesbasis).
       </p>
     </section>
 
@@ -191,7 +226,7 @@
               <th>Ticker</th>
               <th>ISIN</th>
               <th>WKN</th>
-              <th>SMA-Periode</th>
+              <th>Signal</th>
               <th>Datum</th>
               <th class="num">Kurs (heute)</th>
               <th class="num" id="thSmaValue">SMA200 (heute)</th>

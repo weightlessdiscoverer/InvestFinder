@@ -9,6 +9,7 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 📈 Scans ETFs across multiple providers (currently iShares + Xtrackers)
 - 🔢 Calculates selectable SMA periods (e.g. 20, 50, 100, 200) per ETF
 - ✅ Detects breakout: `yesterday.close < yesterday.SMA(N)` **AND** `today.close > today.SMA(N)`
+- 🔀 Detects SMA crossover: `SMA(y)` crosses `SMA(z)` from below within optional lookback window
 - ⚡ In-memory caching for raw price history (6 h TTL) to avoid repeated Yahoo calls when SMA changes
 - 💾 Persistente Yahoo-Preis-Datenbank in `src/data/provider-cache/yahoo-history-db.json`
 - 🔄 Background-Synchronisierung beim Start: ETFs mit aeltestem `updatedAt` werden zuerst aktualisiert
@@ -119,7 +120,11 @@ Scans Instrumente fuer den gewaehlten Asset-Typ und gibt Treffer zurueck.
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force a fresh scan |
 | `assetClass` | `etf`, `dax40` | Asset-Typ (default: `etf`) |
-| `sma` | `20`, `50`, `100`, `200`, ... | SMA period (integer > 1, max 400; default: 200) |
+| `sma` | `20`, `50`, `100`, `200`, ... | SMA period for `price-breakout` mode (integer > 1, max 400; default: 200) |
+| `fastSma` | `20`, `50`, ... | Fast SMA period for `sma-crossover` mode (optional; must be used together with `slowSma`) |
+| `slowSma` | `50`, `100`, `200`, ... | Slow SMA period for `sma-crossover` mode (optional; must be used together with `fastSma`) |
+| `lookbackDays` | `0`..`365` | Lookback period in days (default: `0`) |
+| `lookbackWeeks` | `0`..`52` | Alternative lookback in weeks (converted to days internally) |
 | `provider` | `all`, `ishares`, `xtrackers` | Provider filter (default: `all`) |
 
 **Response:**
