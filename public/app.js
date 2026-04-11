@@ -796,6 +796,11 @@ function getDurationTableConfigs() {
         { key: 'sellScore', index: 8, type: 'number', getValue: item => toNumberOrNull(item.sellScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
         { key: 'recommendationDelta', index: 9, type: 'number', getValue: item => toNumberOrNull(item.recommendationDelta), formatValue: value => (value == null ? '–' : `${value >= 0 ? '+' : ''}${fmt(value, 2)}`) },
         { key: 'recommendationReason', index: 10, type: 'text', getValue: item => fallbackValue(item.recommendationReason), formatValue: value => String(value ?? '–') },
+        { key: 'stopLoss', index: 11, type: 'number', getValue: item => {
+          if (item.recommendation === 'Sell') return null;
+          const price = item.profileKey === 'short' ? item.sma20 : item.profileKey === 'medium' ? item.sma50 : item.sma200;
+          return toNumberOrNull(price);
+        }, formatValue: value => value == null ? '–' : fmt(value, 2) },
       ],
     },
   };
@@ -1115,6 +1120,14 @@ function initDurationTableHeaderControls() {
   });
 }
 
+function renderStopLoss(item) {
+  if (item.recommendation === 'Sell') return '–';
+  const basis = item.profileKey === 'short' ? 'SMA20' : item.profileKey === 'medium' ? 'SMA50' : 'SMA200';
+  const price = item.profileKey === 'short' ? item.sma20 : item.profileKey === 'medium' ? item.sma50 : item.sma200;
+  if (price == null || !Number.isFinite(price)) return '–';
+  return `<span class="stop-loss-price">${fmt(price, 2)}</span><br><span class="stop-loss-basis">${basis}</span>`;
+}
+
 function renderAllRecommendations(items, preserveState = false) {
   if (!preserveState) {
     durationTableStates.all.rows = Array.isArray(items) ? items : [];
@@ -1155,6 +1168,7 @@ function renderAllRecommendations(items, preserveState = false) {
           <td class="num">${fmt(item.sellScore, 1)}</td>
           <td class="num">${delta}</td>
           <td><div class="recommendation-rationale">${escHtml(item.recommendationReason || '–')}</div></td>
+          <td class="num">${renderStopLoss(item)}</td>
         </tr>`;
     })
     .join('');

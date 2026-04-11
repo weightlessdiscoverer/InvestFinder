@@ -777,6 +777,16 @@ a:hover { text-decoration: underline; }
   line-height: 1.45;
 }
 
+.stop-loss-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stop-loss-basis {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
 .recommendation-action {
   display: inline-flex;
   align-items: center;
