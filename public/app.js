@@ -62,7 +62,6 @@ const tabMainContent = document.getElementById('tabMainContent');
 const tabDurationContent = document.getElementById('tabDurationContent');
 const tabDbContent = document.getElementById('tabDbContent');
 const durationAssetClassFilter = document.getElementById('durationAssetClassFilter');
-const durationProviderFilter = document.getElementById('durationProviderFilter');
 const investmentDurationMonthsInput = document.getElementById('investmentDurationMonthsInput');
 const btnRecommend = document.getElementById('btnRecommend');
 const durationAssetHintLabel = document.getElementById('durationAssetHintLabel');
@@ -150,7 +149,6 @@ let currentProviderFilter = 'all';
 let syncStatusInterval = null;
 let currentTab = 'main';
 let currentRecommendationAssetClass = 'etf';
-let currentRecommendationProviderFilter = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
 let recommendationStatusInterval = null;
 let activeDurationFilterMenu = null;
@@ -371,14 +369,6 @@ function getSelectedRecommendationAssetClass() {
   return value;
 }
 
-function getSelectedRecommendationProviderFilter() {
-  const value = String(durationProviderFilter.value || 'all').trim().toLowerCase();
-  if (!ALLOWED_PROVIDER_FILTERS.has(value)) {
-    throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur iShares, nur Xtrackers.');
-  }
-  return value;
-}
-
 function getSelectedInvestmentDurationMonths() {
   const raw = String(investmentDurationMonthsInput.value || '').trim();
   const parsed = Number(raw);
@@ -431,15 +421,12 @@ function applyDbAssetClassUiState() {
 
 function applyRecommendationAssetClassUiState() {
   if (currentRecommendationAssetClass === 'dax40') {
-    durationProviderFilter.value = 'all';
-    durationProviderFilter.disabled = true;
     durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
     recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
     allRecommendationTitleLabel.textContent = 'Empfehlung je DAX40-Einzelwert (Buy/Hold/Sell)';
     return;
   }
 
-  durationProviderFilter.disabled = false;
   durationAssetHintLabel.textContent = 'ETFs';
   recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
   allRecommendationTitleLabel.textContent = 'Empfehlung je Einzelwert (Buy/Hold/Sell)';
@@ -1399,7 +1386,6 @@ async function runScan() {
 
 async function runRecommendations() {
   let assetClass;
-  let provider;
   let investmentDurationMonths;
 
   closeDurationFilterMenu();
@@ -1407,7 +1393,6 @@ async function runRecommendations() {
   try {
     assetClass = getSelectedRecommendationAssetClass();
     investmentDurationMonths = getSelectedInvestmentDurationMonths();
-    provider = assetClass === 'dax40' ? 'all' : getSelectedRecommendationProviderFilter();
   } catch (validationErr) {
     recommendationErrorMessage.textContent = validationErr.message;
     setVisible(recommendationErrorBanner, true);
@@ -1415,7 +1400,6 @@ async function runRecommendations() {
   }
 
   currentRecommendationAssetClass = assetClass;
-  currentRecommendationProviderFilter = provider;
   currentInvestmentDurationMonths = investmentDurationMonths;
   applyRecommendationAssetClassUiState();
 
@@ -1429,7 +1413,7 @@ async function runRecommendations() {
   try {
     const params = new URLSearchParams({
       assetClass: currentRecommendationAssetClass,
-      provider: currentRecommendationProviderFilter,
+      provider: 'all',
       investmentDurationMonths: String(currentInvestmentDurationMonths),
       limit: '3',
     });
@@ -1448,11 +1432,6 @@ async function runRecommendations() {
     if (data.results?.assetClass) {
       currentRecommendationAssetClass = data.results.assetClass;
       durationAssetClassFilter.value = currentRecommendationAssetClass;
-    }
-
-    if (data.results?.providerFilter) {
-      currentRecommendationProviderFilter = data.results.providerFilter;
-      durationProviderFilter.value = currentRecommendationProviderFilter;
     }
 
     if (data.results?.investmentDurationMonths) {
@@ -1546,20 +1525,6 @@ providerFilter.addEventListener('change', () => {
   }
 });
 
-durationProviderFilter.addEventListener('change', () => {
-  try {
-    if (currentRecommendationAssetClass === 'dax40') {
-      durationProviderFilter.value = 'all';
-      return;
-    }
-    currentRecommendationProviderFilter = getSelectedRecommendationProviderFilter();
-    setVisible(recommendationErrorBanner, false);
-  } catch (err) {
-    recommendationErrorMessage.textContent = err.message;
-    setVisible(recommendationErrorBanner, true);
-  }
-});
-
 assetClassFilter.addEventListener('change', () => {
   try {
     currentAssetClass = getSelectedAssetClass();
@@ -1636,7 +1601,6 @@ currentFastSmaPeriod = getSelectedFastSmaPeriod();
 currentSlowSmaPeriod = getSelectedSlowSmaPeriod();
 currentLookbackWeeks = getSelectedLookbackWeeks();
 currentRecommendationAssetClass = getSelectedRecommendationAssetClass();
-currentRecommendationProviderFilter = getSelectedRecommendationProviderFilter();
 currentInvestmentDurationMonths = getSelectedInvestmentDurationMonths();
 currentDbAssetClass = getSelectedDbAssetClass();
 applyAssetClassUiState();
