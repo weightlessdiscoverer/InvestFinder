@@ -795,18 +795,19 @@ function getDurationTableConfigs() {
         { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
         { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
         { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
-        { key: 'recommendation', index: 4, type: 'text', getValue: item => fallbackValue(item.recommendation || 'Hold'), formatValue: value => String(value ?? '–') },
-        { key: 'recommendationStrengthScore', index: 5, type: 'number', getValue: item => toNumberOrNull(item.recommendationStrengthScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
-        { key: 'recommendationStrength', index: 6, type: 'text', getValue: item => fallbackValue(item.recommendationStrength), formatValue: value => String(value ?? '–') },
-        { key: 'buyScore', index: 7, type: 'number', getValue: item => toNumberOrNull(item.buyScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
-        { key: 'sellScore', index: 8, type: 'number', getValue: item => toNumberOrNull(item.sellScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
-        { key: 'recommendationDelta', index: 9, type: 'number', getValue: item => toNumberOrNull(item.recommendationDelta), formatValue: value => (value == null ? '–' : `${value >= 0 ? '+' : ''}${fmt(value, 2)}`) },
-        { key: 'recommendationReason', index: 10, type: 'text', getValue: item => fallbackValue(item.recommendationReason), formatValue: value => String(value ?? '–') },
-        { key: 'stopLoss', index: 11, type: 'number', getValue: item => {
+        { key: 'currentClose', index: 4, type: 'number', getValue: item => toNumberOrNull(item.currentClose), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
+        { key: 'stopLoss', index: 5, type: 'number', getValue: item => {
           if (item.recommendation === 'Sell') return null;
           const price = item.profileKey === 'short' ? item.sma20 : item.profileKey === 'medium' ? item.sma50 : item.sma200;
           return toNumberOrNull(price);
         }, formatValue: value => value == null ? '–' : fmt(value, 2) },
+        { key: 'recommendation', index: 6, type: 'text', getValue: item => fallbackValue(item.recommendation || 'Hold'), formatValue: value => String(value ?? '–') },
+        { key: 'recommendationStrengthScore', index: 7, type: 'number', getValue: item => toNumberOrNull(item.recommendationStrengthScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'recommendationStrength', index: 8, type: 'text', getValue: item => fallbackValue(item.recommendationStrength), formatValue: value => String(value ?? '–') },
+        { key: 'buyScore', index: 9, type: 'number', getValue: item => toNumberOrNull(item.buyScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'sellScore', index: 10, type: 'number', getValue: item => toNumberOrNull(item.sellScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'recommendationDelta', index: 11, type: 'number', getValue: item => toNumberOrNull(item.recommendationDelta), formatValue: value => (value == null ? '–' : `${value >= 0 ? '+' : ''}${fmt(value, 2)}`) },
+        { key: 'recommendationReason', index: 12, type: 'text', getValue: item => fallbackValue(item.recommendationReason), formatValue: value => String(value ?? '–') },
       ],
     },
   };
@@ -1167,6 +1168,8 @@ function renderAllRecommendations(items, preserveState = false) {
           <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
           <td>${escHtml(item.name || 'nicht verfügbar')}</td>
           <td>${renderTickerLink(item.ticker)}</td>
+          <td class="num">${fmt(item.currentClose, 2)}</td>
+          <td class="num">${renderStopLoss(item)}</td>
           <td><span class="recommendation-action ${actionClass}">${escHtml(item.recommendation || 'Hold')}</span></td>
           <td class="num"><span class="score-pill">${fmt(item.recommendationStrengthScore, 1)}</span></td>
           <td><span class="id-chip">${escHtml(item.recommendationStrength || '–')}</span></td>
@@ -1174,7 +1177,6 @@ function renderAllRecommendations(items, preserveState = false) {
           <td class="num">${fmt(item.sellScore, 1)}</td>
           <td class="num">${delta}</td>
           <td><div class="recommendation-rationale">${escHtml(item.recommendationReason || '–')}</div></td>
-          <td class="num">${renderStopLoss(item)}</td>
         </tr>`;
     })
     .join('');
