@@ -78,26 +78,10 @@ const recSumSkipped = document.getElementById('recSumSkipped');
 const recSumTime = document.getElementById('recSumTime');
 const recommendationSection = document.getElementById('recommendationSection');
 const recommendationTitleLabel = document.getElementById('recommendationTitleLabel');
-const durationBuyTabBtn = document.getElementById('durationBuyTabBtn');
-const durationSellTabBtn = document.getElementById('durationSellTabBtn');
-const durationAllTabBtn = document.getElementById('durationAllTabBtn');
-const buyRecommendationPanel = document.getElementById('buyRecommendationPanel');
-const sellRecommendationPanel = document.getElementById('sellRecommendationPanel');
-const allRecommendationPanel = document.getElementById('allRecommendationPanel');
-const buyRecommendationTitleLabel = document.getElementById('buyRecommendationTitleLabel');
-const buyRecommendationBadge = document.getElementById('buyRecommendationBadge');
-const buyRecommendationBody = document.getElementById('buyRecommendationBody');
-const buyRecommendationEmpty = document.getElementById('buyRecommendationEmpty');
-const sellRecommendationTitleLabel = document.getElementById('sellRecommendationTitleLabel');
-const sellRecommendationBadge = document.getElementById('sellRecommendationBadge');
-const sellRecommendationBody = document.getElementById('sellRecommendationBody');
-const sellRecommendationEmpty = document.getElementById('sellRecommendationEmpty');
 const allRecommendationTitleLabel = document.getElementById('allRecommendationTitleLabel');
 const allRecommendationBadge = document.getElementById('allRecommendationBadge');
 const allRecommendationBody = document.getElementById('allRecommendationBody');
 const allRecommendationEmpty = document.getElementById('allRecommendationEmpty');
-const buyRecommendationTable = buyRecommendationBody.closest('table');
-const sellRecommendationTable = sellRecommendationBody.closest('table');
 const allRecommendationTable = allRecommendationBody.closest('table');
 const criteriaProfileName = document.getElementById('criteriaProfileName');
 const criteriaDurationRange = document.getElementById('criteriaDurationRange');
@@ -167,35 +151,20 @@ let currentTab = 'main';
 let currentRecommendationAssetClass = 'etf';
 let currentRecommendationProviderFilter = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
-let currentRecommendationSubtab = 'buy';
 let recommendationStatusInterval = null;
 let activeDurationFilterMenu = null;
 
 const DURATION_TABLE_KEYS = {
-  buy: 'buy',
-  sell: 'sell',
   all: 'all',
 };
 
 const DURATION_EMPTY_VALUE = '__EMPTY__';
 
 const durationHeaderControls = {
-  buy: new Map(),
-  sell: new Map(),
   all: new Map(),
 };
 
 const durationTableStates = {
-  buy: {
-    rows: [],
-    sort: { key: null, direction: 'asc' },
-    filters: {},
-  },
-  sell: {
-    rows: [],
-    sort: { key: null, direction: 'asc' },
-    filters: {},
-  },
   all: {
     rows: [],
     sort: { key: null, direction: 'asc' },
@@ -446,18 +415,14 @@ function applyRecommendationAssetClassUiState() {
     durationProviderFilter.value = 'all';
     durationProviderFilter.disabled = true;
     durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
-    recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
-    buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten DAX40';
-    sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten DAX40';
+    recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Uebersicht nach Anlagedauer';
     allRecommendationTitleLabel.textContent = 'Empfehlung je DAX40-Einzelwert (Buy/Hold/Sell)';
     return;
   }
 
   durationProviderFilter.disabled = false;
   durationAssetHintLabel.textContent = 'ETFs';
-  recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
-  buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten';
-  sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten';
+  recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Uebersicht nach Anlagedauer';
   allRecommendationTitleLabel.textContent = 'Empfehlung je Einzelwert (Buy/Hold/Sell)';
 }
 
@@ -751,38 +716,17 @@ function renderDbFreshness(freshness) {
   setFreshnessClass(dbFreshnessBadge, freshness?.level);
 }
 
-function getScoreClass(score) {
-  if (score >= 75) return 'score-strong';
-  if (score >= 45) return 'score-neutral';
-  return 'score-weak';
-}
-
 function renderRecommendationSummary(data, scannedAt) {
-  const best = data.buyRecommendations?.[0] || data.recommendations?.[0] || null;
+  const best = data.allRecommendations?.[0] || data.recommendations?.[0] || null;
 
   recSumAnalyzed.textContent = data.successful ?? data.analyzed ?? '–';
-  recSumBestScore.textContent = best ? fmt(best.score, 1) : '–';
+  recSumBestScore.textContent = best ? fmt(best.recommendationStrengthScore, 1) : '–';
   recSumProfile.textContent = data.profileLabel || '–';
   recSumSkipped.textContent = data.skipped ?? '–';
   recSumTime.textContent = scannedAt
     ? new Date(scannedAt).toLocaleTimeString('de-DE')
     : '–';
   setVisible(recommendationSummaryBar, true);
-}
-
-function setActiveRecommendationSubtab(tab) {
-  currentRecommendationSubtab = tab === 'sell' || tab === 'all' ? tab : 'buy';
-
-  const showBuy = currentRecommendationSubtab === 'buy';
-  const showSell = currentRecommendationSubtab === 'sell';
-  const showAll = currentRecommendationSubtab === 'all';
-  setVisible(buyRecommendationPanel, showBuy);
-  setVisible(sellRecommendationPanel, showSell);
-  setVisible(allRecommendationPanel, showAll);
-
-  durationBuyTabBtn.classList.toggle('active', showBuy);
-  durationSellTabBtn.classList.toggle('active', showSell);
-  durationAllTabBtn.classList.toggle('active', showAll);
 }
 
 function getRecommendationClass(recommendation) {
@@ -834,52 +778,6 @@ function compareByType(a, b, type) {
 
 function getDurationTableConfigs() {
   return {
-    buy: {
-      tableEl: buyRecommendationTable,
-      bodyEl: buyRecommendationBody,
-      emptyEl: buyRecommendationEmpty,
-      badgeEl: buyRecommendationBadge,
-      emptyText: 'Keine technisch verwertbaren Kaufkandidaten gefunden.',
-      columns: [
-        { key: 'rank', index: 0, type: 'number', getValue: item => item.rank, formatValue: value => String(value ?? '–') },
-        { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
-        { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
-        { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
-        { key: 'isin', index: 4, type: 'text', getValue: item => fallbackValue(item.isin), formatValue: value => String(value ?? '–') },
-        { key: 'wkn', index: 5, type: 'text', getValue: item => fallbackValue(item.wkn), formatValue: value => String(value ?? '–') },
-        { key: 'score', index: 6, type: 'number', getValue: item => toNumberOrNull(item.score), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
-        { key: 'profileLabel', index: 7, type: 'text', getValue: item => fallbackValue(item.profileLabel), formatValue: value => String(value ?? '–') },
-        { key: 'momentum20Pct', index: 8, type: 'number', getValue: item => toNumberOrNull(item.momentum20Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'momentum60Pct', index: 9, type: 'number', getValue: item => toNumberOrNull(item.momentum60Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'momentum120Pct', index: 10, type: 'number', getValue: item => toNumberOrNull(item.momentum120Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'rsi14', index: 11, type: 'number', getValue: item => toNumberOrNull(item.rsi14), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
-        { key: 'annualizedVolatilityPct', index: 12, type: 'number', getValue: item => toNumberOrNull(item.annualizedVolatilityPct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'rationale', index: 13, type: 'text', getValue: item => fallbackValue(item.rationale), formatValue: value => String(value ?? '–') },
-      ],
-    },
-    sell: {
-      tableEl: sellRecommendationTable,
-      bodyEl: sellRecommendationBody,
-      emptyEl: sellRecommendationEmpty,
-      badgeEl: sellRecommendationBadge,
-      emptyText: 'Keine technisch auffaelligen Verkaufskandidaten gefunden.',
-      columns: [
-        { key: 'rank', index: 0, type: 'number', getValue: item => item.rank, formatValue: value => String(value ?? '–') },
-        { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
-        { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
-        { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
-        { key: 'isin', index: 4, type: 'text', getValue: item => fallbackValue(item.isin), formatValue: value => String(value ?? '–') },
-        { key: 'wkn', index: 5, type: 'text', getValue: item => fallbackValue(item.wkn), formatValue: value => String(value ?? '–') },
-        { key: 'score', index: 6, type: 'number', getValue: item => toNumberOrNull(item.score), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
-        { key: 'sellOutlook', index: 7, type: 'text', getValue: item => fallbackValue(item.sellOutlook), formatValue: value => String(value ?? '–') },
-        { key: 'momentum20Pct', index: 8, type: 'number', getValue: item => toNumberOrNull(item.momentum20Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'momentum60Pct', index: 9, type: 'number', getValue: item => toNumberOrNull(item.momentum60Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'momentum120Pct', index: 10, type: 'number', getValue: item => toNumberOrNull(item.momentum120Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'rsi14', index: 11, type: 'number', getValue: item => toNumberOrNull(item.rsi14), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
-        { key: 'annualizedVolatilityPct', index: 12, type: 'number', getValue: item => toNumberOrNull(item.annualizedVolatilityPct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
-        { key: 'sellRationale', index: 13, type: 'text', getValue: item => fallbackValue(item.sellRationale), formatValue: value => String(value ?? '–') },
-      ],
-    },
     all: {
       tableEl: allRecommendationTable,
       bodyEl: allRecommendationBody,
@@ -987,16 +885,6 @@ function closeDurationFilterMenu() {
 }
 
 function rerenderDurationTable(tableKey) {
-  if (tableKey === DURATION_TABLE_KEYS.buy) {
-    renderBuyRecommendations(durationTableStates.buy.rows, true);
-    return;
-  }
-
-  if (tableKey === DURATION_TABLE_KEYS.sell) {
-    renderSellRecommendations(durationTableStates.sell.rows, true);
-    return;
-  }
-
   renderAllRecommendations(durationTableStates.all.rows, true);
 }
 
@@ -1274,92 +1162,6 @@ function renderAllRecommendations(items, preserveState = false) {
   updateDurationHeaderIndicators(DURATION_TABLE_KEYS.all);
 }
 
-function renderBuyRecommendations(items, preserveState = false) {
-  if (!preserveState) {
-    durationTableStates.buy.rows = Array.isArray(items) ? items : [];
-  }
-
-  const visibleItems = applyDurationTableTransforms(DURATION_TABLE_KEYS.buy);
-  buyRecommendationBadge.textContent = String(visibleItems.length);
-  setVisible(recommendationSection, true);
-
-  if (!visibleItems.length) {
-    buyRecommendationBody.innerHTML = '';
-    setVisible(buyRecommendationEmpty, true);
-    buyRecommendationEmpty.textContent = durationTableStates.buy.rows.length
-      ? 'Keine Zeilen fuer die aktuellen Filter gefunden.'
-      : 'Keine technisch verwertbaren Kaufkandidaten gefunden.';
-    updateDurationHeaderIndicators(DURATION_TABLE_KEYS.buy);
-    return;
-  }
-
-  setVisible(buyRecommendationEmpty, false);
-  buyRecommendationBody.innerHTML = visibleItems
-    .map(item => `
-      <tr>
-        <td><span class="rank-pill">${item.rank}</span></td>
-        <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
-        <td>${escHtml(item.name || 'nicht verfügbar')}</td>
-        <td>${renderTickerLink(item.ticker)}</td>
-        <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
-        <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
-        <td class="num"><span class="score-pill ${getScoreClass(item.score)}">${fmt(item.score, 1)}</span></td>
-        <td><span class="id-chip">${escHtml(item.profileLabel || '–')}</span></td>
-        <td class="num">${item.momentum20Pct != null ? `${fmt(item.momentum20Pct, 2)} %` : '–'}</td>
-        <td class="num">${item.momentum60Pct != null ? `${fmt(item.momentum60Pct, 2)} %` : '–'}</td>
-        <td class="num">${item.momentum120Pct != null ? `${fmt(item.momentum120Pct, 2)} %` : '–'}</td>
-        <td class="num">${fmt(item.rsi14, 2)}</td>
-        <td class="num">${item.annualizedVolatilityPct != null ? `${fmt(item.annualizedVolatilityPct, 2)} %` : '–'}</td>
-        <td><div class="recommendation-rationale">${escHtml(item.rationale || '–')}</div></td>
-      </tr>`)
-    .join('');
-
-  updateDurationHeaderIndicators(DURATION_TABLE_KEYS.buy);
-}
-
-function renderSellRecommendations(items, preserveState = false) {
-  if (!preserveState) {
-    durationTableStates.sell.rows = Array.isArray(items) ? items : [];
-  }
-
-  const visibleItems = applyDurationTableTransforms(DURATION_TABLE_KEYS.sell);
-  sellRecommendationBadge.textContent = String(visibleItems.length);
-  setVisible(recommendationSection, true);
-
-  if (!visibleItems.length) {
-    sellRecommendationBody.innerHTML = '';
-    setVisible(sellRecommendationEmpty, true);
-    sellRecommendationEmpty.textContent = durationTableStates.sell.rows.length
-      ? 'Keine Zeilen fuer die aktuellen Filter gefunden.'
-      : 'Keine technisch auffaelligen Verkaufskandidaten gefunden.';
-    updateDurationHeaderIndicators(DURATION_TABLE_KEYS.sell);
-    return;
-  }
-
-  setVisible(sellRecommendationEmpty, false);
-  sellRecommendationBody.innerHTML = visibleItems
-    .map(item => `
-      <tr>
-        <td><span class="rank-pill">${item.rank}</span></td>
-        <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
-        <td>${escHtml(item.name || 'nicht verfügbar')}</td>
-        <td>${renderTickerLink(item.ticker)}</td>
-        <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
-        <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
-        <td class="num"><span class="score-pill score-weak">${fmt(item.score, 1)}</span></td>
-        <td><span class="id-chip">${escHtml(item.sellOutlook || '–')}</span></td>
-        <td class="num">${item.momentum20Pct != null ? `${fmt(item.momentum20Pct, 2)} %` : '–'}</td>
-        <td class="num">${item.momentum60Pct != null ? `${fmt(item.momentum60Pct, 2)} %` : '–'}</td>
-        <td class="num">${item.momentum120Pct != null ? `${fmt(item.momentum120Pct, 2)} %` : '–'}</td>
-        <td class="num">${fmt(item.rsi14, 2)}</td>
-        <td class="num">${item.annualizedVolatilityPct != null ? `${fmt(item.annualizedVolatilityPct, 2)} %` : '–'}</td>
-        <td><div class="recommendation-rationale">${escHtml(item.sellRationale || '–')}</div></td>
-      </tr>`)
-    .join('');
-
-  updateDurationHeaderIndicators(DURATION_TABLE_KEYS.sell);
-}
-
 async function loadDbEtfList() {
   try {
     const params = new URLSearchParams({
@@ -1400,7 +1202,7 @@ const RECOMMENDATION_STATUS_MESSAGES = [
   'Analysiere Trendstruktur …',
   'Bewerte Momentum je Anlagedauer …',
   'Pruefe RSI und Volatilitaet …',
-  'Ermittle Kauf- und Verkaufskandidaten …',
+  'Ermittle Buy/Hold/Sell Uebersicht …',
 ];
 let statusInterval = null;
 
@@ -1627,8 +1429,6 @@ async function runRecommendations() {
 
     applyRecommendationAssetClassUiState();
     renderRecommendationSummary(data.results, data.scannedAt);
-    renderBuyRecommendations(data.results.buyRecommendations || data.results.recommendations || []);
-    renderSellRecommendations(data.results.sellRecommendations || []);
     renderAllRecommendations(data.results.allRecommendations || []);
   } catch (err) {
     recommendationErrorMessage.textContent = `Fehler bei den Empfehlungen: ${err.message}`;
@@ -1644,9 +1444,6 @@ async function runRecommendations() {
 
 btnScan.addEventListener('click', () => runScan());
 btnRecommend.addEventListener('click', () => runRecommendations());
-durationBuyTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('buy'));
-durationSellTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('sell'));
-durationAllTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('all'));
 
 signalModeSelect.addEventListener('change', () => {
   try {
@@ -1803,6 +1600,5 @@ applyRecommendationAssetClassUiState();
 updateRecommendationCriteriaInfo();
 updateSignalLabels();
 initDurationTableHeaderControls();
-setActiveRecommendationSubtab('buy');
 startSyncStatusPolling();
 setActiveTab('main');
