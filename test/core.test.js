@@ -2,10 +2,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fsPromises = require('node:fs/promises');
 
 const {
+  scanAllETFs,
   normalizeSmaPeriod,
   normalizeLookbackDays,
+  normalizeSignalConfig,
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,
   MAX_SMA_PERIOD,
@@ -18,9 +21,13 @@ const {
   normalizeAssetClass,
   normalizeProviderFilter,
 } = require('../src/etfUniverseService');
+const etfUniverseServiceModule = require('../src/etfUniverseService');
 const { computeRSI, computeSMA } = require('../src/indicators');
 const { detectBreakoutSignal } = require('../src/signals');
+const signalsModule = require('../src/signals');
 const { classifyFreshness } = require('../src/yahooHistoryStore');
+const yahooHistoryStoreModule = require('../src/yahooHistoryStore');
+const yahooDiscoveryServiceModule = require('../src/yahooDiscoveryService');
 const {
   analyzeTechnicalSetup,
   DEFAULT_INVESTMENT_DURATION_MONTHS,
@@ -28,6 +35,7 @@ const {
   normalizeRecommendationLimit,
   normalizeInvestmentDurationMonths,
 } = require('../src/recommendationEngine');
+const recommendationEngineModule = require('../src/recommendationEngine');
 const {
   isValidIsinFormat,
   getIdentifiersByTicker,
@@ -150,6 +158,133 @@ test('analyzeTechnicalSetup classifies a falling long-term setup as weak', () =>
   assert.equal(result.profileKey, 'long');
   assert.equal(result.outlook, 'Schwach');
   assert.ok(result.score < 45);
+});
+
+test('analyzeTechnicalSetup can produce Buy, Sell and Hold recommendations', () => {
+  const dates = Array.from({ length: 260 }, (_, index) => {
+    const day = String((index % 28) + 1).padStart(2, '0');
+    const month = String((Math.floor(index / 28) % 12) + 1).padStart(2, '0');
+    return `2026-${month}-${day}`;
+  });
+
+  const bullishCloses = Array.from({ length: 260 }, (_, index) => 60 + (index * 0.9) + (Math.sin(index / 7) * 0.2));
+  const bearishCloses = Array.from({ length: 260 }, (_, index) => 300 - (index * 0.95) + (Math.sin(index / 7) * 0.2));
+  const neutralCloses = Array.from(
+    { length: 260 },
+    (_, index) => 120 - (index * 0.14) + (Math.sin(index / 13) * 2.9)
+  );
+
+  const bullish = analyzeTechnicalSetup({ dates, closes: bullishCloses, investmentDurationMonths: 12 });
+  const bearish = analyzeTechnicalSetup({ dates, closes: bearishCloses, investmentDurationMonths: 12 });
+  const neutral = analyzeTechnicalSetup({ dates, closes: neutralCloses, investmentDurationMonths: 12 });
+
+  assert.equal(bullish.ok, true);
+  assert.equal(bearish.ok, true);
+  assert.equal(neutral.ok, true);
+
+  assert.equal(bullish.recommendation, 'Buy');
+  assert.equal(bearish.recommendation, 'Sell');
+  assert.equal(neutral.recommendation, 'Hold');
+  assert.ok(['Sehr stark', 'Stark', 'Mittel', 'Schwach'].includes(bullish.recommendationStrength));
+  assert.ok(['Sehr stark', 'Stark', 'Mittel', 'Schwach'].includes(bearish.recommendationStrength));
+  assert.ok(['Sehr stark', 'Stark', 'Mittel', 'Schwach'].includes(neutral.recommendationStrength));
+});
+
+test('analyzeTechnicalSetup reports insufficient data when indicators contain non-finite values', () => {
+  const dates = Array.from({ length: 240 }, (_, index) => `2026-03-${String((index % 28) + 1).padStart(2, '0')}`);
+  const closes = Array.from({ length: 240 }, (_, index) => 100 + index * 0.2);
+  closes[closes.length - 1] = Number.NaN;
+
+  const result = analyzeTechnicalSetup({
+    dates,
+    closes,
+    investmentDurationMonths: 6,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.insufficientData, true);
+  assert.match(result.error, /Kennzahlen konnten nicht vollstaendig berechnet werden/);
+});
+
+test('analyzeTechnicalSetup handles zero baselines in momentum/volatility windows', () => {
+  const dates = Array.from({ length: 240 }, (_, index) => `2026-04-${String((index % 28) + 1).padStart(2, '0')}`);
+  const closes = Array.from({ length: 240 }, (_, index) => 120 + index * 0.15);
+
+  closes[239 - 20] = 0;
+  closes[239 - 60] = 0;
+  closes[239 - 120] = 0;
+  closes[230] = 0;
+  closes[231] = 140;
+
+  const result = analyzeTechnicalSetup({
+    dates,
+    closes,
+    investmentDurationMonths: 12,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.momentum20Pct, null);
+  assert.equal(result.momentum60Pct, null);
+  assert.equal(result.momentum120Pct, null);
+  assert.equal(result.annualizedVolatilityPct, null);
+});
+
+test('recommendationEngine internal helpers cover defensive guards and thresholds', () => {
+  const {
+    getPercentChange,
+    computeAnnualizedVolatilityPct,
+    getDistanceToRecentHighPct,
+    deriveUnifiedRecommendation,
+  } = recommendationEngineModule._internal;
+
+  assert.equal(getPercentChange(null, 20), null);
+  assert.equal(getPercentChange([1, 2, 3], 3), null);
+  assert.equal(getPercentChange([1, 2, Number.NaN], 1), null);
+  assert.equal(getPercentChange([0, 2], 1), null);
+  assert.equal(getPercentChange([100, 110], 1), 10);
+
+  assert.equal(computeAnnualizedVolatilityPct([1, 2, 3], 20), null);
+  assert.equal(computeAnnualizedVolatilityPct([0, ...Array.from({ length: 20 }, () => 1)], 20), null);
+  assert.ok(Number.isFinite(computeAnnualizedVolatilityPct(Array.from({ length: 21 }, (_, i) => 100 + i), 20)));
+
+  assert.equal(getDistanceToRecentHighPct([1, 2, 3], 60), null);
+  assert.equal(getDistanceToRecentHighPct(Array.from({ length: 60 }, () => 0), 60), null);
+  assert.ok(Number.isFinite(getDistanceToRecentHighPct(Array.from({ length: 60 }, (_, i) => 100 + i), 60)));
+
+  const buy = deriveUnifiedRecommendation({ buyScore: 80, sellScore: 50 });
+  const hold = deriveUnifiedRecommendation({ buyScore: 50, sellScore: 45 });
+  const sell = deriveUnifiedRecommendation({ buyScore: 35, sellScore: 60 });
+
+  assert.equal(buy.recommendation, 'Buy');
+  assert.equal(hold.recommendation, 'Hold');
+  assert.equal(sell.recommendation, 'Sell');
+});
+
+test('recommendationEngine rationale helpers return fallback text when no weighted signals exist', () => {
+  const { buildRationale, buildSellRationale } = recommendationEngineModule._internal;
+
+  const fallbackBuy = buildRationale({
+    profile: { label: 'Test', weights: {} },
+    trendScore: null,
+    momentum20Score: null,
+    momentum60Score: null,
+    momentum120Score: null,
+    rsiScore: null,
+    breakoutScore: null,
+  });
+
+  const fallbackSell = buildSellRationale({
+    sellProfile: { weights: {} },
+    trendScore: null,
+    momentum20Score: null,
+    momentum60Score: null,
+    momentum120Score: null,
+    rsiScore: null,
+    breakdownScore: null,
+  });
+
+  assert.match(fallbackBuy, /Keine klare technische Begruendung/);
+  assert.match(fallbackSell, /Keine klare technische Begruendung/);
 });
 
 async function withMockedRecommendationEngine({ universe, historiesByTicker }, callback) {
@@ -553,6 +688,27 @@ test('normalizeLookbackDays rejects invalid values', () => {
   assert.throws(() => normalizeLookbackDays(MAX_LOOKBACK_DAYS + 1), /zu gross/);
 });
 
+test('normalizeSignalConfig validates both modes and crossover constraints', () => {
+  const breakout = normalizeSignalConfig({ smaPeriodInput: 30 });
+  assert.equal(breakout.mode, 'price-breakout');
+  assert.equal(breakout.smaPeriod, 30);
+  assert.equal(breakout.smaLabel, 'SMA30');
+
+  const crossover = normalizeSignalConfig({ fastSmaPeriodInput: 20, slowSmaPeriodInput: 50 });
+  assert.equal(crossover.mode, 'sma-crossover');
+  assert.equal(crossover.fastSmaLabel, 'SMA20');
+  assert.equal(crossover.slowSmaLabel, 'SMA50');
+
+  assert.throws(
+    () => normalizeSignalConfig({ fastSmaPeriodInput: 20 }),
+    /Fast-SMA und Slow-SMA gemeinsam/
+  );
+  assert.throws(
+    () => normalizeSignalConfig({ fastSmaPeriodInput: 30, slowSmaPeriodInput: 30 }),
+    /muessen unterschiedlich/
+  );
+});
+
 // ── detectBreakoutSignal with lookbackDays parameter ──────────────────────────
 
 test('detectBreakoutSignal with lookbackDays=0 behaves like default (yesterday vs today)', () => {
@@ -697,4 +853,945 @@ test('detectBreakoutSignal respects lookback window limit in SMA-crossover mode'
 
   assert.equal(result.signal, false);
   assert.equal(result.insufficientData, false);
+});
+
+test('signals internal lookback helper returns null for missing/zero lookback', () => {
+  const { getStartIdxForLookback } = signalsModule._internal;
+  assert.equal(getStartIdxForLookback(100, 20, null), null);
+  assert.equal(getStartIdxForLookback(100, 20, 0), null);
+  assert.equal(getStartIdxForLookback(100, 20, -2), null);
+  assert.equal(getStartIdxForLookback(100, 20, 10), 89);
+});
+
+async function withMockedSignalsComputeSma(mockComputeSma, callback) {
+  const signalsPath = require.resolve('../src/signals');
+  const indicators = require('../src/indicators');
+  const originalComputeSMA = indicators.computeSMA;
+
+  indicators.computeSMA = mockComputeSma;
+  delete require.cache[signalsPath];
+
+  try {
+    const mockedSignals = require('../src/signals');
+    await callback(mockedSignals);
+  } finally {
+    indicators.computeSMA = originalComputeSMA;
+    delete require.cache[signalsPath];
+  }
+}
+
+test('detectPriceBreakoutSignal reports insufficient data when SMA values are null despite enough closes', async () => {
+  await withMockedSignalsComputeSma(() => [null, null, null], async mockedSignals => {
+    const result = mockedSignals.detectPriceBreakoutSignal({
+      dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+      closes: [10, 11, 12],
+      smaPeriod: 2,
+    });
+
+    assert.equal(result.signal, false);
+    assert.equal(result.insufficientData, true);
+    assert.match(result.error, /Keine gueltigen SMA-Werte/);
+  });
+});
+
+test('detectSmaCrossoverSignal reports insufficient data when SMA values are null despite enough closes', async () => {
+  await withMockedSignalsComputeSma(() => [null, null, null, null], async mockedSignals => {
+    const result = mockedSignals.detectSmaCrossoverSignal({
+      dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+      closes: [10, 11, 12, 13],
+      fastSmaPeriod: 2,
+      slowSmaPeriod: 3,
+    });
+
+    assert.equal(result.signal, false);
+    assert.equal(result.insufficientData, true);
+    assert.match(result.error, /Keine gueltigen SMA-Werte/);
+  });
+});
+
+test('etfUniverseService internal source helper returns empty list for unknown provider', () => {
+  const { getSourceForProvider } = etfUniverseServiceModule._internal;
+  assert.deepEqual(getSourceForProvider('UnknownProvider'), []);
+});
+
+test('getEtfUniverse supports assetClass=all and provider cache reuse', async () => {
+  const modulePath = require.resolve('../src/etfUniverseService');
+  const discoveryModule = require('../src/yahooDiscoveryService');
+  const originalGetDiscoveredEtfs = discoveryModule.getDiscoveredEtfs;
+
+  const calls = { discovered: 0 };
+  discoveryModule.getDiscoveredEtfs = async ({ providerFilter }) => {
+    calls.discovered += 1;
+    if (providerFilter === 'ishares') {
+      return [{ ticker: 'CACHE.T1', name: 'Cache One', isin: '', wkn: '' }];
+    }
+    return [{ ticker: 'CACHE.T2', name: 'Cache Two', isin: '', wkn: '' }];
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const service = require('../src/etfUniverseService');
+    service._internal.providerCache.clear();
+
+    const firstEtf = await service.getEtfUniverse({ providerFilter: 'all', assetClass: 'etf', bypassCache: false });
+    const secondEtf = await service.getEtfUniverse({ providerFilter: 'all', assetClass: 'etf', bypassCache: false });
+    const allAssets = await service.getEtfUniverse({ providerFilter: 'all', assetClass: 'all', bypassCache: false });
+
+    assert.ok(firstEtf.length > 0);
+    assert.equal(secondEtf.length, firstEtf.length);
+    assert.ok(allAssets.some(item => item.assetClass === 'dax40'));
+    assert.ok(allAssets.some(item => item.assetClass === 'etf'));
+    assert.equal(calls.discovered, 2);
+  } finally {
+    discoveryModule.getDiscoveredEtfs = originalGetDiscoveredEtfs;
+    delete require.cache[modulePath];
+  }
+});
+
+async function withMockedAnalysisModule({
+  universe,
+  historyByTicker,
+  signalByTicker,
+  throwByTicker,
+} = {}, callback) {
+  const analysisPath = require.resolve('../src/analysis');
+  const etfUniverseService = require('../src/etfUniverseService');
+  const priceHistoryService = require('../src/priceHistoryService');
+  const signals = require('../src/signals');
+
+  const originalGetEtfUniverse = etfUniverseService.getEtfUniverse;
+  const originalGetPriceHistory = priceHistoryService.getPriceHistory;
+  const originalDetectBreakoutSignal = signals.detectBreakoutSignal;
+  const originalSetTimeout = global.setTimeout;
+
+  const calls = {
+    getEtfUniverse: 0,
+    getPriceHistory: 0,
+    detectBreakoutSignal: 0,
+  };
+
+  etfUniverseService.getEtfUniverse = async () => {
+    calls.getEtfUniverse += 1;
+    return universe || [];
+  };
+
+  priceHistoryService.getPriceHistory = async etf => {
+    calls.getPriceHistory += 1;
+    const key = etf.ticker;
+    if (throwByTicker && throwByTicker[key]) {
+      throw throwByTicker[key];
+    }
+    return historyByTicker && historyByTicker[key]
+      ? historyByTicker[key]
+      : { dates: ['2026-01-01', '2026-01-02'], closes: [100, 101] };
+  };
+
+  signals.detectBreakoutSignal = payload => {
+    calls.detectBreakoutSignal += 1;
+    const signature = Array.isArray(payload?.closes) ? payload.closes.join(',') : '';
+    const bySignature = signalByTicker && signalByTicker[signature];
+    if (bySignature) {
+      return bySignature;
+    }
+
+    if (!Array.isArray(payload?.closes) || payload.closes.length < 2) {
+      return {
+        signal: false,
+        insufficientData: true,
+        error: 'Zu wenige Kursdaten',
+      };
+    }
+
+    const firstClose = payload.closes[0];
+    const lastClose = payload.closes[payload.closes.length - 1];
+
+    return {
+      signal: lastClose > firstClose,
+      insufficientData: false,
+      todayDate: payload.dates[payload.dates.length - 1] || null,
+      todayClose: lastClose || null,
+      todaySMA: firstClose || null,
+    };
+  };
+
+  global.setTimeout = callbackFn => {
+    callbackFn();
+    return 0;
+  };
+
+  delete require.cache[analysisPath];
+
+  try {
+    const mockedAnalysis = require('../src/analysis');
+    await callback({ mockedAnalysis, calls });
+  } finally {
+    etfUniverseService.getEtfUniverse = originalGetEtfUniverse;
+    priceHistoryService.getPriceHistory = originalGetPriceHistory;
+    signals.detectBreakoutSignal = originalDetectBreakoutSignal;
+    global.setTimeout = originalSetTimeout;
+    delete require.cache[analysisPath];
+  }
+}
+
+test('scanAllETFs aggregates matches and errors for price-breakout mode', async () => {
+  const universe = [
+    { provider: 'iShares', ticker: 'AAA', name: 'Alpha', isin: 'AAA', wkn: 'AAA', assetClass: 'etf' },
+    { provider: 'iShares', ticker: 'BBB', name: 'Beta', isin: 'BBB', wkn: 'BBB', assetClass: 'etf' },
+    { provider: 'iShares', ticker: 'ERR', name: 'Broken', isin: 'ERR', wkn: 'ERR', assetClass: 'etf' },
+  ];
+
+  await withMockedAnalysisModule({
+    universe,
+    historyByTicker: {
+      AAA: { dates: ['2026-01-01', '2026-01-02', '2026-01-03'], closes: [10, 11, 12] },
+      BBB: { dates: ['2026-01-01'], closes: [8] },
+    },
+    throwByTicker: {
+      ERR: new Error('History down'),
+    },
+  }, async ({ mockedAnalysis, calls }) => {
+    const result = await mockedAnalysis.scanAllETFs({
+      providerFilter: 'all',
+      assetClass: 'etf',
+      smaPeriod: 20,
+      lookbackDays: 5,
+    });
+
+    assert.equal(result.mode, 'price-breakout');
+    assert.equal(result.smaLabel, 'SMA20');
+    assert.equal(result.lookbackDays, 5);
+    assert.equal(result.total, 3);
+    assert.equal(result.scanned, 3);
+    assert.ok(result.matches.length >= 0);
+    assert.ok(result.errors.length >= 1);
+    assert.equal(result.errors.some(item => item.ticker === 'ERR'), true);
+    assert.equal(calls.getEtfUniverse, 1);
+    assert.equal(calls.getPriceHistory, 3);
+  });
+});
+
+test('scanAllETFs supports sma-crossover mode and internal signal cache', async () => {
+  const universe = [
+    { provider: 'Xtrackers', ticker: 'XAA', name: 'Cross', isin: 'XAA', wkn: 'XAA', assetClass: 'etf' },
+  ];
+
+  await withMockedAnalysisModule({
+    universe,
+    historyByTicker: {
+      XAA: {
+        dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+        closes: [10, 9, 12],
+      },
+    },
+  }, async ({ mockedAnalysis, calls }) => {
+    const result1 = await mockedAnalysis.scanAllETFs({
+      providerFilter: 'xtrackers',
+      assetClass: 'etf',
+      fastSmaPeriod: 20,
+      slowSmaPeriod: 50,
+    });
+
+    const result2 = await mockedAnalysis.scanAllETFs({
+      providerFilter: 'xtrackers',
+      assetClass: 'etf',
+      fastSmaPeriod: 20,
+      slowSmaPeriod: 50,
+    });
+
+    assert.equal(result1.mode, 'sma-crossover');
+    assert.equal(result1.fastSmaLabel, 'SMA20');
+    assert.equal(result1.slowSmaLabel, 'SMA50');
+    assert.equal(result1.smaLabel, 'SMA20/SMA50');
+    assert.equal(result1.total, 1);
+    assert.equal(result2.total, 1);
+
+    assert.equal(calls.getPriceHistory, 1, 'zweiter Lauf soll aus Signal-Cache bedienen');
+  });
+});
+
+test('scanAllETFs bypassCache bypasses internal signal cache', async () => {
+  const universe = [
+    { provider: 'Xtrackers', ticker: 'BYP', name: 'Bypass', isin: 'BYP', wkn: 'BYP', assetClass: 'etf' },
+  ];
+
+  await withMockedAnalysisModule({
+    universe,
+    historyByTicker: {
+      BYP: {
+        dates: ['2026-01-01', '2026-01-02'],
+        closes: [10, 11],
+      },
+    },
+  }, async ({ mockedAnalysis, calls }) => {
+    await mockedAnalysis.scanAllETFs({ smaPeriod: 10, bypassCache: true });
+    await mockedAnalysis.scanAllETFs({ smaPeriod: 10, bypassCache: true });
+
+    assert.equal(calls.getPriceHistory, 2);
+  });
+});
+
+async function withMockedPriceHistoryService({
+  storedHistory = null,
+  fetchedHistory = { dates: ['2026-01-01'], closes: [101] },
+} = {}, callback) {
+  const priceHistoryPath = require.resolve('../src/priceHistoryService');
+  const dataService = require('../src/dataService');
+  const yahooHistoryStore = require('../src/yahooHistoryStore');
+
+  const originalFetchDailyCloses = dataService.fetchDailyCloses;
+  const originalGetTickerHistory = yahooHistoryStore.getTickerHistory;
+  const originalUpsertTickerHistory = yahooHistoryStore.upsertTickerHistory;
+
+  const calls = {
+    fetchDailyCloses: 0,
+    getTickerHistory: 0,
+    upsertTickerHistory: 0,
+  };
+
+  dataService.fetchDailyCloses = async () => {
+    calls.fetchDailyCloses += 1;
+    return fetchedHistory;
+  };
+
+  yahooHistoryStore.getTickerHistory = async () => {
+    calls.getTickerHistory += 1;
+    return storedHistory;
+  };
+
+  yahooHistoryStore.upsertTickerHistory = async () => {
+    calls.upsertTickerHistory += 1;
+  };
+
+  delete require.cache[priceHistoryPath];
+
+  try {
+    const mockedService = require('../src/priceHistoryService');
+    await callback({ mockedService, calls });
+  } finally {
+    dataService.fetchDailyCloses = originalFetchDailyCloses;
+    yahooHistoryStore.getTickerHistory = originalGetTickerHistory;
+    yahooHistoryStore.upsertTickerHistory = originalUpsertTickerHistory;
+    delete require.cache[priceHistoryPath];
+  }
+}
+
+async function withMockedYahooHistoryStore({
+  initialRaw,
+  writeError,
+} = {}, callback) {
+  const storeModulePath = require.resolve('../src/yahooHistoryStore');
+
+  const originalReadFile = fsPromises.readFile;
+  const originalWriteFile = fsPromises.writeFile;
+  const originalMkdir = fsPromises.mkdir;
+
+  let persistedRaw = initialRaw;
+  const io = {
+    mkdirCalls: 0,
+    readCalls: 0,
+    writeCalls: 0,
+    lastWritePath: null,
+  };
+
+  fsPromises.mkdir = async () => {
+    io.mkdirCalls += 1;
+  };
+
+  fsPromises.readFile = async () => {
+    io.readCalls += 1;
+    if (persistedRaw == null) {
+      const err = new Error('not found');
+      err.code = 'ENOENT';
+      throw err;
+    }
+    return persistedRaw;
+  };
+
+  fsPromises.writeFile = async (filePath, content) => {
+    io.writeCalls += 1;
+    io.lastWritePath = filePath;
+    if (writeError) {
+      throw writeError;
+    }
+    persistedRaw = content;
+  };
+
+  delete require.cache[storeModulePath];
+
+  try {
+    const mockedStore = require('../src/yahooHistoryStore');
+    await callback({ mockedStore, io, getPersistedRaw: () => persistedRaw });
+  } finally {
+    fsPromises.readFile = originalReadFile;
+    fsPromises.writeFile = originalWriteFile;
+    fsPromises.mkdir = originalMkdir;
+    delete require.cache[storeModulePath];
+  }
+}
+
+test('getPriceHistory validates ticker and throws for missing input', async () => {
+  await withMockedPriceHistoryService({}, async ({ mockedService }) => {
+    await assert.rejects(() => mockedService.getPriceHistory({}), /Ticker fehlt/);
+    await assert.rejects(() => mockedService.getPriceHistory(null), /Ticker fehlt/);
+  });
+});
+
+test('getPriceHistory reuses in-memory cache on repeated calls', async () => {
+  await withMockedPriceHistoryService({
+    storedHistory: null,
+    fetchedHistory: { dates: ['2026-01-01', '2026-01-02'], closes: [100, 101] },
+  }, async ({ mockedService, calls }) => {
+    const first = await mockedService.getPriceHistory({ ticker: 'abc' });
+    const second = await mockedService.getPriceHistory({ ticker: 'ABC' });
+
+    assert.deepEqual(first, second);
+    assert.equal(calls.getTickerHistory, 1);
+    assert.equal(calls.fetchDailyCloses, 1);
+    assert.equal(calls.upsertTickerHistory, 1);
+  });
+});
+
+test('getPriceHistory prefers persistent store snapshot when available', async () => {
+  const stored = {
+    dates: ['2025-12-29', '2025-12-30'],
+    closes: [95.5, 96.1],
+    updatedAt: '2026-01-01T08:00:00.000Z',
+  };
+
+  await withMockedPriceHistoryService({ storedHistory: stored }, async ({ mockedService, calls }) => {
+    const result = await mockedService.getPriceHistory({ ticker: 'iwda.as' });
+
+    assert.deepEqual(result, { dates: stored.dates, closes: stored.closes });
+    assert.equal(calls.getTickerHistory, 1);
+    assert.equal(calls.fetchDailyCloses, 0);
+    assert.equal(calls.upsertTickerHistory, 0);
+  });
+});
+
+test('getPriceHistory bypassCache forces remote fetch and persist', async () => {
+  const stored = {
+    dates: ['2025-12-29', '2025-12-30'],
+    closes: [95.5, 96.1],
+  };
+
+  await withMockedPriceHistoryService({
+    storedHistory: stored,
+    fetchedHistory: { dates: ['2026-01-01'], closes: [111.2] },
+  }, async ({ mockedService, calls }) => {
+    const result = await mockedService.getPriceHistory({ ticker: 'IWDA.AS' }, true);
+
+    assert.deepEqual(result, { dates: ['2026-01-01'], closes: [111.2] });
+    assert.equal(calls.getTickerHistory, 0);
+    assert.equal(calls.fetchDailyCloses, 1);
+    assert.equal(calls.upsertTickerHistory, 1);
+  });
+});
+
+test('yahooHistoryStore readStore returns empty structure on ENOENT and invalid shape', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    const empty = await mockedStore.readStore();
+    assert.deepEqual(empty.tickers, {});
+    assert.equal(empty.version, 1);
+  });
+
+  await withMockedYahooHistoryStore({ initialRaw: '{"version":1}' }, async ({ mockedStore }) => {
+    const invalidShape = await mockedStore.readStore();
+    assert.deepEqual(invalidShape.tickers, {});
+    assert.equal(invalidShape.version, 1);
+  });
+});
+
+test('yahooHistoryStore upsert/get normalize ticker and trim inconsistent arrays', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    const saved = await mockedStore.upsertTickerHistory(
+      ' iwda.as ',
+      {
+        dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+        closes: [101.1, 102.2],
+      },
+      '2026-01-04T00:00:00.000Z'
+    );
+
+    assert.equal(saved.points, 2);
+    assert.deepEqual(saved.dates, ['2026-01-01', '2026-01-02']);
+    assert.deepEqual(saved.closes, [101.1, 102.2]);
+    assert.equal(saved.firstDate, '2026-01-01');
+    assert.equal(saved.lastDate, '2026-01-02');
+
+    const loaded = await mockedStore.getTickerHistory('IWDA.AS');
+    assert.equal(loaded.points, 2);
+    assert.equal(await mockedStore.getTickerUpdatedAt('iwda.as'), '2026-01-04T00:00:00.000Z');
+  });
+});
+
+test('yahooHistoryStore summary and list expose aggregated metadata', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore, io }) => {
+    await mockedStore.upsertTickerHistory(
+      'AAA',
+      { dates: ['2026-01-01', '2026-01-02'], closes: [10, 11] },
+      '2026-01-02T08:00:00.000Z'
+    );
+    await mockedStore.upsertTickerHistory(
+      'BBB',
+      { dates: ['2026-01-03', '2026-01-04', '2026-01-05'], closes: [20, 21, 22] },
+      '2026-01-05T08:00:00.000Z'
+    );
+
+    const summary = await mockedStore.getStoreSummary();
+    const rows = await mockedStore.listAvailableTickerRecords();
+
+    assert.equal(summary.tickerCount, 2);
+    assert.equal(summary.totalPoints, 5);
+    assert.equal(summary.oldestUpdate, '2026-01-02T08:00:00.000Z');
+    assert.equal(summary.newestUpdate, '2026-01-05T08:00:00.000Z');
+    assert.equal(summary.freshness.level, 'stale');
+    assert.equal(typeof summary.filePath, 'string');
+    assert.ok(io.writeCalls >= 2);
+
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].ticker, 'BBB');
+    assert.equal(rows[0].points, 3);
+    assert.equal(rows[1].ticker, 'AAA');
+    assert.equal(rows[1].points, 2);
+  });
+});
+
+test('yahooHistoryStore validates ticker during upsert', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    await assert.rejects(
+      () => mockedStore.upsertTickerHistory('', { dates: [], closes: [] }),
+      /Ticker is required/
+    );
+  });
+});
+
+test('yahooHistoryStore getTickerHistory returns null for empty ticker', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    const result = await mockedStore.getTickerHistory('   ');
+    assert.equal(result, null);
+  });
+});
+
+test('yahooHistoryStore getTickerHistory returns null for unknown ticker key', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    await mockedStore.upsertTickerHistory(
+      'KNOWN',
+      { dates: ['2026-01-01'], closes: [10] },
+      '2026-01-01T00:00:00.000Z'
+    );
+
+    const unknown = await mockedStore.getTickerHistory('UNKNOWN');
+    assert.equal(unknown, null);
+  });
+});
+
+test('yahooHistoryStore propagates non-ENOENT read errors', async () => {
+  const storeModulePath = require.resolve('../src/yahooHistoryStore');
+  const originalReadFile = fsPromises.readFile;
+  const originalMkdir = fsPromises.mkdir;
+
+  fsPromises.mkdir = async () => {};
+  fsPromises.readFile = async () => {
+    const err = new Error('permission denied');
+    err.code = 'EACCES';
+    throw err;
+  };
+
+  delete require.cache[storeModulePath];
+  try {
+    const mockedStore = require('../src/yahooHistoryStore');
+    await assert.rejects(() => mockedStore.readStore(), /permission denied/);
+  } finally {
+    fsPromises.readFile = originalReadFile;
+    fsPromises.mkdir = originalMkdir;
+    delete require.cache[storeModulePath];
+  }
+});
+
+test('yahooHistoryStore upsert creates meta block when missing in existing store', async () => {
+  const rawWithoutMeta = JSON.stringify({
+    version: 1,
+    tickers: {
+      OLD: {
+        dates: ['2026-01-01'],
+        closes: [10],
+        firstDate: '2026-01-01',
+        lastDate: '2026-01-01',
+        points: 1,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    },
+  });
+
+  await withMockedYahooHistoryStore({ initialRaw: rawWithoutMeta }, async ({ mockedStore, getPersistedRaw }) => {
+    await mockedStore.upsertTickerHistory(
+      'NEW',
+      { dates: ['2026-01-02'], closes: [11] },
+      '2026-01-02T00:00:00.000Z'
+    );
+
+    const persisted = JSON.parse(getPersistedRaw());
+    assert.ok(persisted.meta);
+    assert.ok(persisted.meta.createdAt);
+    assert.ok(persisted.meta.updatedAt);
+  });
+});
+
+test('yahooHistoryStore internal helpers cover meta/date/ticker branches', () => {
+  const { withMeta, normalizeTicker, getAgeInDays, buildRecord } = yahooHistoryStoreModule._internal;
+
+  const seededMeta = withMeta({ tickers: {}, meta: { createdAt: '2026-01-01T00:00:00.000Z', updatedAt: null } });
+  assert.equal(seededMeta.meta.createdAt, '2026-01-01T00:00:00.000Z');
+  assert.ok(seededMeta.meta.updatedAt);
+
+  const createdMeta = withMeta({ tickers: {} });
+  assert.ok(createdMeta.meta.createdAt);
+  assert.ok(createdMeta.meta.updatedAt);
+
+  assert.equal(normalizeTicker(' iwda.as '), 'IWDA.AS');
+  assert.equal(normalizeTicker(null), '');
+
+  assert.equal(getAgeInDays(null), null);
+  assert.equal(getAgeInDays('not-a-date'), null);
+  assert.ok(Number.isInteger(getAgeInDays(new Date().toISOString())));
+
+  const record = buildRecord({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03'],
+    closes: [10, 11],
+    fetchedAt: '2026-01-04T00:00:00.000Z',
+  });
+  assert.equal(record.points, 2);
+  assert.equal(record.firstDate, '2026-01-01');
+  assert.equal(record.lastDate, '2026-01-02');
+});
+
+async function withMockedMasterDataService({ fileContent }, callback) {
+  const modulePath = require.resolve('../src/masterDataService');
+  const originalReadFile = fsPromises.readFile;
+
+  const io = { readCalls: 0 };
+  fsPromises.readFile = async () => {
+    io.readCalls += 1;
+    return fileContent;
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const mockedModule = require('../src/masterDataService');
+    await callback({ mockedModule, io });
+  } finally {
+    fsPromises.readFile = originalReadFile;
+    delete require.cache[modulePath];
+  }
+}
+
+test('masterDataService ignores duplicate and invalid entries with warnings', async () => {
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = message => warnings.push(String(message));
+
+  try {
+    await withMockedMasterDataService({
+      fileContent: JSON.stringify({
+        version: 7,
+        updatedAt: '2026-04-11T10:00:00.000Z',
+        source: 'Unit Test Source',
+        items: [
+          { ticker: ' abc ', isin: 'IE00B4L5Y983', wkn: 'A0RPWH', source: 'row-1' },
+          { ticker: 'ABC', isin: 'US0000000000', wkn: 'DUPL00', source: 'row-dup' },
+          { ticker: 'bad', isin: 'INVALID', wkn: '', source: 'row-2' },
+          { ticker: '', isin: 'IE00B4L5Y983', wkn: 'EMPTY0' },
+        ],
+      }),
+    }, async ({ mockedModule, io }) => {
+      const index = await mockedModule.getMasterDataIndex({ bypassCache: true });
+      const abc = await mockedModule.getIdentifiersByTicker('ABC');
+      const bad = await mockedModule.getIdentifiersByTicker('BAD');
+
+      assert.equal(index.meta.version, 7);
+      assert.equal(index.meta.entries, 2);
+      assert.equal(abc.isin, 'IE00B4L5Y983');
+      assert.equal(abc.wkn, 'A0RPWH');
+      assert.equal(abc.hasMasterData, true);
+      assert.equal(bad.isin, 'nicht verfügbar');
+      assert.equal(bad.wkn, 'nicht verfügbar');
+      assert.equal(bad.hasMasterData, false);
+      assert.ok(warnings.some(msg => msg.includes('Duplicate ticker')));
+      assert.ok(warnings.some(msg => msg.includes('Invalid ISIN format')));
+      assert.ok(io.readCalls >= 1);
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('masterDataService shares concurrent load promise and serves cached data', async () => {
+  const modulePath = require.resolve('../src/masterDataService');
+  const originalReadFile = fsPromises.readFile;
+
+  let readCalls = 0;
+  let release;
+  const gate = new Promise(resolve => {
+    release = resolve;
+  });
+
+  fsPromises.readFile = async () => {
+    readCalls += 1;
+    await gate;
+    return JSON.stringify({
+      version: 1,
+      updatedAt: '2026-04-11T10:00:00.000Z',
+      source: 'Gate Source',
+      items: [{ ticker: 'IWDA.AS', isin: 'IE00B4L5Y983', wkn: 'A0RPWH' }],
+    });
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const service = require('../src/masterDataService');
+    const p1 = service.getMasterDataIndex({ bypassCache: true });
+    const p2 = service.getMasterDataIndex({ bypassCache: true });
+    release();
+    await Promise.all([p1, p2]);
+
+    assert.equal(readCalls, 1);
+
+    fsPromises.readFile = async () => {
+      throw new Error('must not read again while cache is valid');
+    };
+
+    const cached = await service.getMasterDataIndex();
+    assert.equal(cached.meta.entries, 1);
+  } finally {
+    fsPromises.readFile = originalReadFile;
+    delete require.cache[modulePath];
+  }
+});
+
+async function withMockedYahooDiscoveryService({ cacheObject, fetchMock }, callback) {
+  const modulePath = require.resolve('../src/yahooDiscoveryService');
+  const originalReadFile = fsPromises.readFile;
+  const originalWriteFile = fsPromises.writeFile;
+  const originalMkdir = fsPromises.mkdir;
+  const originalFetch = global.fetch;
+  const originalSetTimeout = global.setTimeout;
+
+  let persistedRaw = cacheObject ? JSON.stringify(cacheObject) : null;
+  const io = {
+    readCalls: 0,
+    writeCalls: 0,
+    fetchCalls: 0,
+  };
+
+  fsPromises.mkdir = async () => {};
+  fsPromises.readFile = async () => {
+    io.readCalls += 1;
+    if (persistedRaw == null) {
+      const err = new Error('not found');
+      err.code = 'ENOENT';
+      throw err;
+    }
+    return persistedRaw;
+  };
+  fsPromises.writeFile = async (_filePath, content) => {
+    io.writeCalls += 1;
+    persistedRaw = content;
+  };
+
+  global.fetch = async (...args) => {
+    io.fetchCalls += 1;
+    if (fetchMock) {
+      return fetchMock(...args);
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { quotes: [] };
+      },
+    };
+  };
+
+  global.setTimeout = fn => {
+    fn();
+    return 0;
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const service = require('../src/yahooDiscoveryService');
+    await callback({ service, io, getPersistedRaw: () => persistedRaw });
+  } finally {
+    fsPromises.readFile = originalReadFile;
+    fsPromises.writeFile = originalWriteFile;
+    fsPromises.mkdir = originalMkdir;
+    global.fetch = originalFetch;
+    global.setTimeout = originalSetTimeout;
+    delete require.cache[modulePath];
+  }
+}
+
+test('yahooDiscoveryService returns fresh cache without network calls', async () => {
+  const freshCache = {
+    updatedAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    providers: {
+      iShares: [{ ticker: 'IWDA.AS' }],
+      Xtrackers: [{ ticker: 'XDWD.DE' }],
+    },
+  };
+
+  await withMockedYahooDiscoveryService({ cacheObject: freshCache }, async ({ service, io }) => {
+    const all = await service.getDiscoveredEtfs();
+    const ishares = await service.getDiscoveredEtfs({ providerFilter: 'ishares' });
+    const xtrackers = await service.getDiscoveredEtfs({ providerFilter: 'xtrackers' });
+
+    assert.equal(all.length, 2);
+    assert.equal(ishares.length, 1);
+    assert.equal(xtrackers.length, 1);
+    assert.equal(io.fetchCalls, 0);
+    assert.equal(io.writeCalls, 0);
+  });
+});
+
+test('yahooDiscoveryService rebuilds stale cache and filters ETF/provider correctly', async () => {
+  const staleCache = {
+    updatedAt: '2020-01-01T00:00:00.000Z',
+    providers: { iShares: [], Xtrackers: [] },
+  };
+
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = message => warnings.push(String(message));
+
+  try {
+    await withMockedYahooDiscoveryService({
+      cacheObject: staleCache,
+      fetchMock: async url => {
+        if (String(url).includes('iShares%20A')) {
+          return {
+            ok: false,
+            status: 503,
+            async json() {
+              return {};
+            },
+          };
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          async json() {
+            return {
+              quotes: [
+                { quoteType: 'ETF', symbol: 'IWDA.AS', shortname: 'iShares Core MSCI World' },
+                { quoteType: 'ETF', symbol: 'IWDA.AS', longname: 'iShares Duplicate' },
+                { quoteType: 'ETF', symbol: 'XDWD.DE', longname: 'DWS Xtrackers MSCI World' },
+                { quoteType: 'EQUITY', symbol: 'AAPL', shortname: 'Apple Inc' },
+                { quoteType: 'ETF', symbol: '', shortname: 'No Symbol ETF' },
+              ],
+            };
+          },
+        };
+      },
+    }, async ({ service, io, getPersistedRaw }) => {
+      const all = await service.getDiscoveredEtfs({ forceRefresh: true });
+      const ishares = await service.getDiscoveredEtfs({ providerFilter: 'ishares' });
+      const xtrackers = await service.getDiscoveredEtfs({ providerFilter: 'xtrackers' });
+      const persisted = JSON.parse(getPersistedRaw());
+
+      assert.ok(all.length >= 2);
+      assert.equal(ishares.some(item => item.ticker === 'IWDA.AS'), true);
+      assert.equal(xtrackers.some(item => item.ticker === 'XDWD.DE'), true);
+      assert.equal(ishares.filter(item => item.ticker === 'IWDA.AS').length, 1);
+      assert.ok(io.fetchCalls > 0);
+      assert.ok(io.writeCalls > 0);
+      assert.equal(persisted.counts.total, persisted.counts.iShares + persisted.counts.Xtrackers);
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('yahooDiscoveryService internal helpers cover quote/provider/cache branches', async () => {
+  const {
+    buildSeeds,
+    looksLikeEtfQuote,
+    detectProvider,
+    normalizeQuoteToEtf,
+    isCacheFresh,
+    readDiscoveryCache,
+  } = yahooDiscoveryServiceModule._internal;
+
+  const isharesSeeds = buildSeeds('iShares');
+  const xtrackersSeeds = buildSeeds('Xtrackers');
+  assert.ok(isharesSeeds.length > 20);
+  assert.ok(xtrackersSeeds.length > 20);
+
+  assert.equal(looksLikeEtfQuote(null), false);
+  assert.equal(looksLikeEtfQuote({ quoteType: 'EQUITY', symbol: 'AAPL', shortname: 'Apple' }), false);
+  assert.equal(looksLikeEtfQuote({ quoteType: 'ETF', symbol: '', shortname: 'No Symbol' }), false);
+  assert.equal(looksLikeEtfQuote({ quoteType: 'ETF', symbol: 'IWDA.AS', shortname: '' }), false);
+  assert.equal(looksLikeEtfQuote({ quoteType: 'ETF', symbol: 'IWDA.AS', shortname: 'iShares Core MSCI World' }), true);
+
+  assert.equal(detectProvider({ shortname: 'iShares Core MSCI World' }), 'iShares');
+  assert.equal(detectProvider({ longname: 'DWS Xtrackers MSCI World' }), 'Xtrackers');
+  assert.equal(detectProvider({ shortname: 'Unknown ETF Provider' }), null);
+
+  const normalized = normalizeQuoteToEtf({ symbol: 'iwda.as', shortname: 'iShares Core MSCI World' }, 'iShares');
+  assert.equal(normalized.ticker, 'IWDA.AS');
+  assert.equal(normalized.provider, 'iShares');
+
+  assert.equal(isCacheFresh(null), false);
+  assert.equal(isCacheFresh({ updatedAt: 'not-a-date' }), false);
+  assert.equal(isCacheFresh({ updatedAt: new Date(Date.now() - (3 * 60 * 60 * 1000)).toISOString() }), true);
+  assert.equal(isCacheFresh({ updatedAt: '2020-01-01T00:00:00.000Z' }), false);
+
+  await withMockedYahooDiscoveryService({ cacheObject: null }, async () => {
+    const parsed = await readDiscoveryCache();
+    assert.equal(parsed, null);
+  });
+
+  await withMockedYahooDiscoveryService({ cacheObject: null }, async ({ getPersistedRaw }) => {
+    // Force a non-object JSON payload to trigger the explicit null fallback.
+    const modulePath = require.resolve('../src/yahooDiscoveryService');
+    delete require.cache[modulePath];
+    const fsLocal = require('node:fs/promises');
+    const originalReadFile = fsLocal.readFile;
+    fsLocal.readFile = async () => '"invalid"';
+    try {
+      const localModule = require('../src/yahooDiscoveryService');
+      const data = await localModule._internal.readDiscoveryCache();
+      assert.equal(data, null);
+    } finally {
+      fsLocal.readFile = originalReadFile;
+      delete require.cache[modulePath];
+      void getPersistedRaw;
+    }
+  });
+});
+
+test('yahooDiscoveryService detectProvider can match alias fallback branch', () => {
+  const { detectProvider, PROVIDER_SEARCH } = yahooDiscoveryServiceModule._internal;
+  const originalKey = PROVIDER_SEARCH.Xtrackers.key;
+
+  try {
+    PROVIDER_SEARCH.Xtrackers.key = 'no-direct-key-match';
+    const provider = detectProvider({ longname: 'DWS Xtrackers MSCI World UCITS ETF' });
+    assert.equal(provider, 'Xtrackers');
+  } finally {
+    PROVIDER_SEARCH.Xtrackers.key = originalKey;
+  }
+});
+
+test('yahooHistoryStore listAvailableTickerRecords filters zero points and resolves sort ties by ticker', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    await mockedStore.upsertTickerHistory('BBB', { dates: ['2026-01-01'], closes: [11] }, '2026-01-01T00:00:00.000Z');
+    await mockedStore.upsertTickerHistory('AAA', { dates: ['2026-01-01'], closes: [10] }, '2026-01-01T00:00:00.000Z');
+    await mockedStore.upsertTickerHistory('ZERO', { dates: ['2026-01-01'], closes: [] }, '2026-01-01T00:00:00.000Z');
+
+    const rows = await mockedStore.listAvailableTickerRecords();
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].ticker, 'AAA');
+    assert.equal(rows[1].ticker, 'BBB');
+  });
 });

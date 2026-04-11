@@ -681,4 +681,14 @@ module.exports = {
   getTopRecommendations,
   normalizeInvestmentDurationMonths,
   normalizeRecommendationLimit,
+  _internal: {
+    getPercentChange,
+    computeAnnualizedVolatilityPct,
+    getDistanceToRecentHighPct,
+    computeRsiScore,
+    computeSellRsiScore,
+    buildRationale,
+    buildSellRationale,
+    deriveUnifiedRecommendation,
+  },
 };

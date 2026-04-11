@@ -221,4 +221,13 @@ async function getDiscoveredEtfs({ providerFilter = 'all', forceRefresh = false 
 
 module.exports = {
   getDiscoveredEtfs,
+  _internal: {
+    buildSeeds,
+    looksLikeEtfQuote,
+    detectProvider,
+    normalizeQuoteToEtf,
+    isCacheFresh,
+    readDiscoveryCache,
+    PROVIDER_SEARCH,
+  },
 };

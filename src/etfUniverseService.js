@@ -202,4 +202,9 @@ module.exports = {
   getEtfUniverse,
   normalizeAssetClass,
   normalizeProviderFilter,
+  _internal: {
+    getSourceForProvider,
+    providerCache,
+    getDax40Universe,
+  },
 };

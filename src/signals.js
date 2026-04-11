@@ -283,4 +283,7 @@ module.exports = {
   detectBreakoutSignal,
   detectPriceBreakoutSignal,
   detectSmaCrossoverSignal,
+  _internal: {
+    getStartIdxForLookback,
+  },
 };

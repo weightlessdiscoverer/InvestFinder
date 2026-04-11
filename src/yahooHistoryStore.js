@@ -218,4 +218,10 @@ module.exports = {
   getStoreSummary,
   listAvailableTickerRecords,
   classifyFreshness,
+  _internal: {
+    withMeta,
+    normalizeTicker,
+    getAgeInDays,
+    buildRecord,
+  },
 };
