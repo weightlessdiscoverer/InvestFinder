@@ -415,14 +415,14 @@ function applyRecommendationAssetClassUiState() {
     durationProviderFilter.value = 'all';
     durationProviderFilter.disabled = true;
     durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
-    recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Uebersicht nach Anlagedauer';
+    recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
     allRecommendationTitleLabel.textContent = 'Empfehlung je DAX40-Einzelwert (Buy/Hold/Sell)';
     return;
   }
 
   durationProviderFilter.disabled = false;
   durationAssetHintLabel.textContent = 'ETFs';
-  recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Uebersicht nach Anlagedauer';
+  recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
   allRecommendationTitleLabel.textContent = 'Empfehlung je Einzelwert (Buy/Hold/Sell)';
 }
 

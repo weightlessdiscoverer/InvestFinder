@@ -20,7 +20,7 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
 - 🧱 Modular provider architecture with separate source modules and merged processing layer
 - 🖥️ UI filter for provider scope: **Alle**, **nur iShares**, **nur Xtrackers**
-- 🏆 Separate Empfehlungen nach Anlagedauer mit Top-3-Kauf- und Top-3-Verkaufskandidaten sowie Buy/Hold/Sell-Empfehlung je Einzelwert inklusive Staerke
+- 🏆 Separater Tab **"Empfehlungen"** mit Top-3-Kauf- und Top-3-Verkaufskandidaten sowie Buy/Hold/Sell-Empfehlung je Einzelwert inklusive Staerke
 
 ---
 
@@ -55,7 +55,7 @@ npm test
 
 Then open **http://localhost:3000** in your browser, choose SMA period + provider filter and click **"Scan starten"**.
 
-Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Anlagedauer"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert sowohl die Top 3 Kaufkandidaten als auch die Top 3 Verkaufskandidaten. Zusaetzlich gibt es fuer jeden technisch bewertbaren Einzelwert eine einheitliche Buy/Hold/Sell-Empfehlung inklusive Staerke.
+Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Empfehlungen"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert sowohl die Top 3 Kaufkandidaten als auch die Top 3 Verkaufskandidaten. Zusaetzlich gibt es fuer jeden technisch bewertbaren Einzelwert eine einheitliche Buy/Hold/Sell-Empfehlung inklusive Staerke.
 
 The scan fetches ~420 days of daily price history for each ETF from Yahoo Finance and processes them in small batches with a short delay to stay within rate limits. A full scan typically takes **30–90 seconds**.
 
