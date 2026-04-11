@@ -798,8 +798,7 @@ function getDurationTableConfigs() {
         { key: 'currentClose', index: 4, type: 'number', getValue: item => toNumberOrNull(item.currentClose), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
         { key: 'stopLoss', index: 5, type: 'number', getValue: item => {
           if (item.recommendation === 'Sell') return null;
-          const price = item.profileKey === 'short' ? item.sma20 : item.profileKey === 'medium' ? item.sma50 : item.sma200;
-          return toNumberOrNull(price);
+          return toNumberOrNull(item.stopLoss);
         }, formatValue: value => value == null ? '–' : fmt(value, 2) },
         { key: 'recommendation', index: 6, type: 'text', getValue: item => fallbackValue(item.recommendation || 'Hold'), formatValue: value => String(value ?? '–') },
         { key: 'recommendationStrengthScore', index: 7, type: 'number', getValue: item => toNumberOrNull(item.recommendationStrengthScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
@@ -1129,8 +1128,8 @@ function initDurationTableHeaderControls() {
 
 function renderStopLoss(item) {
   if (item.recommendation === 'Sell') return '–';
-  const basis = item.profileKey === 'short' ? 'SMA20' : item.profileKey === 'medium' ? 'SMA50' : 'SMA200';
-  const price = item.profileKey === 'short' ? item.sma20 : item.profileKey === 'medium' ? item.sma50 : item.sma200;
+  const basis = item.stopLossBasis || 'Sell-Schwelle';
+  const price = item.stopLoss;
   if (price == null || !Number.isFinite(price)) return '–';
   return `<span class="stop-loss-price">${fmt(price, 2)}</span><br><span class="stop-loss-basis">${basis}</span>`;
 }

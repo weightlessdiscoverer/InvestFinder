@@ -18,8 +18,9 @@ const {
 const { buildRationale, buildSellRationale } = require('./recommendationRationale');
 
 const MIN_REQUIRED_PRICE_POINTS = 220;
+const STOP_LOSS_SEARCH_ITERATIONS = 18;
 
-function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
+function analyzeTechnicalSetupCore({ dates, closes, investmentDurationMonths }) {
   const profile = getInvestmentProfile(investmentDurationMonths);
   const sellProfile = SELL_PROFILES[profile.key] || SELL_PROFILES.medium;
 
@@ -195,7 +196,96 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
   };
 }
 
+function isSellRecommendationAtPrice({ dates, closes, investmentDurationMonths, candidatePrice }) {
+  if (!Number.isFinite(candidatePrice) || candidatePrice < 0) {
+    return false;
+  }
+
+  const adjustedCloses = closes.slice();
+  adjustedCloses[adjustedCloses.length - 1] = candidatePrice;
+
+  const result = analyzeTechnicalSetupCore({
+    dates,
+    closes: adjustedCloses,
+    investmentDurationMonths,
+  });
+
+  return result.ok === true && result.recommendation === 'Sell';
+}
+
+function computeStopLossThreshold({ dates, closes, investmentDurationMonths, currentAnalysis }) {
+  const currentClose = closes[closes.length - 1];
+  if (!Number.isFinite(currentClose) || currentClose <= 0) {
+    return null;
+  }
+
+  const analysis = currentAnalysis || analyzeTechnicalSetupCore({
+    dates,
+    closes,
+    investmentDurationMonths,
+  });
+  if (analysis.ok !== true) {
+    return null;
+  }
+
+  if (analysis.recommendation === 'Sell') {
+    return round(currentClose, 4);
+  }
+
+  if (!isSellRecommendationAtPrice({
+    dates,
+    closes,
+    investmentDurationMonths,
+    candidatePrice: 0,
+  })) {
+    return null;
+  }
+
+  let low = 0;
+  let high = currentClose;
+
+  for (let i = 0; i < STOP_LOSS_SEARCH_ITERATIONS; i += 1) {
+    const mid = (low + high) / 2;
+    if (isSellRecommendationAtPrice({
+      dates,
+      closes,
+      investmentDurationMonths,
+      candidatePrice: mid,
+    })) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return round(low, 4);
+}
+
+function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
+  const analysis = analyzeTechnicalSetupCore({ dates, closes, investmentDurationMonths });
+  if (analysis.ok !== true) {
+    return analysis;
+  }
+
+  const stopLoss = computeStopLossThreshold({
+    dates,
+    closes,
+    investmentDurationMonths,
+    currentAnalysis: analysis,
+  });
+
+  return {
+    ...analysis,
+    stopLoss,
+    stopLossBasis: stopLoss == null ? null : 'Sell-Schwelle',
+  };
+}
+
 module.exports = {
   MIN_REQUIRED_PRICE_POINTS,
   analyzeTechnicalSetup,
+  _internal: {
+    analyzeTechnicalSetupCore,
+    computeStopLossThreshold,
+  },
 };

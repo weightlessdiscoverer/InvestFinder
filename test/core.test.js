@@ -190,6 +190,46 @@ test('analyzeTechnicalSetup can produce Buy, Sell and Hold recommendations', () 
   assert.ok(['Sehr stark', 'Stark', 'Mittel', 'Schwach'].includes(neutral.recommendationStrength));
 });
 
+test('analyzeTechnicalSetup derives stop loss from the sell recommendation threshold', () => {
+  const dates = Array.from({ length: 260 }, (_, index) => {
+    const day = String((index % 28) + 1).padStart(2, '0');
+    const month = String((Math.floor(index / 28) % 12) + 1).padStart(2, '0');
+    return `2026-${month}-${day}`;
+  });
+  const bullishCloses = Array.from({ length: 260 }, (_, index) => 60 + (index * 0.9) + (Math.sin(index / 7) * 0.2));
+
+  const result = analyzeTechnicalSetup({
+    dates,
+    closes: bullishCloses,
+    investmentDurationMonths: 12,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.recommendation, 'Buy');
+  assert.equal(result.stopLossBasis, 'Sell-Schwelle');
+  assert.ok(Number.isFinite(result.stopLoss));
+  assert.ok(result.stopLoss < result.currentClose);
+
+  const atThresholdCloses = bullishCloses.slice();
+  atThresholdCloses[atThresholdCloses.length - 1] = result.stopLoss;
+  const atThreshold = analyzeTechnicalSetup({
+    dates,
+    closes: atThresholdCloses,
+    investmentDurationMonths: 12,
+  });
+
+  const aboveThresholdCloses = bullishCloses.slice();
+  aboveThresholdCloses[aboveThresholdCloses.length - 1] = result.stopLoss + 0.1;
+  const aboveThreshold = analyzeTechnicalSetup({
+    dates,
+    closes: aboveThresholdCloses,
+    investmentDurationMonths: 12,
+  });
+
+  assert.equal(atThreshold.recommendation, 'Sell');
+  assert.notEqual(aboveThreshold.recommendation, 'Sell');
+});
+
 test('analyzeTechnicalSetup reports insufficient data when indicators contain non-finite values', () => {
   const dates = Array.from({ length: 240 }, (_, index) => `2026-03-${String((index % 28) + 1).padStart(2, '0')}`);
   const closes = Array.from({ length: 240 }, (_, index) => 100 + index * 0.2);
