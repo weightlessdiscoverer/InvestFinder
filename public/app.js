@@ -96,6 +96,9 @@ const allRecommendationTitleLabel = document.getElementById('allRecommendationTi
 const allRecommendationBadge = document.getElementById('allRecommendationBadge');
 const allRecommendationBody = document.getElementById('allRecommendationBody');
 const allRecommendationEmpty = document.getElementById('allRecommendationEmpty');
+const buyRecommendationTable = buyRecommendationBody.closest('table');
+const sellRecommendationTable = sellRecommendationBody.closest('table');
+const allRecommendationTable = allRecommendationBody.closest('table');
 const criteriaProfileName = document.getElementById('criteriaProfileName');
 const criteriaDurationRange = document.getElementById('criteriaDurationRange');
 const criteriaFormula = document.getElementById('criteriaFormula');
@@ -166,6 +169,39 @@ let currentRecommendationProviderFilter = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
 let currentRecommendationSubtab = 'buy';
 let recommendationStatusInterval = null;
+let activeDurationFilterMenu = null;
+
+const DURATION_TABLE_KEYS = {
+  buy: 'buy',
+  sell: 'sell',
+  all: 'all',
+};
+
+const DURATION_EMPTY_VALUE = '__EMPTY__';
+
+const durationHeaderControls = {
+  buy: new Map(),
+  sell: new Map(),
+  all: new Map(),
+};
+
+const durationTableStates = {
+  buy: {
+    rows: [],
+    sort: { key: null, direction: 'asc' },
+    filters: {},
+  },
+  sell: {
+    rows: [],
+    sort: { key: null, direction: 'asc' },
+    filters: {},
+  },
+  all: {
+    rows: [],
+    sort: { key: null, direction: 'asc' },
+    filters: {},
+  },
+};
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
 
@@ -755,18 +791,463 @@ function getRecommendationClass(recommendation) {
   return 'action-hold';
 }
 
-function renderAllRecommendations(items) {
-  allRecommendationBadge.textContent = String(items.length);
+function fallbackValue(value) {
+  return value == null || value === '' ? 'nicht verfuegbar' : value;
+}
+
+function toNumberOrNull(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function toFilterKey(rawValue) {
+  if (rawValue == null || rawValue === '') {
+    return DURATION_EMPTY_VALUE;
+  }
+  return String(rawValue);
+}
+
+function compareByType(a, b, type) {
+  const valueA = a == null || a === '' ? null : a;
+  const valueB = b == null || b === '' ? null : b;
+
+  if (valueA == null && valueB == null) return 0;
+  if (valueA == null) return 1;
+  if (valueB == null) return -1;
+
+  if (type === 'number') {
+    const numA = Number(valueA);
+    const numB = Number(valueB);
+
+    if (!Number.isFinite(numA) && !Number.isFinite(numB)) return 0;
+    if (!Number.isFinite(numA)) return 1;
+    if (!Number.isFinite(numB)) return -1;
+
+    return numA - numB;
+  }
+
+  return String(valueA).localeCompare(String(valueB), 'de-DE', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+function getDurationTableConfigs() {
+  return {
+    buy: {
+      tableEl: buyRecommendationTable,
+      bodyEl: buyRecommendationBody,
+      emptyEl: buyRecommendationEmpty,
+      badgeEl: buyRecommendationBadge,
+      emptyText: 'Keine technisch verwertbaren Kaufkandidaten gefunden.',
+      columns: [
+        { key: 'rank', index: 0, type: 'number', getValue: item => item.rank, formatValue: value => String(value ?? '–') },
+        { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
+        { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
+        { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
+        { key: 'isin', index: 4, type: 'text', getValue: item => fallbackValue(item.isin), formatValue: value => String(value ?? '–') },
+        { key: 'wkn', index: 5, type: 'text', getValue: item => fallbackValue(item.wkn), formatValue: value => String(value ?? '–') },
+        { key: 'score', index: 6, type: 'number', getValue: item => toNumberOrNull(item.score), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'profileLabel', index: 7, type: 'text', getValue: item => fallbackValue(item.profileLabel), formatValue: value => String(value ?? '–') },
+        { key: 'momentum20Pct', index: 8, type: 'number', getValue: item => toNumberOrNull(item.momentum20Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'momentum60Pct', index: 9, type: 'number', getValue: item => toNumberOrNull(item.momentum60Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'momentum120Pct', index: 10, type: 'number', getValue: item => toNumberOrNull(item.momentum120Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'rsi14', index: 11, type: 'number', getValue: item => toNumberOrNull(item.rsi14), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
+        { key: 'annualizedVolatilityPct', index: 12, type: 'number', getValue: item => toNumberOrNull(item.annualizedVolatilityPct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'rationale', index: 13, type: 'text', getValue: item => fallbackValue(item.rationale), formatValue: value => String(value ?? '–') },
+      ],
+    },
+    sell: {
+      tableEl: sellRecommendationTable,
+      bodyEl: sellRecommendationBody,
+      emptyEl: sellRecommendationEmpty,
+      badgeEl: sellRecommendationBadge,
+      emptyText: 'Keine technisch auffaelligen Verkaufskandidaten gefunden.',
+      columns: [
+        { key: 'rank', index: 0, type: 'number', getValue: item => item.rank, formatValue: value => String(value ?? '–') },
+        { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
+        { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
+        { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
+        { key: 'isin', index: 4, type: 'text', getValue: item => fallbackValue(item.isin), formatValue: value => String(value ?? '–') },
+        { key: 'wkn', index: 5, type: 'text', getValue: item => fallbackValue(item.wkn), formatValue: value => String(value ?? '–') },
+        { key: 'score', index: 6, type: 'number', getValue: item => toNumberOrNull(item.score), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'sellOutlook', index: 7, type: 'text', getValue: item => fallbackValue(item.sellOutlook), formatValue: value => String(value ?? '–') },
+        { key: 'momentum20Pct', index: 8, type: 'number', getValue: item => toNumberOrNull(item.momentum20Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'momentum60Pct', index: 9, type: 'number', getValue: item => toNumberOrNull(item.momentum60Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'momentum120Pct', index: 10, type: 'number', getValue: item => toNumberOrNull(item.momentum120Pct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'rsi14', index: 11, type: 'number', getValue: item => toNumberOrNull(item.rsi14), formatValue: value => (value == null ? '–' : fmt(value, 2)) },
+        { key: 'annualizedVolatilityPct', index: 12, type: 'number', getValue: item => toNumberOrNull(item.annualizedVolatilityPct), formatValue: value => (value == null ? '–' : `${fmt(value, 2)} %`) },
+        { key: 'sellRationale', index: 13, type: 'text', getValue: item => fallbackValue(item.sellRationale), formatValue: value => String(value ?? '–') },
+      ],
+    },
+    all: {
+      tableEl: allRecommendationTable,
+      bodyEl: allRecommendationBody,
+      emptyEl: allRecommendationEmpty,
+      badgeEl: allRecommendationBadge,
+      emptyText: 'Keine technisch bewertbaren Einzelwerte gefunden.',
+      columns: [
+        { key: 'rank', index: 0, type: 'number', getValue: item => item.rank, formatValue: value => String(value ?? '–') },
+        { key: 'provider', index: 1, type: 'text', getValue: item => fallbackValue(item.provider), formatValue: value => String(value ?? '–') },
+        { key: 'name', index: 2, type: 'text', getValue: item => fallbackValue(item.name), formatValue: value => String(value ?? '–') },
+        { key: 'ticker', index: 3, type: 'text', getValue: item => fallbackValue(item.ticker), formatValue: value => String(value ?? '–') },
+        { key: 'recommendation', index: 4, type: 'text', getValue: item => fallbackValue(item.recommendation || 'Hold'), formatValue: value => String(value ?? '–') },
+        { key: 'recommendationStrengthScore', index: 5, type: 'number', getValue: item => toNumberOrNull(item.recommendationStrengthScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'recommendationStrength', index: 6, type: 'text', getValue: item => fallbackValue(item.recommendationStrength), formatValue: value => String(value ?? '–') },
+        { key: 'buyScore', index: 7, type: 'number', getValue: item => toNumberOrNull(item.buyScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'sellScore', index: 8, type: 'number', getValue: item => toNumberOrNull(item.sellScore), formatValue: value => (value == null ? '–' : fmt(value, 1)) },
+        { key: 'recommendationDelta', index: 9, type: 'number', getValue: item => toNumberOrNull(item.recommendationDelta), formatValue: value => (value == null ? '–' : `${value >= 0 ? '+' : ''}${fmt(value, 2)}`) },
+        { key: 'recommendationReason', index: 10, type: 'text', getValue: item => fallbackValue(item.recommendationReason), formatValue: value => String(value ?? '–') },
+      ],
+    },
+  };
+}
+
+function getDurationColumnConfig(tableKey, columnKey) {
+  const configs = getDurationTableConfigs();
+  return configs[tableKey]?.columns?.find(column => column.key === columnKey) || null;
+}
+
+function getDurationColumnFilterKeys(tableKey, columnKey) {
+  const state = durationTableStates[tableKey];
+  const column = getDurationColumnConfig(tableKey, columnKey);
+  if (!state || !column) return [];
+
+  const uniqueValues = new Map();
+  for (const row of state.rows) {
+    const rawValue = column.getValue(row);
+    const key = toFilterKey(rawValue);
+    if (!uniqueValues.has(key)) {
+      uniqueValues.set(key, rawValue);
+    }
+  }
+
+  return [...uniqueValues.entries()].sort((a, b) => compareByType(a[1], b[1], column.type));
+}
+
+function applyDurationTableTransforms(tableKey) {
+  const state = durationTableStates[tableKey];
+  const configs = getDurationTableConfigs();
+  const tableConfig = configs[tableKey];
+
+  if (!state || !tableConfig) {
+    return [];
+  }
+
+  let rows = [...state.rows];
+
+  for (const column of tableConfig.columns) {
+    const selected = state.filters[column.key];
+    if (!selected) continue;
+
+    rows = rows.filter(row => {
+      const valueKey = toFilterKey(column.getValue(row));
+      return selected.has(valueKey);
+    });
+  }
+
+  if (state.sort.key) {
+    const sortColumn = tableConfig.columns.find(column => column.key === state.sort.key);
+    if (sortColumn) {
+      const directionMultiplier = state.sort.direction === 'desc' ? -1 : 1;
+      rows.sort((rowA, rowB) => {
+        const valueA = sortColumn.getValue(rowA);
+        const valueB = sortColumn.getValue(rowB);
+        return compareByType(valueA, valueB, sortColumn.type) * directionMultiplier;
+      });
+    }
+  }
+
+  return rows;
+}
+
+function updateDurationHeaderIndicators(tableKey) {
+  const state = durationTableStates[tableKey];
+  const controls = durationHeaderControls[tableKey];
+  if (!state || !controls) return;
+
+  controls.forEach((control, columnKey) => {
+    const hasFilter = state.filters[columnKey] instanceof Set;
+    const isSorted = state.sort.key === columnKey;
+    const sortDirection = isSorted ? (state.sort.direction === 'desc' ? 'absteigend' : 'aufsteigend') : 'keine Sortierung';
+    const filterLabel = hasFilter ? 'Filter aktiv' : 'Filter aus';
+
+    control.button.classList.toggle('active', hasFilter || isSorted);
+    control.button.textContent = isSorted
+      ? (state.sort.direction === 'desc' ? '▼' : '▲')
+      : '▾';
+    control.button.title = `${filterLabel}, ${sortDirection}`;
+  });
+}
+
+function closeDurationFilterMenu() {
+  if (!activeDurationFilterMenu) return;
+  activeDurationFilterMenu.remove();
+  activeDurationFilterMenu = null;
+}
+
+function rerenderDurationTable(tableKey) {
+  if (tableKey === DURATION_TABLE_KEYS.buy) {
+    renderBuyRecommendations(durationTableStates.buy.rows, true);
+    return;
+  }
+
+  if (tableKey === DURATION_TABLE_KEYS.sell) {
+    renderSellRecommendations(durationTableStates.sell.rows, true);
+    return;
+  }
+
+  renderAllRecommendations(durationTableStates.all.rows, true);
+}
+
+function openDurationFilterMenu(tableKey, columnKey, anchorElement) {
+  closeDurationFilterMenu();
+
+  const state = durationTableStates[tableKey];
+  const column = getDurationColumnConfig(tableKey, columnKey);
+  if (!state || !column) return;
+
+  const uniqueEntries = getDurationColumnFilterKeys(tableKey, columnKey);
+  const allKeys = uniqueEntries.map(([key]) => key);
+  const existingFilter = state.filters[columnKey];
+  const draftSelection = existingFilter ? new Set(existingFilter) : new Set(allKeys);
+
+  const menu = document.createElement('div');
+  menu.className = 'duration-filter-menu';
+  menu.addEventListener('click', evt => evt.stopPropagation());
+
+  const sortActions = document.createElement('div');
+  sortActions.className = 'duration-filter-actions';
+
+  const sortAscBtn = document.createElement('button');
+  sortAscBtn.type = 'button';
+  sortAscBtn.className = 'duration-filter-action-btn';
+  sortAscBtn.textContent = 'Sortieren A-Z / Klein-Gross';
+  sortAscBtn.addEventListener('click', () => {
+    state.sort = { key: columnKey, direction: 'asc' };
+    rerenderDurationTable(tableKey);
+  });
+
+  const sortDescBtn = document.createElement('button');
+  sortDescBtn.type = 'button';
+  sortDescBtn.className = 'duration-filter-action-btn';
+  sortDescBtn.textContent = 'Sortieren Z-A / Gross-Klein';
+  sortDescBtn.addEventListener('click', () => {
+    state.sort = { key: columnKey, direction: 'desc' };
+    rerenderDurationTable(tableKey);
+  });
+
+  const clearSortBtn = document.createElement('button');
+  clearSortBtn.type = 'button';
+  clearSortBtn.className = 'duration-filter-action-btn';
+  clearSortBtn.textContent = 'Sortierung entfernen';
+  clearSortBtn.addEventListener('click', () => {
+    if (state.sort.key === columnKey) {
+      state.sort = { key: null, direction: 'asc' };
+      rerenderDurationTable(tableKey);
+    }
+  });
+
+  sortActions.append(sortAscBtn, sortDescBtn, clearSortBtn);
+
+  const divider = document.createElement('div');
+  divider.className = 'duration-filter-divider';
+
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'duration-filter-search';
+  searchInput.placeholder = 'Werte filtern...';
+
+  const optionsActions = document.createElement('div');
+  optionsActions.className = 'duration-filter-options-actions';
+
+  const selectAllBtn = document.createElement('button');
+  selectAllBtn.type = 'button';
+  selectAllBtn.className = 'duration-filter-link-btn';
+  selectAllBtn.textContent = 'Alle';
+
+  const clearAllBtn = document.createElement('button');
+  clearAllBtn.type = 'button';
+  clearAllBtn.className = 'duration-filter-link-btn';
+  clearAllBtn.textContent = 'Keine';
+
+  const resetFilterBtn = document.createElement('button');
+  resetFilterBtn.type = 'button';
+  resetFilterBtn.className = 'duration-filter-link-btn';
+  resetFilterBtn.textContent = 'Zuruecksetzen';
+
+  optionsActions.append(selectAllBtn, clearAllBtn, resetFilterBtn);
+
+  const optionsList = document.createElement('div');
+  optionsList.className = 'duration-filter-options';
+
+  function applyDraftFilter() {
+    if (draftSelection.size === allKeys.length) {
+      delete state.filters[columnKey];
+    } else {
+      state.filters[columnKey] = new Set(draftSelection);
+    }
+    rerenderDurationTable(tableKey);
+  }
+
+  function renderOptionList() {
+    const searchValue = searchInput.value.trim().toLowerCase();
+    optionsList.innerHTML = '';
+
+    for (const [key, rawValue] of uniqueEntries) {
+      const displayValue = column.formatValue(rawValue);
+      const matchesSearch = searchValue === '' || displayValue.toLowerCase().includes(searchValue);
+      if (!matchesSearch) continue;
+
+      const optionLabel = document.createElement('label');
+      optionLabel.className = 'duration-filter-option';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = draftSelection.has(key);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          draftSelection.add(key);
+        } else {
+          draftSelection.delete(key);
+        }
+        applyDraftFilter();
+      });
+
+      const valueText = document.createElement('span');
+      valueText.textContent = displayValue;
+
+      optionLabel.append(checkbox, valueText);
+      optionsList.appendChild(optionLabel);
+    }
+
+    if (!optionsList.children.length) {
+      const empty = document.createElement('div');
+      empty.className = 'duration-filter-no-options';
+      empty.textContent = 'Keine Werte gefunden';
+      optionsList.appendChild(empty);
+    }
+  }
+
+  selectAllBtn.addEventListener('click', () => {
+    for (const key of allKeys) {
+      draftSelection.add(key);
+    }
+    applyDraftFilter();
+    renderOptionList();
+  });
+
+  clearAllBtn.addEventListener('click', () => {
+    draftSelection.clear();
+    applyDraftFilter();
+    renderOptionList();
+  });
+
+  resetFilterBtn.addEventListener('click', () => {
+    for (const key of allKeys) {
+      draftSelection.add(key);
+    }
+    delete state.filters[columnKey];
+    rerenderDurationTable(tableKey);
+    renderOptionList();
+  });
+
+  searchInput.addEventListener('input', renderOptionList);
+
+  menu.append(sortActions, divider, searchInput, optionsActions, optionsList);
+  document.body.appendChild(menu);
+  activeDurationFilterMenu = menu;
+
+  const anchorRect = anchorElement.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const top = anchorRect.bottom + window.scrollY + 6;
+  const maxLeft = window.scrollX + document.documentElement.clientWidth - menuRect.width - 12;
+  const left = Math.max(window.scrollX + 12, Math.min(anchorRect.left + window.scrollX, maxLeft));
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+
+  renderOptionList();
+  searchInput.focus();
+}
+
+function initDurationTableHeaderControls() {
+  const configs = getDurationTableConfigs();
+
+  for (const tableKey of Object.values(DURATION_TABLE_KEYS)) {
+    const tableConfig = configs[tableKey];
+    if (!tableConfig?.tableEl?.tHead?.rows?.[0]) continue;
+
+    const headerRow = tableConfig.tableEl.tHead.rows[0];
+    for (const column of tableConfig.columns) {
+      const th = headerRow.cells[column.index];
+      if (!th || th.dataset.filterReady === '1') continue;
+
+      const titleText = th.textContent.trim();
+      th.dataset.filterReady = '1';
+      th.classList.add('th-filter-enabled');
+      th.textContent = '';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'th-filter-wrap';
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'th-filter-label';
+      labelSpan.textContent = titleText;
+
+      const filterBtn = document.createElement('button');
+      filterBtn.type = 'button';
+      filterBtn.className = 'th-filter-btn';
+      filterBtn.textContent = '▾';
+      filterBtn.title = 'Sortieren und filtern';
+      filterBtn.addEventListener('click', evt => {
+        evt.stopPropagation();
+        openDurationFilterMenu(tableKey, column.key, filterBtn);
+      });
+
+      wrap.append(labelSpan, filterBtn);
+      th.appendChild(wrap);
+
+      durationHeaderControls[tableKey].set(column.key, {
+        button: filterBtn,
+        label: labelSpan,
+      });
+    }
+
+    updateDurationHeaderIndicators(tableKey);
+  }
+
+  document.addEventListener('click', () => {
+    closeDurationFilterMenu();
+  });
+
+  document.addEventListener('keydown', evt => {
+    if (evt.key === 'Escape') {
+      closeDurationFilterMenu();
+    }
+  });
+}
+
+function renderAllRecommendations(items, preserveState = false) {
+  if (!preserveState) {
+    durationTableStates.all.rows = Array.isArray(items) ? items : [];
+  }
+
+  const visibleItems = applyDurationTableTransforms(DURATION_TABLE_KEYS.all);
+  allRecommendationBadge.textContent = String(visibleItems.length);
   setVisible(recommendationSection, true);
 
-  if (!items.length) {
+  if (!visibleItems.length) {
     allRecommendationBody.innerHTML = '';
     setVisible(allRecommendationEmpty, true);
+    allRecommendationEmpty.textContent = durationTableStates.all.rows.length
+      ? 'Keine Zeilen fuer die aktuellen Filter gefunden.'
+      : 'Keine technisch bewertbaren Einzelwerte gefunden.';
+    updateDurationHeaderIndicators(DURATION_TABLE_KEYS.all);
     return;
   }
 
   setVisible(allRecommendationEmpty, false);
-  allRecommendationBody.innerHTML = items
+  allRecommendationBody.innerHTML = visibleItems
     .map(item => {
       const actionClass = getRecommendationClass(item.recommendation);
       const delta = Number.isFinite(item.recommendationDelta)
@@ -789,20 +1270,31 @@ function renderAllRecommendations(items) {
         </tr>`;
     })
     .join('');
+
+  updateDurationHeaderIndicators(DURATION_TABLE_KEYS.all);
 }
 
-function renderBuyRecommendations(items) {
-  buyRecommendationBadge.textContent = String(items.length);
+function renderBuyRecommendations(items, preserveState = false) {
+  if (!preserveState) {
+    durationTableStates.buy.rows = Array.isArray(items) ? items : [];
+  }
+
+  const visibleItems = applyDurationTableTransforms(DURATION_TABLE_KEYS.buy);
+  buyRecommendationBadge.textContent = String(visibleItems.length);
   setVisible(recommendationSection, true);
 
-  if (!items.length) {
+  if (!visibleItems.length) {
     buyRecommendationBody.innerHTML = '';
     setVisible(buyRecommendationEmpty, true);
+    buyRecommendationEmpty.textContent = durationTableStates.buy.rows.length
+      ? 'Keine Zeilen fuer die aktuellen Filter gefunden.'
+      : 'Keine technisch verwertbaren Kaufkandidaten gefunden.';
+    updateDurationHeaderIndicators(DURATION_TABLE_KEYS.buy);
     return;
   }
 
   setVisible(buyRecommendationEmpty, false);
-  buyRecommendationBody.innerHTML = items
+  buyRecommendationBody.innerHTML = visibleItems
     .map(item => `
       <tr>
         <td><span class="rank-pill">${item.rank}</span></td>
@@ -821,20 +1313,31 @@ function renderBuyRecommendations(items) {
         <td><div class="recommendation-rationale">${escHtml(item.rationale || '–')}</div></td>
       </tr>`)
     .join('');
+
+  updateDurationHeaderIndicators(DURATION_TABLE_KEYS.buy);
 }
 
-function renderSellRecommendations(items) {
-  sellRecommendationBadge.textContent = String(items.length);
+function renderSellRecommendations(items, preserveState = false) {
+  if (!preserveState) {
+    durationTableStates.sell.rows = Array.isArray(items) ? items : [];
+  }
+
+  const visibleItems = applyDurationTableTransforms(DURATION_TABLE_KEYS.sell);
+  sellRecommendationBadge.textContent = String(visibleItems.length);
   setVisible(recommendationSection, true);
 
-  if (!items.length) {
+  if (!visibleItems.length) {
     sellRecommendationBody.innerHTML = '';
     setVisible(sellRecommendationEmpty, true);
+    sellRecommendationEmpty.textContent = durationTableStates.sell.rows.length
+      ? 'Keine Zeilen fuer die aktuellen Filter gefunden.'
+      : 'Keine technisch auffaelligen Verkaufskandidaten gefunden.';
+    updateDurationHeaderIndicators(DURATION_TABLE_KEYS.sell);
     return;
   }
 
   setVisible(sellRecommendationEmpty, false);
-  sellRecommendationBody.innerHTML = items
+  sellRecommendationBody.innerHTML = visibleItems
     .map(item => `
       <tr>
         <td><span class="rank-pill">${item.rank}</span></td>
@@ -853,6 +1356,8 @@ function renderSellRecommendations(items) {
         <td><div class="recommendation-rationale">${escHtml(item.sellRationale || '–')}</div></td>
       </tr>`)
     .join('');
+
+  updateDurationHeaderIndicators(DURATION_TABLE_KEYS.sell);
 }
 
 async function loadDbEtfList() {
@@ -1061,6 +1566,8 @@ async function runRecommendations() {
   let assetClass;
   let provider;
   let investmentDurationMonths;
+
+  closeDurationFilterMenu();
 
   try {
     assetClass = getSelectedRecommendationAssetClass();
@@ -1295,6 +1802,7 @@ applyAssetClassUiState();
 applyRecommendationAssetClassUiState();
 updateRecommendationCriteriaInfo();
 updateSignalLabels();
+initDurationTableHeaderControls();
 setActiveRecommendationSubtab('buy');
 startSyncStatusPolling();
 setActiveTab('main');
