@@ -22,6 +22,7 @@
       <button id="tabDurationBtn" class="tab-btn tab-btn--primary active" type="button">Empfehlungen</button>
       <button id="tabMainBtn" class="tab-btn" type="button">Scanner</button>
       <button id="tabDbBtn" class="tab-btn" type="button">DB-Daten</button>
+      <button id="tabBacktestBtn" class="tab-btn" type="button">Backtest</button>
     </nav>
 
     <div id="tabMainContent">
@@ -488,6 +489,62 @@
       </p>
     </section>
     </div>
+
+    <!-- ── Backtest Tab ──────────────────────────────────────────────────── -->
+    <div id="tabBacktestContent" class="hidden">
+
+      <!-- Controls -->
+      <section class="controls-panel">
+        <div class="controls-row">
+          <label class="input-label" for="backtestAssetClassFilter">Asset-Typ</label>
+          <select id="backtestAssetClassFilter" class="provider-select" title="Zwischen ETFs und DAX40-Einzelwerten wechseln">
+            <option value="etf" selected>ETFs</option>
+            <option value="dax40">DAX40-Einzelwerte</option>
+          </select>
+          <label class="input-label" for="backtestProviderFilter">Anbieter</label>
+          <select id="backtestProviderFilter" class="provider-select" title="ETF-Anbieter filtern">
+            <option value="all" selected>Alle</option>
+            <option value="ishares">nur iShares</option>
+            <option value="xtrackers">nur Xtrackers</option>
+          </select>
+          <button id="btnBacktest" class="btn btn-primary">
+            <span class="btn-icon">🔬</span> Backtest starten
+          </button>
+        </div>
+        <p class="hint">
+          Prueft historisch, ob Buy-Signale systematisch
+          hoehere Folgerenditen erzielt haben als Sell-Signale (Out-of-Sample, rollierende Fenster).
+        </p>
+      </section>
+
+      <!-- Loading -->
+      <div id="backtestLoadingSection" class="loading-section hidden">
+        <div class="spinner"></div>
+        <div class="loading-text">
+          <p id="backtestLoadingStatus">Analysiere Kurszeitreihen &hellip;</p>
+          <p class="loading-sub">Dies kann einige Sekunden dauern.</p>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="backtestErrorBanner" class="error-banner hidden">
+        <span class="error-icon">&#x26A0;&#xFE0F;</span>
+        <span id="backtestErrorMessage">Unbekannter Fehler</span>
+      </div>
+
+      <!-- Results -->
+      <div id="backtestResultsSection" class="hidden">
+        <h2 class="section-title" style="margin-bottom: 16px;">&#x1F4CA; Backtest-Ergebnis</h2>
+        <div class="backtest-profile-grid" id="backtestProfileGrid"></div>
+        <p class="hint" style="margin-top: 14px;">
+          <strong>IC (Info-Koeffizient):</strong> Spearman-Korrelation zwischen Score und Folgerendite &mdash;
+          |IC| &ge; 0.10 = bedeutsam, 0.05&ndash;0.10 = schwach, &lt; 0.05 = kein Zusammenhang.<br>
+          <strong>Trennschaerfe:</strong> Durchschnittliche Folgerendite Buy minus Sell.<br>
+          Alle Kennzahlen basieren auf historischen Daten und sind kein Versprechen kuenftiger Ergebnisse.
+        </p>
+      </div>
+
+    </div><!-- /#tabBacktestContent -->
 
     <!-- ── Footer ────────────────────────────────────────────────────────── -->
     <footer class="app-footer">

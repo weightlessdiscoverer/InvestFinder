@@ -17,6 +17,7 @@ const {
   getDistanceToRecentHighPct,
   computeRsiScore,
   computeSellRsiScore,
+  computeVolatilityRegimeScore,
   deriveUnifiedRecommendation,
 } = require('./recommendationScores');
 const { buildRationale, buildSellRationale } = require('./recommendationRationale');
@@ -177,6 +178,7 @@ module.exports = {
     getDistanceToRecentHighPct,
     computeRsiScore,
     computeSellRsiScore,
+    computeVolatilityRegimeScore,
     buildRationale,
     buildSellRationale,
     deriveUnifiedRecommendation,

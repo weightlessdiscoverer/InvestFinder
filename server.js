@@ -35,6 +35,7 @@ const {
 } = require('./src/yahooHistoryStore');
 const { getEtfUniverse } = require('./src/etfUniverseService');
 const { createAvailableInstrumentsHandler } = require('./src/availableInstrumentsService');
+const { runFullBacktest } = require('./src/backtest');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -188,16 +189,55 @@ app.get('/api/available-instruments', handleAvailableInstruments);
  */
 app.get('/api/available-etfs', handleAvailableInstruments);
 
+/**
+ * GET /api/backtest
+ * Runs an out-of-sample backtest for the current instrument universe.
+ * Tests whether Buy/Hold/Sell signals produced higher forward returns historically.
+ *
+ * Query params:
+ *   - assetClass=etf|dax40
+ *   - provider=all|ishares|xtrackers
+ */
+app.get('/api/backtest', scanLimiter, async (req, res) => {
+  let assetClass;
+  let providerFilter;
+  try {
+    assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
+    providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: err.message });
+  }
+
+  try {
+    const results = await runFullBacktest({ assetClass, providerFilter });
+    return res.json({ ok: true, results, runAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('Backtest error:', err);
+    return res.status(500).json({ ok: false, error: 'Backtest fehlgeschlagen: ' + err.message });
+  }
+});
+
 // Catch-all: serve index.html for any unknown path (SPA fallback)
 app.use((_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`InvestFinder server running → http://localhost:${PORT}`);
+function startServer(port = PORT) {
+  return app.listen(port, () => {
+    console.log(`InvestFinder server running -> http://localhost:${port}`);
 
-  startYahooHistoryUpdater({
-    cooldownMs: Number(process.env.YAHOO_COOLDOWN_MS || 60_000),
+    startYahooHistoryUpdater({
+      cooldownMs: Number(process.env.YAHOO_COOLDOWN_MS || 60_000),
+    });
+    console.log('Yahoo history updater started in background.');
   });
-  console.log('Yahoo history updater started in background.');
-});
+}
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = {
+  app,
+  startServer,
+};

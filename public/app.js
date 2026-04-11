@@ -100,6 +100,17 @@ const dbFreshnessBadge = document.getElementById('dbFreshnessBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
 const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 const dbAssetClassFilter = document.getElementById('dbAssetClassFilter');
+const tabBacktestBtn = document.getElementById('tabBacktestBtn');
+const tabBacktestContent = document.getElementById('tabBacktestContent');
+const btnBacktest = document.getElementById('btnBacktest');
+const backtestAssetClassFilter = document.getElementById('backtestAssetClassFilter');
+const backtestProviderFilter = document.getElementById('backtestProviderFilter');
+const backtestLoadingSection = document.getElementById('backtestLoadingSection');
+const backtestLoadingStatus = document.getElementById('backtestLoadingStatus');
+const backtestErrorBanner = document.getElementById('backtestErrorBanner');
+const backtestErrorMessage = document.getElementById('backtestErrorMessage');
+const backtestResultsSection = document.getElementById('backtestResultsSection');
+const backtestProfileGrid = document.getElementById('backtestProfileGrid');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
@@ -116,23 +127,23 @@ const RECOMMENDATION_PROFILES = {
   short: {
     rangeLabel: '1 bis 3 Monate',
     profileLabel: 'Kurzfristig',
-    formula: '20% Trend + 30% 1M-Momentum + 15% 3M-Momentum + 20% RSI + 10% Hoch-Naehe + 5% Volatilitaet',
-    momentumText: '1-Monats-Momentum ist der staerkste Faktor. 3-Monats-Momentum fliesst als Bestaetigung ein, 6 Monate werden nicht gewichtet.',
-    rsiText: 'RSI14 wird auf ein Momentum-Ziel von 62 bewertet. Zu heiss ueber 75 und zu schwach unter 40 wird zusaetzlich abgestraft.',
+    formula: '30% Trend + 35% 3M-Momentum + 10% 6M-Momentum + 5% 1M-Bestaetigung + 10% Drawdown-Stabilitaet + 10% Volatilitaetsregime',
+    momentumText: 'Kurzfristig dominiert nicht mehr der 1-Monats-Impuls, sondern robustes 3-Monats-Momentum. 6 Monate dienen als Filter gegen kurzlebige Bewegungen.',
+    rsiText: 'RSI14 ist nur noch ein nachrangiger Diagnosewert und kein zentraler Score-Treiber mehr.',
   },
   medium: {
     rangeLabel: '4 bis 12 Monate',
     profileLabel: 'Mittelfristig',
-    formula: '30% Trend + 10% 1M-Momentum + 25% 3M-Momentum + 10% RSI + 10% Hoch-Naehe + 15% Volatilitaet',
-    momentumText: '3-Monats-Momentum ist der wichtigste Bewegungsfaktor. 1 Monat dient nur als kurzfristige Feinjustierung, 6 Monate werden nicht gewichtet.',
-    rsiText: 'RSI14 wird auf ein Ziel von 58 bewertet. Das bevorzugt intakten Aufwaertstrend ohne stark ueberdehntes Niveau.',
+    formula: '35% Trend + 30% 3M-Momentum + 15% 6M-Momentum + 10% Drawdown-Stabilitaet + 10% Volatilitaetsregime',
+    momentumText: 'Mittelfristig zaehlt vor allem 3-Monats-Momentum, bestaetigt durch 6 Monate. Sehr kurzfristige Bewegungen werden bewusst nicht mehr hoch gewichtet.',
+    rsiText: 'RSI14 bleibt sichtbar, beeinflusst die Rangfolge aber nicht mehr wesentlich.',
   },
   long: {
     rangeLabel: 'ab 13 Monaten',
     profileLabel: 'Langfristig',
-    formula: '40% Trend + 20% 3M-Momentum + 20% 6M-Momentum + 5% RSI + 5% Hoch-Naehe + 10% Volatilitaet',
-    momentumText: '3- und 6-Monats-Momentum zaehlen, kurzfristige 1-Monats-Bewegungen werden bewusst ausgeblendet.',
-    rsiText: 'RSI14 wird auf ein moderateres Ziel von 55 bewertet. Langfristig zaehlt Trendstaerke mehr als kurzfristige Ueberhitzung.',
+    formula: '40% Trend + 20% 3M-Momentum + 20% 6M-Momentum + 10% Drawdown-Stabilitaet + 10% Volatilitaetsregime',
+    momentumText: 'Langfristig sind Trendqualitaet und das Zusammenspiel aus 3- und 6-Monats-Momentum entscheidend. 1-Monats-Rauschen bleibt draussen.',
+    rsiText: 'RSI14 ist hier rein informativ und nicht mehr als dominanter Langfrist-Faktor modelliert.',
   },
 };
 
@@ -448,8 +459,8 @@ function updateRecommendationCriteriaInfo() {
   criteriaTrendText.textContent = 'Trendscore von 0 bis 100: 15 Punkte fuer Kurs > SMA20, 20 fuer Kurs > SMA50, 25 fuer Kurs > SMA200, 15 fuer SMA20 > SMA50, 15 fuer SMA50 > SMA200 und 10 fuer einen steigenden SMA200.';
   criteriaMomentumText.textContent = `${profile.momentumText} Die Momentum-Scores werden auf 0 bis 100 normiert.`;
   criteriaRsiText.textContent = profile.rsiText;
-  criteriaBreakoutText.textContent = 'Je naeher der aktuelle Kurs am 60-Tage-Hoch liegt, desto besser. Der Teilscore faellt von optimal bei 0% Abstand bis schwach bei etwa 15% Abstand.';
-  criteriaVolatilityText.textContent = 'Die annualisierte 20-Tage-Volatilitaet wird invers bewertet: ruhiger ist besser. Etwa 15% ist stark, ab etwa 45% ist der Teilscore nahe 0.';
+  criteriaBreakoutText.textContent = 'Statt eines simplen Breakout-Bonus wird jetzt Drawdown-Stabilitaet bewertet: kleine Abstaende zum 60-Tage-Hoch sind positiv, tiefe Ruecksetzer sprechen gegen einen robusten Trend.';
+  criteriaVolatilityText.textContent = 'Die annualisierte 20-Tage-Volatilitaet wird an einem horizon-spezifischen Risikobudget gemessen. Optimal ist nicht minimal, sondern ein tragbares Volatilitaetsregime ohne Krisencharakter.';
 
   criteriaShortCard.classList.toggle('active', profileKey === 'short');
   criteriaMediumCard.classList.toggle('active', profileKey === 'medium');
@@ -479,19 +490,23 @@ function updateSignalLabels() {
 }
 
 function setActiveTab(tab) {
-  currentTab = tab === 'db' || tab === 'duration' ? tab : 'main';
+  const allowed = ['main', 'duration', 'db', 'backtest'];
+  currentTab = allowed.includes(tab) ? tab : 'main';
 
   const mainActive = currentTab === 'main';
   const durationActive = currentTab === 'duration';
   const dbActive = currentTab === 'db';
+  const backtestActive = currentTab === 'backtest';
 
   setVisible(tabMainContent, mainActive);
   setVisible(tabDurationContent, durationActive);
   setVisible(tabDbContent, dbActive);
+  setVisible(tabBacktestContent, backtestActive);
 
   tabMainBtn.classList.toggle('active', mainActive);
   tabDurationBtn.classList.toggle('active', durationActive);
   tabDbBtn.classList.toggle('active', dbActive);
+  tabBacktestBtn.classList.toggle('active', backtestActive);
 
   if (dbActive) {
     loadDbEtfList();
@@ -1453,6 +1468,185 @@ async function runRecommendations() {
   }
 }
 
+/* ── Backtest ────────────────────────────────────────────────────────────── */
+
+const BACKTEST_STATUS_MESSAGES = [
+  'Lade Kurszeitreihen …',
+  'Berechne Scores je Zeitpunkt …',
+  'Ermittle Folgerenditen …',
+  'Berechne Info-Koeffizient …',
+];
+let backtestStatusInterval = null;
+
+function startBacktestStatusAnimation() {
+  let idx = 0;
+  backtestLoadingStatus.textContent = BACKTEST_STATUS_MESSAGES[0];
+  backtestStatusInterval = setInterval(() => {
+    idx = (idx + 1) % BACKTEST_STATUS_MESSAGES.length;
+    backtestLoadingStatus.textContent = BACKTEST_STATUS_MESSAGES[idx];
+  }, 3000);
+}
+
+function stopBacktestStatusAnimation() {
+  if (backtestStatusInterval) {
+    clearInterval(backtestStatusInterval);
+    backtestStatusInterval = null;
+  }
+}
+
+function icBadgeClass(interpretation) {
+  if (interpretation === 'Bedeutsam') return 'backtest-badge backtest-badge--green';
+  if (interpretation === 'Schwach') return 'backtest-badge backtest-badge--yellow';
+  return 'backtest-badge backtest-badge--gray';
+}
+
+function sepBadgeClass(interpretation) {
+  if (interpretation === 'Klare Trennschaerfe') return 'backtest-badge backtest-badge--green';
+  if (interpretation === 'Leichte Trennschaerfe') return 'backtest-badge backtest-badge--yellow';
+  return 'backtest-badge backtest-badge--gray';
+}
+
+function renderSignalRow(label, signalData, actionClass) {
+  if (!signalData || signalData.count === 0) {
+    return `<tr>
+      <td><span class="recommendation-action ${actionClass}">${escHtml(label)}</span></td>
+      <td class="num" colspan="4" style="color: var(--color-text-muted);">Keine Datenpunkte</td>
+    </tr>`;
+  }
+  const hitRateColor = signalData.hitRatePct >= 55
+    ? 'style="color: var(--color-green); font-weight: 700;"'
+    : signalData.hitRatePct <= 45
+      ? 'style="color: var(--color-red);"'
+      : '';
+  return `<tr>
+    <td><span class="recommendation-action ${actionClass}">${escHtml(label)}</span></td>
+    <td class="num">${fmt(signalData.avgForwardReturnPct, 2)} %</td>
+    <td class="num">${fmt(signalData.annualizedReturnPct, 1)} %</td>
+    <td class="num" ${hitRateColor}>${fmt(signalData.hitRatePct, 1)} %</td>
+    <td class="num">${signalData.count}</td>
+  </tr>`;
+}
+
+function renderBacktestCard(profile) {
+  const { label, forwardDays, sampleSize, infoCoefficient, icInterpretation, separationPct, separationInterpretation, bySignal } = profile;
+  const buyRow = renderSignalRow('Buy', bySignal?.Buy, 'action-buy');
+  const holdRow = renderSignalRow('Hold', bySignal?.Hold, 'action-hold');
+  const sellRow = renderSignalRow('Sell', bySignal?.Sell, 'action-sell');
+
+  return `
+    <div class="backtest-card">
+      <div class="backtest-card-header">
+        <span class="backtest-card-title">${escHtml(label)}</span>
+        <span class="backtest-card-sub">${forwardDays} Handelstage voraus</span>
+      </div>
+      <div class="backtest-meta">
+        <div class="backtest-meta-item">
+          <span class="backtest-meta-label">IC</span>
+          <span class="${icBadgeClass(icInterpretation)}">${fmt(infoCoefficient, 3)}</span>
+          <span class="backtest-meta-interp">${escHtml(icInterpretation)}</span>
+        </div>
+        <div class="backtest-meta-item">
+          <span class="backtest-meta-label">Trennschaerfe</span>
+          <span class="${sepBadgeClass(separationInterpretation)}">${fmt(separationPct, 2)} %</span>
+          <span class="backtest-meta-interp">${escHtml(separationInterpretation)}</span>
+        </div>
+        <div class="backtest-meta-item">
+          <span class="backtest-meta-label">Datenpunkte</span>
+          <span class="backtest-meta-value">${sampleSize}</span>
+        </div>
+      </div>
+      <div class="table-wrapper" style="margin-top: 12px;">
+        <table class="results-table backtest-signal-table">
+          <thead>
+            <tr>
+              <th>Signal</th>
+              <th class="num">Ø Rendite</th>
+              <th class="num">Ann. p.a.</th>
+              <th class="num">Hit-Rate</th>
+              <th class="num">n</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${buyRow}
+            ${holdRow}
+            ${sellRow}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function normalizeBacktestProfiles(results) {
+  if (Array.isArray(results)) {
+    return results;
+  }
+
+  if (results && typeof results === 'object' && results.profiles && typeof results.profiles === 'object') {
+    const orderedKeys = ['short', 'medium', 'long'];
+    return orderedKeys
+      .map(key => results.profiles[key])
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function renderBacktestResults(results) {
+  const profiles = normalizeBacktestProfiles(results);
+  backtestProfileGrid.innerHTML = profiles.map(renderBacktestCard).join('');
+  setVisible(backtestResultsSection, true);
+}
+
+async function runBacktest() {
+  let assetClass;
+  let providerFilter;
+
+  try {
+    assetClass = String(backtestAssetClassFilter.value || 'etf').trim().toLowerCase();
+    if (!ALLOWED_ASSET_CLASSES.has(assetClass)) {
+      throw new Error('Ungueltiger Asset-Typ.');
+    }
+    providerFilter = String(backtestProviderFilter.value || 'all').trim().toLowerCase();
+    if (assetClass === 'dax40') {
+      providerFilter = 'all';
+    }
+    if (!ALLOWED_PROVIDER_FILTERS.has(providerFilter)) {
+      throw new Error('Ungueltiger Anbieterfilter.');
+    }
+  } catch (validationErr) {
+    backtestErrorMessage.textContent = validationErr.message;
+    setVisible(backtestErrorBanner, true);
+    return;
+  }
+
+  setVisible(backtestErrorBanner, false);
+  setVisible(backtestResultsSection, false);
+  setVisible(backtestLoadingSection, true);
+  btnBacktest.disabled = true;
+  startBacktestStatusAnimation();
+
+  try {
+    const params = new URLSearchParams({ assetClass, provider: providerFilter });
+    const response = await fetch(`/api/backtest?${params.toString()}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Unbekannter Serverfehler');
+    }
+    renderBacktestResults(data.results || []);
+  } catch (err) {
+    backtestErrorMessage.textContent = `Backtest-Fehler: ${err.message}`;
+    setVisible(backtestErrorBanner, true);
+  } finally {
+    stopBacktestStatusAnimation();
+    setVisible(backtestLoadingSection, false);
+    btnBacktest.disabled = false;
+  }
+}
+
 /* ── Event listeners ─────────────────────────────────────────────────────── */
 
 btnScan.addEventListener('click', () => runScan());
@@ -1591,6 +1785,8 @@ maxAboveSmaPctInput.addEventListener('input', () => {
 tabMainBtn.addEventListener('click', () => setActiveTab('main'));
 tabDurationBtn.addEventListener('click', () => setActiveTab('duration'));
 tabDbBtn.addEventListener('click', () => setActiveTab('db'));
+tabBacktestBtn.addEventListener('click', () => setActiveTab('backtest'));
+btnBacktest.addEventListener('click', () => runBacktest());
 
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 

@@ -5,7 +5,6 @@ const { SELL_PROFILES, getInvestmentProfile } = require('./recommendationProfile
 const {
   round,
   scaleToScore,
-  inverseScaleToScore,
   getPercentChange,
   computeAnnualizedVolatilityPct,
   getDistanceToRecentHighPct,
@@ -13,6 +12,7 @@ const {
   computeBearishTrendScore,
   computeRsiScore,
   computeSellRsiScore,
+  computeVolatilityRegimeScore,
   deriveUnifiedRecommendation,
 } = require('./recommendationScores');
 const { buildRationale, buildSellRationale } = require('./recommendationRationale');
@@ -69,12 +69,12 @@ function analyzeTechnicalSetupCore({ dates, closes, investmentDurationMonths }) 
     sma200,
     previousSma200,
   });
-  const momentum20Score = scaleToScore(momentum20Pct, -12, 18);
-  const momentum60Score = scaleToScore(momentum60Pct, -18, 28);
-  const momentum120Score = scaleToScore(momentum120Pct, -25, 40);
+  const momentum20Score = scaleToScore(momentum20Pct, -8, 12);
+  const momentum60Score = scaleToScore(momentum60Pct, -12, 24);
+  const momentum120Score = scaleToScore(momentum120Pct, -18, 36);
   const rsiScore = computeRsiScore(rsi14, profile);
-  const breakoutScore = inverseScaleToScore(Math.abs(distanceTo60dHighPct), 0, 15);
-  const volatilityScore = inverseScaleToScore(annualizedVolatilityPct, 15, 45);
+  const breakoutScore = scaleToScore(distanceTo60dHighPct, -18, 0);
+  const volatilityScore = computeVolatilityRegimeScore(annualizedVolatilityPct, profile);
 
   const sellTrendScore = computeBearishTrendScore({
     currentClose,
@@ -83,12 +83,16 @@ function analyzeTechnicalSetupCore({ dates, closes, investmentDurationMonths }) 
     sma200,
     previousSma200,
   });
-  const sellMomentum20Score = inverseScaleToScore(momentum20Pct, -12, 18);
-  const sellMomentum60Score = inverseScaleToScore(momentum60Pct, -18, 28);
-  const sellMomentum120Score = inverseScaleToScore(momentum120Pct, -25, 40);
+  const sellMomentum20Score = scaleToScore(-momentum20Pct, -12, 8);
+  const sellMomentum60Score = scaleToScore(-momentum60Pct, -24, 12);
+  const sellMomentum120Score = scaleToScore(-momentum120Pct, -36, 18);
   const sellRsiScore = computeSellRsiScore(rsi14, sellProfile);
-  const breakdownScore = scaleToScore(-distanceTo60dHighPct, 0, 20);
-  const sellVolatilityScore = scaleToScore(annualizedVolatilityPct, 15, 55);
+  const breakdownScore = scaleToScore(-distanceTo60dHighPct, 4, 22);
+  const sellVolatilityScore = scaleToScore(
+    annualizedVolatilityPct,
+    (sellProfile.targetVolatilityPct || profile.targetVolatilityPct || 20) + 2,
+    (sellProfile.targetVolatilityPct || profile.targetVolatilityPct || 20) + 20
+  );
 
   const finalScore = round(
     ((profile.weights.trend || 0) * trendScore)

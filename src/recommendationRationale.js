@@ -19,7 +19,7 @@ function buildRationale({ profile, trendScore, momentum20Score, momentum60Score,
     { label: '3-Monats-Momentum', weight: profile.weights.momentum60 || 0, score: momentum60Score },
     { label: '6-Monats-Momentum', weight: profile.weights.momentum120 || 0, score: momentum120Score },
     { label: 'RSI-Regime', weight: profile.weights.rsi || 0, score: rsiScore },
-    { label: 'Naehe zum 60T-Hoch', weight: profile.weights.breakout || 0, score: breakoutScore },
+    { label: 'Drawdown-Stabilitaet', weight: profile.weights.breakout || 0, score: breakoutScore },
   ];
 
   const labels = selectTopSignalLabels(weightedSignals);
@@ -27,7 +27,7 @@ function buildRationale({ profile, trendScore, momentum20Score, momentum60Score,
     return 'Keine klare technische Begruendung verfuegbar.';
   }
 
-  return `${profile.label}: staerkste Treiber sind ${labels.join(' und ')}.`;
+  return `${profile.label}: staerkste evidenzbasierte Treiber sind ${labels.join(' und ')}.`;
 }
 
 function buildSellRationale({
@@ -45,7 +45,7 @@ function buildSellRationale({
     { label: 'Schwaches 3M-Momentum', weight: sellProfile.weights.momentum60 || 0, score: momentum60Score },
     { label: 'Schwaches 6M-Momentum', weight: sellProfile.weights.momentum120 || 0, score: momentum120Score },
     { label: 'Bearishes RSI-Regime', weight: sellProfile.weights.rsi || 0, score: rsiScore },
-    { label: 'Abstand zum 60T-Hoch', weight: sellProfile.weights.breakdown || 0, score: breakdownScore },
+    { label: 'Drawdown-Risiko', weight: sellProfile.weights.breakdown || 0, score: breakdownScore },
   ];
 
   const labels = selectTopSignalLabels(weightedSignals);
@@ -53,7 +53,7 @@ function buildSellRationale({
     return 'Keine klare technische Begruendung verfuegbar.';
   }
 
-  return `Verkaufskandidat: staerkste Treiber sind ${labels.join(' und ')}.`;
+  return `Verkaufskandidat: staerkste evidenzbasierte Treiber sind ${labels.join(' und ')}.`;
 }
 
 module.exports = {

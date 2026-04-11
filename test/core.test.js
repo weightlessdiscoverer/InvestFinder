@@ -42,6 +42,15 @@ const {
   getMasterDataIndex,
   warmMasterDataCache,
 } = require('../src/masterDataService');
+const backtestModule = require('../src/backtest');
+const {
+  runUniverseBacktest,
+  _internal: {
+    runBacktestForSeries,
+    aggregateBacktestResults,
+    spearmanRankCorrelation,
+  },
+} = backtestModule;
 
 test('normalizeSmaPeriod returns default when input is empty', () => {
   assert.equal(normalizeSmaPeriod(), DEFAULT_SMA_PERIOD);
@@ -171,7 +180,7 @@ test('analyzeTechnicalSetup can produce Buy, Sell and Hold recommendations', () 
   const bearishCloses = Array.from({ length: 260 }, (_, index) => 300 - (index * 0.95) + (Math.sin(index / 7) * 0.2));
   const neutralCloses = Array.from(
     { length: 260 },
-    (_, index) => 120 - (index * 0.14) + (Math.sin(index / 13) * 2.9)
+    (_, index) => 120 + (Math.sin(index / 8) * 3.5) + (Math.sin(index / 21) * 1.8)
   );
 
   const bullish = analyzeTechnicalSetup({ dates, closes: bullishCloses, investmentDurationMonths: 12 });
@@ -274,6 +283,7 @@ test('recommendationEngine internal helpers cover defensive guards and threshold
     getPercentChange,
     computeAnnualizedVolatilityPct,
     getDistanceToRecentHighPct,
+    computeVolatilityRegimeScore,
     deriveUnifiedRecommendation,
   } = recommendationEngineModule._internal;
 
@@ -290,6 +300,12 @@ test('recommendationEngine internal helpers cover defensive guards and threshold
   assert.equal(getDistanceToRecentHighPct([1, 2, 3], 60), null);
   assert.equal(getDistanceToRecentHighPct(Array.from({ length: 60 }, () => 0), 60), null);
   assert.ok(Number.isFinite(getDistanceToRecentHighPct(Array.from({ length: 60 }, (_, i) => 100 + i), 60)));
+
+  assert.equal(computeVolatilityRegimeScore(null, { targetVolatilityPct: 20, volatilityTolerancePct: 10 }), 50);
+  assert.ok(
+    computeVolatilityRegimeScore(20, { targetVolatilityPct: 20, volatilityTolerancePct: 10 })
+    > computeVolatilityRegimeScore(35, { targetVolatilityPct: 20, volatilityTolerancePct: 10 })
+  );
 
   const buy = deriveUnifiedRecommendation({ buyScore: 80, sellScore: 50 });
   const hold = deriveUnifiedRecommendation({ buyScore: 50, sellScore: 45 });
@@ -369,6 +385,265 @@ function buildHistory({ length = 240, start = 100, slope = 0, amplitude = 0.5, f
 
   return { dates, closes };
 }
+
+async function withMockedBacktestModule({ universe, historiesByTicker = {} }, callback) {
+  const backtestPath = require.resolve('../src/backtest');
+  const etfUniverseService = require('../src/etfUniverseService');
+  const yahooHistoryStore = require('../src/yahooHistoryStore');
+
+  const originalGetEtfUniverse = etfUniverseService.getEtfUniverse;
+  const originalGetTickerHistory = yahooHistoryStore.getTickerHistory;
+
+  const calls = {
+    getEtfUniverse: 0,
+    getTickerHistory: 0,
+  };
+
+  etfUniverseService.getEtfUniverse = async () => {
+    calls.getEtfUniverse += 1;
+    return universe;
+  };
+
+  yahooHistoryStore.getTickerHistory = async ticker => {
+    calls.getTickerHistory += 1;
+    const key = String(ticker || '').toUpperCase();
+    if (Object.prototype.hasOwnProperty.call(historiesByTicker, key)) {
+      return historiesByTicker[key];
+    }
+    return null;
+  };
+
+  delete require.cache[backtestPath];
+
+  try {
+    const mockedBacktest = require('../src/backtest');
+    await callback({ mockedBacktest, calls });
+  } finally {
+    etfUniverseService.getEtfUniverse = originalGetEtfUniverse;
+    yahooHistoryStore.getTickerHistory = originalGetTickerHistory;
+    delete require.cache[backtestPath];
+  }
+}
+
+test('spearmanRankCorrelation handles monotonic and small samples', () => {
+  assert.equal(spearmanRankCorrelation([1, 2, 3, 4], [10, 20, 30, 40]), 1);
+  assert.equal(spearmanRankCorrelation([1, 2, 3, 4], [40, 30, 20, 10]), -1);
+  assert.equal(spearmanRankCorrelation([1, 2, 3], [10, 20, 30]), null);
+});
+
+test('runBacktestForSeries returns forward-return samples for valid history', () => {
+  const history = buildHistory({ length: 340, start: 100, slope: 0.35, amplitude: 0.3, frequency: 9 });
+
+  const results = runBacktestForSeries({
+    dates: history.dates,
+    closes: history.closes,
+    investmentDurationMonths: 3,
+  });
+
+  assert.ok(Array.isArray(results));
+  assert.ok(results.length > 0);
+  assert.ok(results.every(item => typeof item.date === 'string'));
+  assert.ok(results.every(item => Number.isFinite(item.buyScore)));
+  assert.ok(results.every(item => Number.isFinite(item.sellScore)));
+  assert.ok(results.every(item => Number.isFinite(item.forwardReturn)));
+  assert.ok(results.every(item => ['Buy', 'Hold', 'Sell'].includes(item.recommendation)));
+});
+
+test('aggregateBacktestResults computes signal buckets and separation', () => {
+  const aggregated = aggregateBacktestResults([
+    { date: '2026-01-01', buyScore: 80, sellScore: 20, recommendation: 'Buy', forwardReturn: 0.09 },
+    { date: '2026-01-06', buyScore: 70, sellScore: 35, recommendation: 'Buy', forwardReturn: 0.03 },
+    { date: '2026-01-11', buyScore: 55, sellScore: 45, recommendation: 'Hold', forwardReturn: 0.01 },
+    { date: '2026-01-16', buyScore: 25, sellScore: 78, recommendation: 'Sell', forwardReturn: -0.05 },
+  ], 63);
+
+  assert.ok(aggregated);
+  assert.equal(aggregated.sampleSize, 4);
+  assert.equal(aggregated.bySignal.Buy.count, 2);
+  assert.equal(aggregated.bySignal.Hold.count, 1);
+  assert.equal(aggregated.bySignal.Sell.count, 1);
+  assert.ok(Number.isFinite(aggregated.infoCoefficient));
+  assert.ok(aggregated.separationPct > 0);
+  assert.equal(aggregated.separationInterpretation, 'Klare Trennschaerfe');
+});
+
+test('runUniverseBacktest aggregates mocked universe and skips short histories', async () => {
+  const universe = [
+    { provider: 'iShares', ticker: 'AAA', name: 'Alpha ETF', isin: 'AAA', wkn: 'AAA', assetClass: 'etf' },
+    { provider: 'iShares', ticker: 'BBB', name: 'Beta ETF', isin: 'BBB', wkn: 'BBB', assetClass: 'etf' },
+    { provider: 'Xtrackers', ticker: 'CCC', name: 'Gamma ETF', isin: 'CCC', wkn: 'CCC', assetClass: 'etf' },
+  ];
+
+  const longHistory = buildHistory({ length: 340, start: 120, slope: 0.32, amplitude: 0.25, frequency: 10 });
+  const shortHistory = buildHistory({ length: 120, start: 90, slope: 0.1, amplitude: 0.2, frequency: 8 });
+
+  await withMockedBacktestModule({
+    universe,
+    historiesByTicker: {
+      AAA: longHistory,
+      BBB: shortHistory,
+      CCC: null,
+    },
+  }, async ({ mockedBacktest, calls }) => {
+    const result = await mockedBacktest.runUniverseBacktest({
+      assetClass: 'etf',
+      providerFilter: 'all',
+      investmentDurationMonths: 3,
+    });
+
+    assert.equal(result.assetClass, 'etf');
+    assert.equal(result.providerFilter, 'all');
+    assert.equal(result.profileKey, 'short');
+    assert.equal(result.instrumentsAnalyzed, 1);
+    assert.equal(result.instrumentsSkipped, 2);
+    assert.ok(result.sampleSize > 0);
+    assert.ok(result.bySignal);
+    assert.equal(calls.getEtfUniverse, 1);
+    assert.equal(calls.getTickerHistory, 3);
+  });
+});
+
+async function withMockedBacktestApi(mockRunFullBacktest, callback) {
+  const serverPath = require.resolve('../server');
+  const backtest = require('../src/backtest');
+  const originalRunFullBacktest = backtest.runFullBacktest;
+
+  backtest.runFullBacktest = mockRunFullBacktest;
+  delete require.cache[serverPath];
+
+  let server;
+  try {
+    const { app } = require('../server');
+    await new Promise(resolve => {
+      server = app.listen(0, resolve);
+    });
+
+    const { port } = server.address();
+    await callback(`http://127.0.0.1:${port}`);
+  } finally {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    backtest.runFullBacktest = originalRunFullBacktest;
+    delete require.cache[serverPath];
+  }
+}
+
+test('/api/backtest returns 200 with expected response contract', async () => {
+  const mockedPayload = {
+    profiles: {
+      short: { profileKey: 'short', sampleSize: 10 },
+      medium: { profileKey: 'medium', sampleSize: 9 },
+      long: { profileKey: 'long', sampleSize: 8 },
+    },
+    runAt: '2026-04-11T10:00:00.000Z',
+  };
+
+  await withMockedBacktestApi(async ({ assetClass, providerFilter }) => {
+    assert.equal(assetClass, 'etf');
+    assert.equal(providerFilter, 'all');
+    return mockedPayload;
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/backtest?assetClass=etf&provider=all`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.ok(body.results);
+    assert.ok(body.results.profiles);
+    assert.equal(body.results.profiles.short.profileKey, 'short');
+    assert.equal(body.results.profiles.medium.profileKey, 'medium');
+    assert.equal(body.results.profiles.long.profileKey, 'long');
+    assert.equal(typeof body.runAt, 'string');
+  });
+});
+
+test('/api/backtest returns 400 for invalid query parameters', async () => {
+  let callCount = 0;
+
+  await withMockedBacktestApi(async () => {
+    callCount += 1;
+    return { profiles: {}, runAt: new Date().toISOString() };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/backtest?assetClass=invalid-value&provider=all`);
+    assert.equal(response.status, 400);
+
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.match(body.error, /Ungueltiger Asset-Typ/);
+    assert.equal(callCount, 0);
+  });
+});
+
+test('/api/backtest returns 400 for invalid provider filter', async () => {
+  let callCount = 0;
+
+  await withMockedBacktestApi(async () => {
+    callCount += 1;
+    return { profiles: {}, runAt: new Date().toISOString() };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/backtest?assetClass=etf&provider=foo`);
+    assert.equal(response.status, 400);
+
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.match(body.error, /Ungueltiger Anbieterfilter/);
+    assert.equal(callCount, 0);
+  });
+});
+
+test('/api/backtest returns 500 when backtest execution throws', async () => {
+  await withMockedBacktestApi(async () => {
+    throw new Error('forced failure');
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/backtest`);
+    assert.equal(response.status, 500);
+
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.match(body.error, /Backtest fehlgeschlagen: forced failure/);
+  });
+});
+
+test('/api/backtest enforces rate limit after too many requests', async () => {
+  let callCount = 0;
+
+  await withMockedBacktestApi(async () => {
+    callCount += 1;
+    return {
+      profiles: {
+        short: { profileKey: 'short', sampleSize: 1 },
+        medium: { profileKey: 'medium', sampleSize: 1 },
+        long: { profileKey: 'long', sampleSize: 1 },
+      },
+      runAt: '2026-04-11T10:00:00.000Z',
+    };
+  }, async baseUrl => {
+    let blockedStatus = null;
+    let blockedBody = null;
+
+    for (let i = 0; i < 11; i++) {
+      const response = await fetch(`${baseUrl}/api/backtest`);
+      if (i < 10) {
+        assert.equal(response.status, 200);
+      } else {
+        blockedStatus = response.status;
+        blockedBody = await response.json();
+      }
+    }
+
+    assert.equal(blockedStatus, 429);
+    assert.equal(blockedBody.ok, false);
+    assert.match(blockedBody.error, /Too many scan requests/i);
+    assert.equal(callCount, 10);
+  });
+});
 
 test('getTopRecommendations returns top-ranked items and skips failing histories', async () => {
   const universe = [

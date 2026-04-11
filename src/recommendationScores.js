@@ -19,6 +19,22 @@ function inverseScaleToScore(value, min, max) {
   return round(100 - scaleToScore(value, min, max), 2);
 }
 
+function computeVolatilityRegimeScore(volatilityPct, profile) {
+  if (!Number.isFinite(volatilityPct) || !profile) {
+    return 50;
+  }
+
+  const target = Number(profile.targetVolatilityPct);
+  const tolerance = Number(profile.volatilityTolerancePct);
+  if (!Number.isFinite(target) || !Number.isFinite(tolerance) || tolerance <= 0) {
+    return 50;
+  }
+
+  const distance = Math.abs(volatilityPct - target);
+  const rawScore = clamp(100 - ((distance / tolerance) * 100), 0, 100);
+  return round(rawScore, 2);
+}
+
 function getPercentChange(values, periodsAgo) {
   if (!Array.isArray(values) || values.length <= periodsAgo) {
     return null;
@@ -144,19 +160,24 @@ function deriveUnifiedRecommendation({ buyScore, sellScore }) {
   const safeSell = Number.isFinite(sellScore) ? sellScore : 0;
   const delta = round(safeBuy - safeSell, 2);
   const conviction = Math.abs(delta);
+  const dominantScore = Math.max(safeBuy, safeSell);
 
   let recommendation = 'Hold';
-  let recommendationReason = 'Buy- und Sell-Signal sind weitgehend ausgeglichen.';
-  if (delta >= 12) {
+  let recommendationReason = 'Trend, Momentum und Risikoregime liefern kein ausreichend eindeutiges Signal.';
+
+  if (safeBuy >= 58 && delta >= 8) {
     recommendation = 'Buy';
-    recommendationReason = 'Buy-Signal ueberwiegt das Sell-Signal deutlich.';
-  } else if (delta <= -12) {
+    recommendationReason = 'Trend- und Momentum-Evidenz ueberwiegen, ohne dass das Risikoregime klar dagegen spricht.';
+  } else if (safeSell >= 58 && delta <= -8) {
     recommendation = 'Sell';
-    recommendationReason = 'Sell-Signal ueberwiegt das Buy-Signal deutlich.';
+    recommendationReason = 'Bearishe Trend-, Drawdown- und Risikosignale ueberwiegen deutlich.';
   }
 
-  const primaryScore = recommendation === 'Sell' ? safeSell : safeBuy;
-  const strengthScore = round(clamp((conviction * 0.65) + (primaryScore * 0.35), 0, 100), 2);
+  const balancePenalty = clamp(25 - conviction, 0, 25);
+  const strengthScore = round(
+    clamp((dominantScore * 0.7) + (conviction * 0.3) - (balancePenalty * 0.25), 0, 100),
+    2
+  );
 
   return {
     recommendation,
@@ -179,5 +200,6 @@ module.exports = {
   computeBearishTrendScore,
   computeRsiScore,
   computeSellRsiScore,
+  computeVolatilityRegimeScore,
   deriveUnifiedRecommendation,
 };

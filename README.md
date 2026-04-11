@@ -211,10 +211,10 @@ Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer sowie ei
 **Bewertungskriterien:**
 
 - Trendstruktur: Kurs vs. SMA20, SMA50, SMA200; Reihenfolge der Durchschnitte; Steigung des SMA200
-- Momentum: 1-Monats-, 3-Monats- und 6-Monats-Performance
-- RSI-Regime: RSI14 gegen ein zielprofilabhaengiges Sollniveau
-- Ausbruchsnaehe: Abstand zum 60-Tage-Hoch
-- Volatilitaet: annualisierte 20-Tage-Volatilitaet
+- Momentum: vor allem 3-Monats- und 6-Monats-Performance, kurzfristige 1-Monats-Bewegungen nur noch schwach oder gar nicht gewichtet
+- Drawdown-Stabilitaet: Abstand zum 60-Tage-Hoch als Robustheitsmass statt als reiner Breakout-Trigger
+- Volatilitaetsregime: annualisierte 20-Tage-Volatilitaet relativ zu einem horizon-spezifischen Risikobudget
+- RSI14: nur noch nachrangige Diagnosegroesse, nicht mehr zentraler Score-Treiber
 
 **Horizon-spezifische Gewichtung:**
 
