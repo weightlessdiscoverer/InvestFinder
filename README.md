@@ -20,7 +20,7 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
 - 🧱 Modular provider architecture with separate source modules and merged processing layer
 - 🖥️ UI filter for provider scope: **Alle**, **nur iShares**, **nur Xtrackers**
-- 🏆 Separate Empfehlungen nach Anlagedauer mit Top-3-Ranking auf Basis technischer Analyse
+- 🏆 Separate Empfehlungen nach Anlagedauer mit Top-3-Kauf- und Top-3-Verkaufskandidaten auf Basis technischer Analyse
 
 ---
 
@@ -55,7 +55,7 @@ npm test
 
 Then open **http://localhost:3000** in your browser, choose SMA period + provider filter and click **"Scan starten"**.
 
-Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Anlagedauer"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert die Top 3 Werte mit dem aktuell staerksten technischen Setup.
+Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Anlagedauer"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert sowohl die Top 3 Kaufkandidaten als auch die Top 3 Verkaufskandidaten.
 
 The scan fetches ~420 days of daily price history for each ETF from Yahoo Finance and processes them in small batches with a short delay to stay within rate limits. A full scan typically takes **30–90 seconds**.
 
@@ -196,7 +196,7 @@ Beispiel:
 
 ### `GET /api/recommendations`
 
-Liefert Top-Empfehlungen passend zur gewaehlten Anlagedauer.
+Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer.
 
 **Query Parameters:**
 
@@ -227,7 +227,8 @@ Liefert Top-Empfehlungen passend zur gewaehlten Anlagedauer.
 1. Aus der gewaehlten Anlagedauer wird zuerst ein Profil bestimmt: `short` fuer 1 bis 3 Monate, `medium` fuer 4 bis 12 Monate, `long` ab 13 Monaten.
 2. Danach werden pro Wert technische Teilscores berechnet.
 3. Diese Teilscores werden je Profil unterschiedlich gewichtet und zu einem Gesamtscore von 0 bis 100 addiert.
-4. Die Werte werden nach diesem Gesamtscore absteigend sortiert. Die Top 3 gelten als aktueller Best Fit fuer die gewaehlte Dauer.
+4. Fuer Kaufkandidaten werden die Werte nach dem Buy-Score absteigend sortiert. Die Top 3 gelten als aktueller Best Fit fuer die gewaehlte Dauer.
+5. Fuer Verkaufskandidaten wird zusaetzlich ein eigener Sell-Score berechnet (abwaertsgerichtete Trend- und Momentumlogik). Auch hier werden die Top 3 ausgegeben.
 
 **Technische Teilscores im Detail:**
 
@@ -275,12 +276,32 @@ Beispiel:
         "rank": 1,
         "ticker": "IWDA.AS",
         "score": 78.4,
+        "buyScore": 78.4,
+        "sellScore": 21.6,
+        "rationale": "Mittelfristig: staerkste Treiber sind Trendstruktur und 3-Monats-Momentum.",
+        "sellRationale": "Verkaufskandidat: staerkste Treiber sind Abwaertstrend und Schwaches 3M-Momentum."
+      }
+    ],
+    "buyRecommendations": [
+      {
+        "rank": 1,
+        "ticker": "IWDA.AS",
+        "score": 78.4,
         "momentum20Pct": 4.1,
         "momentum60Pct": 11.7,
         "momentum120Pct": 18.3,
         "rsi14": 59.2,
         "annualizedVolatilityPct": 16.8,
         "rationale": "Mittelfristig: staerkste Treiber sind Trendstruktur und 3-Monats-Momentum."
+      }
+    ],
+    "sellRecommendations": [
+      {
+        "rank": 1,
+        "ticker": "EXAMPLE.DE",
+        "score": 73.2,
+        "sellOutlook": "Erhoeht",
+        "sellRationale": "Verkaufskandidat: staerkste Treiber sind Abwaertstrend und Schwaches 3M-Momentum."
       }
     ]
   }

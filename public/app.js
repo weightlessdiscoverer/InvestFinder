@@ -78,9 +78,18 @@ const recSumSkipped = document.getElementById('recSumSkipped');
 const recSumTime = document.getElementById('recSumTime');
 const recommendationSection = document.getElementById('recommendationSection');
 const recommendationTitleLabel = document.getElementById('recommendationTitleLabel');
-const recommendationBadge = document.getElementById('recommendationBadge');
-const recommendationBody = document.getElementById('recommendationBody');
-const recommendationEmpty = document.getElementById('recommendationEmpty');
+const durationBuyTabBtn = document.getElementById('durationBuyTabBtn');
+const durationSellTabBtn = document.getElementById('durationSellTabBtn');
+const buyRecommendationPanel = document.getElementById('buyRecommendationPanel');
+const sellRecommendationPanel = document.getElementById('sellRecommendationPanel');
+const buyRecommendationTitleLabel = document.getElementById('buyRecommendationTitleLabel');
+const buyRecommendationBadge = document.getElementById('buyRecommendationBadge');
+const buyRecommendationBody = document.getElementById('buyRecommendationBody');
+const buyRecommendationEmpty = document.getElementById('buyRecommendationEmpty');
+const sellRecommendationTitleLabel = document.getElementById('sellRecommendationTitleLabel');
+const sellRecommendationBadge = document.getElementById('sellRecommendationBadge');
+const sellRecommendationBody = document.getElementById('sellRecommendationBody');
+const sellRecommendationEmpty = document.getElementById('sellRecommendationEmpty');
 const criteriaProfileName = document.getElementById('criteriaProfileName');
 const criteriaDurationRange = document.getElementById('criteriaDurationRange');
 const criteriaFormula = document.getElementById('criteriaFormula');
@@ -149,6 +158,7 @@ let currentTab = 'main';
 let currentRecommendationAssetClass = 'etf';
 let currentRecommendationProviderFilter = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
+let currentRecommendationSubtab = 'buy';
 let recommendationStatusInterval = null;
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
@@ -394,13 +404,17 @@ function applyRecommendationAssetClassUiState() {
     durationProviderFilter.value = 'all';
     durationProviderFilter.disabled = true;
     durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
-    recommendationTitleLabel.textContent = '🏆 Top 3 DAX40 nach Anlagedauer';
+    recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
+    buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten DAX40';
+    sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten DAX40';
     return;
   }
 
   durationProviderFilter.disabled = false;
   durationAssetHintLabel.textContent = 'ETFs';
-  recommendationTitleLabel.textContent = '🏆 Top 3 nach Anlagedauer';
+  recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
+  buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten';
+  sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten';
 }
 
 function getRecommendationProfileByDuration(months) {
@@ -700,7 +714,7 @@ function getScoreClass(score) {
 }
 
 function renderRecommendationSummary(data, scannedAt) {
-  const best = data.recommendations?.[0] || null;
+  const best = data.buyRecommendations?.[0] || data.recommendations?.[0] || null;
 
   recSumAnalyzed.textContent = data.successful ?? data.analyzed ?? '–';
   recSumBestScore.textContent = best ? fmt(best.score, 1) : '–';
@@ -712,18 +726,29 @@ function renderRecommendationSummary(data, scannedAt) {
   setVisible(recommendationSummaryBar, true);
 }
 
-function renderRecommendations(items) {
-  recommendationBadge.textContent = String(items.length);
+function setActiveRecommendationSubtab(tab) {
+  currentRecommendationSubtab = tab === 'sell' ? 'sell' : 'buy';
+
+  const showBuy = currentRecommendationSubtab === 'buy';
+  setVisible(buyRecommendationPanel, showBuy);
+  setVisible(sellRecommendationPanel, !showBuy);
+
+  durationBuyTabBtn.classList.toggle('active', showBuy);
+  durationSellTabBtn.classList.toggle('active', !showBuy);
+}
+
+function renderBuyRecommendations(items) {
+  buyRecommendationBadge.textContent = String(items.length);
   setVisible(recommendationSection, true);
 
   if (!items.length) {
-    recommendationBody.innerHTML = '';
-    setVisible(recommendationEmpty, true);
+    buyRecommendationBody.innerHTML = '';
+    setVisible(buyRecommendationEmpty, true);
     return;
   }
 
-  setVisible(recommendationEmpty, false);
-  recommendationBody.innerHTML = items
+  setVisible(buyRecommendationEmpty, false);
+  buyRecommendationBody.innerHTML = items
     .map(item => `
       <tr>
         <td><span class="rank-pill">${item.rank}</span></td>
@@ -740,6 +765,38 @@ function renderRecommendations(items) {
         <td class="num">${fmt(item.rsi14, 2)}</td>
         <td class="num">${item.annualizedVolatilityPct != null ? `${fmt(item.annualizedVolatilityPct, 2)} %` : '–'}</td>
         <td><div class="recommendation-rationale">${escHtml(item.rationale || '–')}</div></td>
+      </tr>`)
+    .join('');
+}
+
+function renderSellRecommendations(items) {
+  sellRecommendationBadge.textContent = String(items.length);
+  setVisible(recommendationSection, true);
+
+  if (!items.length) {
+    sellRecommendationBody.innerHTML = '';
+    setVisible(sellRecommendationEmpty, true);
+    return;
+  }
+
+  setVisible(sellRecommendationEmpty, false);
+  sellRecommendationBody.innerHTML = items
+    .map(item => `
+      <tr>
+        <td><span class="rank-pill">${item.rank}</span></td>
+        <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
+        <td>${escHtml(item.name || 'nicht verfügbar')}</td>
+        <td>${renderTickerLink(item.ticker)}</td>
+        <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
+        <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
+        <td class="num"><span class="score-pill score-weak">${fmt(item.score, 1)}</span></td>
+        <td><span class="id-chip">${escHtml(item.sellOutlook || '–')}</span></td>
+        <td class="num">${item.momentum20Pct != null ? `${fmt(item.momentum20Pct, 2)} %` : '–'}</td>
+        <td class="num">${item.momentum60Pct != null ? `${fmt(item.momentum60Pct, 2)} %` : '–'}</td>
+        <td class="num">${item.momentum120Pct != null ? `${fmt(item.momentum120Pct, 2)} %` : '–'}</td>
+        <td class="num">${fmt(item.rsi14, 2)}</td>
+        <td class="num">${item.annualizedVolatilityPct != null ? `${fmt(item.annualizedVolatilityPct, 2)} %` : '–'}</td>
+        <td><div class="recommendation-rationale">${escHtml(item.sellRationale || '–')}</div></td>
       </tr>`)
     .join('');
 }
@@ -784,7 +841,7 @@ const RECOMMENDATION_STATUS_MESSAGES = [
   'Analysiere Trendstruktur …',
   'Bewerte Momentum je Anlagedauer …',
   'Pruefe RSI und Volatilitaet …',
-  'Ermittle Top 3 …',
+  'Ermittle Kauf- und Verkaufskandidaten …',
 ];
 let statusInterval = null;
 
@@ -1009,7 +1066,8 @@ async function runRecommendations() {
 
     applyRecommendationAssetClassUiState();
     renderRecommendationSummary(data.results, data.scannedAt);
-    renderRecommendations(data.results.recommendations || []);
+    renderBuyRecommendations(data.results.buyRecommendations || data.results.recommendations || []);
+    renderSellRecommendations(data.results.sellRecommendations || []);
   } catch (err) {
     recommendationErrorMessage.textContent = `Fehler bei den Empfehlungen: ${err.message}`;
     setVisible(recommendationErrorBanner, true);
@@ -1024,6 +1082,8 @@ async function runRecommendations() {
 
 btnScan.addEventListener('click', () => runScan());
 btnRecommend.addEventListener('click', () => runRecommendations());
+durationBuyTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('buy'));
+durationSellTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('sell'));
 
 signalModeSelect.addEventListener('change', () => {
   try {
@@ -1179,5 +1239,6 @@ applyAssetClassUiState();
 applyRecommendationAssetClassUiState();
 updateRecommendationCriteriaInfo();
 updateSignalLabels();
+setActiveRecommendationSubtab('buy');
 startSyncStatusPolling();
 setActiveTab('main');

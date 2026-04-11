@@ -371,6 +371,48 @@ a:hover { text-decoration: underline; }
   margin-bottom: 14px;
 }
 
+.duration-subtab-nav {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 6px;
+}
+
+.duration-subtab-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.duration-subtab-btn:hover {
+  color: var(--color-text);
+  background: rgba(79, 142, 247, 0.12);
+}
+
+.duration-subtab-btn.active {
+  color: #fff;
+  background: var(--color-primary);
+  border-color: rgba(79, 142, 247, 0.65);
+}
+
+.subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 10px 0 10px;
+}
+
 .badge {
   background: var(--color-green);
   color: #fff;
@@ -740,6 +782,14 @@ a:hover { text-decoration: underline; }
     width: 100%;
   }
   .tab-btn {
+    flex: 1;
+    text-align: center;
+  }
+  .duration-subtab-nav {
+    display: flex;
+    width: 100%;
+  }
+  .duration-subtab-btn {
     flex: 1;
     text-align: center;
   }

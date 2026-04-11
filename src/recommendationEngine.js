@@ -61,6 +61,43 @@ const PROFILES = {
   },
 };
 
+const SELL_PROFILES = {
+  short: {
+    rsiTarget: 38,
+    weights: {
+      trend: 0.25,
+      momentum20: 0.25,
+      momentum60: 0.15,
+      rsi: 0.15,
+      breakdown: 0.1,
+      volatility: 0.1,
+    },
+  },
+  medium: {
+    rsiTarget: 42,
+    weights: {
+      trend: 0.35,
+      momentum20: 0.1,
+      momentum60: 0.2,
+      momentum120: 0.15,
+      rsi: 0.1,
+      breakdown: 0.05,
+      volatility: 0.05,
+    },
+  },
+  long: {
+    rsiTarget: 45,
+    weights: {
+      trend: 0.45,
+      momentum60: 0.2,
+      momentum120: 0.2,
+      rsi: 0.05,
+      breakdown: 0.05,
+      volatility: 0.05,
+    },
+  },
+};
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -194,6 +231,19 @@ function computeTrendScore({ currentClose, sma20, sma50, sma200, previousSma200 
   return round(score, 2);
 }
 
+function computeBearishTrendScore({ currentClose, sma20, sma50, sma200, previousSma200 }) {
+  let score = 0;
+
+  if (currentClose < sma20) score += 15;
+  if (currentClose < sma50) score += 20;
+  if (currentClose < sma200) score += 25;
+  if (sma20 < sma50) score += 15;
+  if (sma50 < sma200) score += 15;
+  if (previousSma200 != null && sma200 < previousSma200) score += 10;
+
+  return round(score, 2);
+}
+
 function computeRsiScore(rsiValue, profile) {
   if (!Number.isFinite(rsiValue)) {
     return 0;
@@ -208,6 +258,25 @@ function computeRsiScore(rsiValue, profile) {
 
   if (rsiValue < 40) {
     score -= 20;
+  }
+
+  return round(clamp(score, 0, 100), 2);
+}
+
+function computeSellRsiScore(rsiValue, sellProfile) {
+  if (!Number.isFinite(rsiValue)) {
+    return 0;
+  }
+
+  const distance = Math.abs(rsiValue - sellProfile.rsiTarget);
+  let score = clamp(100 - (distance / 18) * 100, 0, 100);
+
+  if (rsiValue > 60) {
+    score -= 20;
+  }
+
+  if (rsiValue < 25) {
+    score -= 10;
   }
 
   return round(clamp(score, 0, 100), 2);
@@ -238,8 +307,42 @@ function buildRationale({ profile, trendScore, momentum20Score, momentum60Score,
   return `${profile.label}: staerkste Treiber sind ${weightedSignals.join(' und ')}.`;
 }
 
+function buildSellRationale({
+  sellProfile,
+  trendScore,
+  momentum20Score,
+  momentum60Score,
+  momentum120Score,
+  rsiScore,
+  breakdownScore,
+}) {
+  const weightedSignals = [
+    { label: 'Abwaertstrend', weight: sellProfile.weights.trend || 0, score: trendScore },
+    { label: 'Schwaches 1M-Momentum', weight: sellProfile.weights.momentum20 || 0, score: momentum20Score },
+    { label: 'Schwaches 3M-Momentum', weight: sellProfile.weights.momentum60 || 0, score: momentum60Score },
+    { label: 'Schwaches 6M-Momentum', weight: sellProfile.weights.momentum120 || 0, score: momentum120Score },
+    { label: 'Bearishes RSI-Regime', weight: sellProfile.weights.rsi || 0, score: rsiScore },
+    { label: 'Abstand zum 60T-Hoch', weight: sellProfile.weights.breakdown || 0, score: breakdownScore },
+  ]
+    .filter(item => item.weight > 0 && Number.isFinite(item.score))
+    .map(item => ({
+      ...item,
+      contribution: item.weight * item.score,
+    }))
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, 2)
+    .map(item => item.label);
+
+  if (weightedSignals.length === 0) {
+    return 'Keine klare technische Begruendung verfuegbar.';
+  }
+
+  return `Verkaufskandidat: staerkste Treiber sind ${weightedSignals.join(' und ')}.`;
+}
+
 function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
   const profile = getInvestmentProfile(investmentDurationMonths);
+  const sellProfile = SELL_PROFILES[profile.key] || SELL_PROFILES.medium;
 
   if (!Array.isArray(closes) || closes.length < MIN_REQUIRED_PRICE_POINTS) {
     return {
@@ -293,6 +396,20 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
   const breakoutScore = inverseScaleToScore(Math.abs(distanceTo60dHighPct), 0, 15);
   const volatilityScore = inverseScaleToScore(annualizedVolatilityPct, 15, 45);
 
+  const sellTrendScore = computeBearishTrendScore({
+    currentClose,
+    sma20,
+    sma50,
+    sma200,
+    previousSma200,
+  });
+  const sellMomentum20Score = inverseScaleToScore(momentum20Pct, -12, 18);
+  const sellMomentum60Score = inverseScaleToScore(momentum60Pct, -18, 28);
+  const sellMomentum120Score = inverseScaleToScore(momentum120Pct, -25, 40);
+  const sellRsiScore = computeSellRsiScore(rsi14, sellProfile);
+  const breakdownScore = scaleToScore(-distanceTo60dHighPct, 0, 20);
+  const sellVolatilityScore = scaleToScore(annualizedVolatilityPct, 15, 55);
+
   const finalScore = round(
     ((profile.weights.trend || 0) * trendScore)
       + ((profile.weights.momentum20 || 0) * momentum20Score)
@@ -301,6 +418,17 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
       + ((profile.weights.rsi || 0) * rsiScore)
       + ((profile.weights.breakout || 0) * breakoutScore)
       + ((profile.weights.volatility || 0) * volatilityScore),
+    2
+  );
+
+  const sellScore = round(
+    ((sellProfile.weights.trend || 0) * sellTrendScore)
+      + ((sellProfile.weights.momentum20 || 0) * sellMomentum20Score)
+      + ((sellProfile.weights.momentum60 || 0) * sellMomentum60Score)
+      + ((sellProfile.weights.momentum120 || 0) * sellMomentum120Score)
+      + ((sellProfile.weights.rsi || 0) * sellRsiScore)
+      + ((sellProfile.weights.breakdown || 0) * breakdownScore)
+      + ((sellProfile.weights.volatility || 0) * sellVolatilityScore),
     2
   );
 
@@ -313,13 +441,26 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
     outlook = 'Neutral';
   }
 
+  let sellOutlook = 'Unauffaellig';
+  if (sellScore >= 75) {
+    sellOutlook = 'Akut';
+  } else if (sellScore >= 60) {
+    sellOutlook = 'Erhoeht';
+  } else if (sellScore >= 45) {
+    sellOutlook = 'Beobachten';
+  }
+
   return {
     ok: true,
     insufficientData: false,
     profileKey: profile.key,
     profileLabel: profile.label,
     score: finalScore,
+    buyScore: finalScore,
+    sellScore,
     outlook,
+    buyOutlook: outlook,
+    sellOutlook,
     currentDate: dates[lastIdx],
     currentClose: round(currentClose, 4),
     sma20: round(sma20, 4),
@@ -337,6 +478,13 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
     volatilityScore,
     annualizedVolatilityPct: round(annualizedVolatilityPct, 2),
     distanceTo60dHighPct: round(distanceTo60dHighPct, 2),
+    sellTrendScore,
+    sellMomentum20Score,
+    sellMomentum60Score,
+    sellMomentum120Score,
+    sellRsiScore,
+    breakdownScore,
+    sellVolatilityScore,
     rationale: buildRationale({
       profile,
       trendScore,
@@ -345,6 +493,15 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
       momentum120Score,
       rsiScore,
       breakoutScore,
+    }),
+    sellRationale: buildSellRationale({
+      sellProfile,
+      trendScore: sellTrendScore,
+      momentum20Score: sellMomentum20Score,
+      momentum60Score: sellMomentum60Score,
+      momentum120Score: sellMomentum120Score,
+      rsiScore: sellRsiScore,
+      breakdownScore,
     }),
   };
 }
@@ -417,12 +574,24 @@ async function getTopRecommendations({
 
   const successful = analyzed.filter(item => item.ok === true);
   const skipped = analyzed.filter(item => item.ok !== true);
-  const recommendations = successful
-    .sort((a, b) => b.score - a.score)
+  const buyRecommendations = successful
+    .slice()
+    .sort((a, b) => (b.buyScore ?? b.score ?? 0) - (a.buyScore ?? a.score ?? 0))
     .slice(0, limit)
     .map((item, index) => ({
       rank: index + 1,
       ...item,
+      score: item.buyScore ?? item.score,
+    }));
+
+  const sellRecommendations = successful
+    .slice()
+    .sort((a, b) => (b.sellScore ?? 0) - (a.sellScore ?? 0))
+    .slice(0, limit)
+    .map((item, index) => ({
+      rank: index + 1,
+      ...item,
+      score: item.sellScore,
     }));
 
   const profile = getInvestmentProfile(investmentDurationMonths);
@@ -437,7 +606,9 @@ async function getTopRecommendations({
     analyzed: analyzed.length,
     successful: successful.length,
     skipped: skipped.length,
-    recommendations,
+    recommendations: buyRecommendations,
+    buyRecommendations,
+    sellRecommendations,
     skippedItems: skipped.slice(0, 10),
   };
 }

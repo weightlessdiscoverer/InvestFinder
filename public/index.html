@@ -310,7 +310,7 @@
         </button>
       </div>
       <p class="hint" id="durationHint">
-        Liefert die drei technisch staerksten <strong id="durationAssetHintLabel">ETFs</strong> auf Basis von Trend, Momentum, RSI und Volatilitaet.
+        Liefert die drei besten Kaufkandidaten und die drei staerksten Verkaufskandidaten fuer <strong id="durationAssetHintLabel">ETFs</strong> auf Basis technischer Kriterien.
       </p>
 
       <section class="criteria-panel" aria-labelledby="criteriaTitle">
@@ -412,37 +412,83 @@
 
     <section id="recommendationSection" class="results-section hidden">
       <h2 class="section-title">
-        <span id="recommendationTitleLabel">🏆 Top 3 nach Anlagedauer</span>
-        <span class="badge" id="recommendationBadge">0</span>
+        <span id="recommendationTitleLabel">🏆 Kauf- und Verkaufskandidaten nach Anlagedauer</span>
       </h2>
 
-      <div class="table-wrapper">
-        <table class="results-table">
-          <thead>
-            <tr>
-              <th>Rang</th>
-              <th>Anbieter</th>
-              <th>Name</th>
-              <th>Ticker</th>
-              <th>ISIN</th>
-              <th>WKN</th>
-              <th class="num">Score</th>
-              <th>Profil</th>
-              <th class="num">1M</th>
-              <th class="num">3M</th>
-              <th class="num">6M</th>
-              <th class="num">RSI14</th>
-              <th class="num">Vol. p.a.</th>
-              <th>Begruendung</th>
-            </tr>
-          </thead>
-          <tbody id="recommendationBody"></tbody>
-        </table>
+      <nav class="duration-subtab-nav" aria-label="Kandidatentyp waehlen">
+        <button id="durationBuyTabBtn" class="duration-subtab-btn active" type="button">Kaufkandidaten</button>
+        <button id="durationSellTabBtn" class="duration-subtab-btn" type="button">Verkaufskandidaten</button>
+      </nav>
+
+      <div id="buyRecommendationPanel">
+        <h3 class="subsection-title">
+          <span id="buyRecommendationTitleLabel">Top 3 Kaufkandidaten</span>
+          <span class="badge" id="buyRecommendationBadge">0</span>
+        </h3>
+
+        <div class="table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Rang</th>
+                <th>Anbieter</th>
+                <th>Name</th>
+                <th>Ticker</th>
+                <th>ISIN</th>
+                <th>WKN</th>
+                <th class="num">Score</th>
+                <th>Profil</th>
+                <th class="num">1M</th>
+                <th class="num">3M</th>
+                <th class="num">6M</th>
+                <th class="num">RSI14</th>
+                <th class="num">Vol. p.a.</th>
+                <th>Begruendung</th>
+              </tr>
+            </thead>
+            <tbody id="buyRecommendationBody"></tbody>
+          </table>
+        </div>
+
+        <p id="buyRecommendationEmpty" class="no-matches hidden">
+          Keine technisch verwertbaren Kaufkandidaten gefunden.
+        </p>
       </div>
 
-      <p id="recommendationEmpty" class="no-matches hidden">
-        Keine technisch verwertbaren Empfehlungen gefunden.
-      </p>
+      <div id="sellRecommendationPanel" class="hidden">
+        <h3 class="subsection-title">
+          <span id="sellRecommendationTitleLabel">Top 3 Verkaufskandidaten</span>
+          <span class="badge badge-warn" id="sellRecommendationBadge">0</span>
+        </h3>
+
+        <div class="table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Rang</th>
+                <th>Anbieter</th>
+                <th>Name</th>
+                <th>Ticker</th>
+                <th>ISIN</th>
+                <th>WKN</th>
+                <th class="num">Sell-Score</th>
+                <th>Risiko</th>
+                <th class="num">1M</th>
+                <th class="num">3M</th>
+                <th class="num">6M</th>
+                <th class="num">RSI14</th>
+                <th class="num">Vol. p.a.</th>
+                <th>Begruendung</th>
+              </tr>
+            </thead>
+            <tbody id="sellRecommendationBody"></tbody>
+          </table>
+        </div>
+
+        <p id="sellRecommendationEmpty" class="no-matches hidden">
+          Keine technisch auffaelligen Verkaufskandidaten gefunden.
+        </p>
+      </div>
     </section>
     </div>
 
