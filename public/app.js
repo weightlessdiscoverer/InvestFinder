@@ -93,6 +93,8 @@ const criteriaVolatilityText = document.getElementById('criteriaVolatilityText')
 const criteriaShortCard = document.getElementById('criteriaShortCard');
 const criteriaMediumCard = document.getElementById('criteriaMediumCard');
 const criteriaLongCard = document.getElementById('criteriaLongCard');
+const toggleCriteriaBtn = document.getElementById('toggleCriteriaBtn');
+const criteriaContent = document.getElementById('criteriaContent');
 const dbEtfSection = document.getElementById('dbEtfSection');
 const dbSectionTitleLabel = document.getElementById('dbSectionTitleLabel');
 const dbEtfBadge = document.getElementById('dbEtfBadge');
@@ -465,6 +467,14 @@ function updateRecommendationCriteriaInfo() {
   criteriaShortCard.classList.toggle('active', profileKey === 'short');
   criteriaMediumCard.classList.toggle('active', profileKey === 'medium');
   criteriaLongCard.classList.toggle('active', profileKey === 'long');
+}
+
+function setCriteriaVisibility(visible) {
+  setVisible(criteriaContent, visible);
+  toggleCriteriaBtn.setAttribute('aria-expanded', visible ? 'true' : 'false');
+  toggleCriteriaBtn.innerHTML = `<span aria-hidden="true">${visible ? '▲' : '▼'}</span>`;
+  toggleCriteriaBtn.setAttribute('aria-label', visible ? 'Bewertungskriterien ausblenden' : 'Bewertungskriterien anzeigen');
+  toggleCriteriaBtn.title = visible ? 'Bewertungskriterien ausblenden' : 'Bewertungskriterien anzeigen';
 }
 
 function updateSignalLabels() {
@@ -1651,6 +1661,10 @@ async function runBacktest() {
 
 btnScan.addEventListener('click', () => runScan());
 btnRecommend.addEventListener('click', () => runRecommendations());
+toggleCriteriaBtn.addEventListener('click', () => {
+  const isVisible = !criteriaContent.classList.contains('hidden');
+  setCriteriaVisibility(!isVisible);
+});
 
 signalModeSelect.addEventListener('change', () => {
   try {
@@ -1804,6 +1818,7 @@ applyAssetClassUiState();
 applyRecommendationAssetClassUiState();
 applyDbAssetClassUiState();
 updateRecommendationCriteriaInfo();
+setCriteriaVisibility(false);
 updateSignalLabels();
 initDurationTableHeaderControls();
 startSyncStatusPolling();

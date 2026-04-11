@@ -308,7 +308,21 @@
       </p>
 
       <section class="criteria-panel" aria-labelledby="criteriaTitle">
-        <h3 id="criteriaTitle" class="criteria-title">Aktuelle Bewertungskriterien</h3>
+        <div class="criteria-header">
+          <h3 id="criteriaTitle" class="criteria-title">Aktuelle Bewertungskriterien</h3>
+          <button
+            id="toggleCriteriaBtn"
+            class="btn btn-secondary criteria-toggle-btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="criteriaContent"
+            aria-label="Bewertungskriterien anzeigen"
+            title="Bewertungskriterien anzeigen"
+          >
+            <span aria-hidden="true">▼</span>
+          </button>
+        </div>
+        <div id="criteriaContent" class="hidden">
         <div class="criteria-exact-box">
           <p class="criteria-exact-lead">
             <strong id="criteriaProfileName">Mittelfristig</strong> ist aktuell aktiv fuer <strong id="criteriaDurationRange">4 bis 12 Monate</strong>.
@@ -363,6 +377,7 @@
           <li><strong>Hoch-Naehe:</strong> Je naeher der Kurs am 60-Tage-Hoch liegt, desto hoeher der Teilscore. Eine Abweichung von 0% ist optimal, ab etwa 15% Abstand faellt der Score gegen 0.</li>
           <li><strong>Volatilitaet:</strong> Die annualisierte 20-Tage-Volatilitaet wird invers bewertet. Etwa 15% ist stark, ab etwa 45% wird der Teilscore sehr schwach.</li>
         </ul>
+        </div>
       </section>
     </section>
 
