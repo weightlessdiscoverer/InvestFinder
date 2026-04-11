@@ -340,6 +340,41 @@ function buildSellRationale({
   return `Verkaufskandidat: staerkste Treiber sind ${weightedSignals.join(' und ')}.`;
 }
 
+function getStrengthLabel(strengthScore) {
+  if (strengthScore >= 75) return 'Sehr stark';
+  if (strengthScore >= 55) return 'Stark';
+  if (strengthScore >= 35) return 'Mittel';
+  return 'Schwach';
+}
+
+function deriveUnifiedRecommendation({ buyScore, sellScore }) {
+  const safeBuy = Number.isFinite(buyScore) ? buyScore : 0;
+  const safeSell = Number.isFinite(sellScore) ? sellScore : 0;
+  const delta = round(safeBuy - safeSell, 2);
+  const conviction = Math.abs(delta);
+
+  let recommendation = 'Hold';
+  let recommendationReason = 'Buy- und Sell-Signal sind weitgehend ausgeglichen.';
+  if (delta >= 12) {
+    recommendation = 'Buy';
+    recommendationReason = 'Buy-Signal ueberwiegt das Sell-Signal deutlich.';
+  } else if (delta <= -12) {
+    recommendation = 'Sell';
+    recommendationReason = 'Sell-Signal ueberwiegt das Buy-Signal deutlich.';
+  }
+
+  const primaryScore = recommendation === 'Sell' ? safeSell : safeBuy;
+  const strengthScore = round(clamp((conviction * 0.65) + (primaryScore * 0.35), 0, 100), 2);
+
+  return {
+    recommendation,
+    recommendationDelta: delta,
+    recommendationStrengthScore: strengthScore,
+    recommendationStrength: getStrengthLabel(strengthScore),
+    recommendationReason,
+  };
+}
+
 function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
   const profile = getInvestmentProfile(investmentDurationMonths);
   const sellProfile = SELL_PROFILES[profile.key] || SELL_PROFILES.medium;
@@ -450,6 +485,11 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
     sellOutlook = 'Beobachten';
   }
 
+  const unifiedRecommendation = deriveUnifiedRecommendation({
+    buyScore: finalScore,
+    sellScore,
+  });
+
   return {
     ok: true,
     insufficientData: false,
@@ -461,6 +501,11 @@ function analyzeTechnicalSetup({ dates, closes, investmentDurationMonths }) {
     outlook,
     buyOutlook: outlook,
     sellOutlook,
+    recommendation: unifiedRecommendation.recommendation,
+    recommendationDelta: unifiedRecommendation.recommendationDelta,
+    recommendationStrengthScore: unifiedRecommendation.recommendationStrengthScore,
+    recommendationStrength: unifiedRecommendation.recommendationStrength,
+    recommendationReason: unifiedRecommendation.recommendationReason,
     currentDate: dates[lastIdx],
     currentClose: round(currentClose, 4),
     sma20: round(sma20, 4),
@@ -594,6 +639,18 @@ async function getTopRecommendations({
       score: item.sellScore,
     }));
 
+  const allRecommendations = successful
+    .slice()
+    .sort((a, b) => {
+      const byStrength = (b.recommendationStrengthScore ?? 0) - (a.recommendationStrengthScore ?? 0);
+      if (byStrength !== 0) return byStrength;
+      return (b.buyScore ?? b.score ?? 0) - (a.buyScore ?? a.score ?? 0);
+    })
+    .map((item, index) => ({
+      rank: index + 1,
+      ...item,
+    }));
+
   const profile = getInvestmentProfile(investmentDurationMonths);
 
   return {
@@ -609,6 +666,7 @@ async function getTopRecommendations({
     recommendations: buyRecommendations,
     buyRecommendations,
     sellRecommendations,
+    allRecommendations,
     skippedItems: skipped.slice(0, 10),
   };
 }

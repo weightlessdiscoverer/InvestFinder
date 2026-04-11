@@ -20,7 +20,7 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
 - 🧱 Modular provider architecture with separate source modules and merged processing layer
 - 🖥️ UI filter for provider scope: **Alle**, **nur iShares**, **nur Xtrackers**
-- 🏆 Separate Empfehlungen nach Anlagedauer mit Top-3-Kauf- und Top-3-Verkaufskandidaten auf Basis technischer Analyse
+- 🏆 Separate Empfehlungen nach Anlagedauer mit Top-3-Kauf- und Top-3-Verkaufskandidaten sowie Buy/Hold/Sell-Empfehlung je Einzelwert inklusive Staerke
 
 ---
 
@@ -55,7 +55,7 @@ npm test
 
 Then open **http://localhost:3000** in your browser, choose SMA period + provider filter and click **"Scan starten"**.
 
-Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Anlagedauer"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert sowohl die Top 3 Kaufkandidaten als auch die Top 3 Verkaufskandidaten.
+Fuer das neue Empfehlungs-Feature gibt es einen separaten Tab **"Anlagedauer"**. Dort kann die geplante Haltedauer in Monaten vorgegeben werden; die App bewertet dann das Universum und liefert sowohl die Top 3 Kaufkandidaten als auch die Top 3 Verkaufskandidaten. Zusaetzlich gibt es fuer jeden technisch bewertbaren Einzelwert eine einheitliche Buy/Hold/Sell-Empfehlung inklusive Staerke.
 
 The scan fetches ~420 days of daily price history for each ETF from Yahoo Finance and processes them in small batches with a short delay to stay within rate limits. A full scan typically takes **30–90 seconds**.
 
@@ -196,7 +196,7 @@ Beispiel:
 
 ### `GET /api/recommendations`
 
-Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer.
+Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer sowie eine Buy/Hold/Sell-Empfehlung je Einzelwert mit Staerke.
 
 **Query Parameters:**
 
@@ -229,6 +229,8 @@ Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer.
 3. Diese Teilscores werden je Profil unterschiedlich gewichtet und zu einem Gesamtscore von 0 bis 100 addiert.
 4. Fuer Kaufkandidaten werden die Werte nach dem Buy-Score absteigend sortiert. Die Top 3 gelten als aktueller Best Fit fuer die gewaehlte Dauer.
 5. Fuer Verkaufskandidaten wird zusaetzlich ein eigener Sell-Score berechnet (abwaertsgerichtete Trend- und Momentumlogik). Auch hier werden die Top 3 ausgegeben.
+6. Aus Buy-Score und Sell-Score wird pro Wert eine einheitliche Empfehlung abgeleitet: `Buy`, `Hold` oder `Sell`.
+7. Die Empfehlungsstaerke wird als `recommendationStrengthScore` (0 bis 100) und als Label (`Schwach`, `Mittel`, `Stark`, `Sehr stark`) ausgegeben.
 
 **Technische Teilscores im Detail:**
 
@@ -302,6 +304,17 @@ Beispiel:
         "score": 73.2,
         "sellOutlook": "Erhoeht",
         "sellRationale": "Verkaufskandidat: staerkste Treiber sind Abwaertstrend und Schwaches 3M-Momentum."
+      }
+    ],
+    "allRecommendations": [
+      {
+        "rank": 1,
+        "ticker": "IWDA.AS",
+        "recommendation": "Buy",
+        "recommendationStrengthScore": 64.1,
+        "recommendationStrength": "Stark",
+        "recommendationDelta": 21.4,
+        "recommendationReason": "Buy-Signal ueberwiegt das Sell-Signal deutlich."
       }
     ]
   }

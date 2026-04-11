@@ -418,6 +418,7 @@
       <nav class="duration-subtab-nav" aria-label="Kandidatentyp waehlen">
         <button id="durationBuyTabBtn" class="duration-subtab-btn active" type="button">Kaufkandidaten</button>
         <button id="durationSellTabBtn" class="duration-subtab-btn" type="button">Verkaufskandidaten</button>
+        <button id="durationAllTabBtn" class="duration-subtab-btn" type="button">Buy/Hold/Sell Uebersicht</button>
       </nav>
 
       <div id="buyRecommendationPanel">
@@ -487,6 +488,38 @@
 
         <p id="sellRecommendationEmpty" class="no-matches hidden">
           Keine technisch auffaelligen Verkaufskandidaten gefunden.
+        </p>
+      </div>
+
+      <div id="allRecommendationPanel" class="hidden">
+        <h3 class="subsection-title">
+          <span id="allRecommendationTitleLabel">Empfehlung je Einzelwert (Buy/Hold/Sell)</span>
+          <span class="badge" id="allRecommendationBadge">0</span>
+        </h3>
+
+        <div class="table-wrapper">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Rang</th>
+                <th>Anbieter</th>
+                <th>Name</th>
+                <th>Ticker</th>
+                <th>Empfehlung</th>
+                <th class="num">Staerke</th>
+                <th>Staerke-Level</th>
+                <th class="num">Buy</th>
+                <th class="num">Sell</th>
+                <th class="num">Delta</th>
+                <th>Grund</th>
+              </tr>
+            </thead>
+            <tbody id="allRecommendationBody"></tbody>
+          </table>
+        </div>
+
+        <p id="allRecommendationEmpty" class="no-matches hidden">
+          Keine technisch bewertbaren Einzelwerte gefunden.
         </p>
       </div>
     </section>

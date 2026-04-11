@@ -80,8 +80,10 @@ const recommendationSection = document.getElementById('recommendationSection');
 const recommendationTitleLabel = document.getElementById('recommendationTitleLabel');
 const durationBuyTabBtn = document.getElementById('durationBuyTabBtn');
 const durationSellTabBtn = document.getElementById('durationSellTabBtn');
+const durationAllTabBtn = document.getElementById('durationAllTabBtn');
 const buyRecommendationPanel = document.getElementById('buyRecommendationPanel');
 const sellRecommendationPanel = document.getElementById('sellRecommendationPanel');
+const allRecommendationPanel = document.getElementById('allRecommendationPanel');
 const buyRecommendationTitleLabel = document.getElementById('buyRecommendationTitleLabel');
 const buyRecommendationBadge = document.getElementById('buyRecommendationBadge');
 const buyRecommendationBody = document.getElementById('buyRecommendationBody');
@@ -90,6 +92,10 @@ const sellRecommendationTitleLabel = document.getElementById('sellRecommendation
 const sellRecommendationBadge = document.getElementById('sellRecommendationBadge');
 const sellRecommendationBody = document.getElementById('sellRecommendationBody');
 const sellRecommendationEmpty = document.getElementById('sellRecommendationEmpty');
+const allRecommendationTitleLabel = document.getElementById('allRecommendationTitleLabel');
+const allRecommendationBadge = document.getElementById('allRecommendationBadge');
+const allRecommendationBody = document.getElementById('allRecommendationBody');
+const allRecommendationEmpty = document.getElementById('allRecommendationEmpty');
 const criteriaProfileName = document.getElementById('criteriaProfileName');
 const criteriaDurationRange = document.getElementById('criteriaDurationRange');
 const criteriaFormula = document.getElementById('criteriaFormula');
@@ -407,6 +413,7 @@ function applyRecommendationAssetClassUiState() {
     recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
     buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten DAX40';
     sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten DAX40';
+    allRecommendationTitleLabel.textContent = 'Empfehlung je DAX40-Einzelwert (Buy/Hold/Sell)';
     return;
   }
 
@@ -415,6 +422,7 @@ function applyRecommendationAssetClassUiState() {
   recommendationTitleLabel.textContent = '🏆 Kauf- und Verkaufskandidaten nach Anlagedauer';
   buyRecommendationTitleLabel.textContent = 'Top 3 Kaufkandidaten';
   sellRecommendationTitleLabel.textContent = 'Top 3 Verkaufskandidaten';
+  allRecommendationTitleLabel.textContent = 'Empfehlung je Einzelwert (Buy/Hold/Sell)';
 }
 
 function getRecommendationProfileByDuration(months) {
@@ -727,14 +735,60 @@ function renderRecommendationSummary(data, scannedAt) {
 }
 
 function setActiveRecommendationSubtab(tab) {
-  currentRecommendationSubtab = tab === 'sell' ? 'sell' : 'buy';
+  currentRecommendationSubtab = tab === 'sell' || tab === 'all' ? tab : 'buy';
 
   const showBuy = currentRecommendationSubtab === 'buy';
+  const showSell = currentRecommendationSubtab === 'sell';
+  const showAll = currentRecommendationSubtab === 'all';
   setVisible(buyRecommendationPanel, showBuy);
-  setVisible(sellRecommendationPanel, !showBuy);
+  setVisible(sellRecommendationPanel, showSell);
+  setVisible(allRecommendationPanel, showAll);
 
   durationBuyTabBtn.classList.toggle('active', showBuy);
-  durationSellTabBtn.classList.toggle('active', !showBuy);
+  durationSellTabBtn.classList.toggle('active', showSell);
+  durationAllTabBtn.classList.toggle('active', showAll);
+}
+
+function getRecommendationClass(recommendation) {
+  if (recommendation === 'Buy') return 'action-buy';
+  if (recommendation === 'Sell') return 'action-sell';
+  return 'action-hold';
+}
+
+function renderAllRecommendations(items) {
+  allRecommendationBadge.textContent = String(items.length);
+  setVisible(recommendationSection, true);
+
+  if (!items.length) {
+    allRecommendationBody.innerHTML = '';
+    setVisible(allRecommendationEmpty, true);
+    return;
+  }
+
+  setVisible(allRecommendationEmpty, false);
+  allRecommendationBody.innerHTML = items
+    .map(item => {
+      const actionClass = getRecommendationClass(item.recommendation);
+      const delta = Number.isFinite(item.recommendationDelta)
+        ? `${item.recommendationDelta >= 0 ? '+' : ''}${fmt(item.recommendationDelta, 2)}`
+        : '–';
+
+      return `
+        <tr>
+          <td><span class="rank-pill">${item.rank}</span></td>
+          <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
+          <td>${escHtml(item.name || 'nicht verfügbar')}</td>
+          <td>${renderTickerLink(item.ticker)}</td>
+          <td><span class="recommendation-action ${actionClass}">${escHtml(item.recommendation || 'Hold')}</span></td>
+          <td class="num"><span class="score-pill">${fmt(item.recommendationStrengthScore, 1)}</span></td>
+          <td><span class="id-chip">${escHtml(item.recommendationStrength || '–')}</span></td>
+          <td class="num">${fmt(item.buyScore, 1)}</td>
+          <td class="num">${fmt(item.sellScore, 1)}</td>
+          <td class="num">${delta}</td>
+          <td><div class="recommendation-rationale">${escHtml(item.recommendationReason || '–')}</div></td>
+        </tr>`;
+    })
+    .join('');
 }
 
 function renderBuyRecommendations(items) {
@@ -1068,6 +1122,7 @@ async function runRecommendations() {
     renderRecommendationSummary(data.results, data.scannedAt);
     renderBuyRecommendations(data.results.buyRecommendations || data.results.recommendations || []);
     renderSellRecommendations(data.results.sellRecommendations || []);
+    renderAllRecommendations(data.results.allRecommendations || []);
   } catch (err) {
     recommendationErrorMessage.textContent = `Fehler bei den Empfehlungen: ${err.message}`;
     setVisible(recommendationErrorBanner, true);
@@ -1084,6 +1139,7 @@ btnScan.addEventListener('click', () => runScan());
 btnRecommend.addEventListener('click', () => runRecommendations());
 durationBuyTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('buy'));
 durationSellTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('sell'));
+durationAllTabBtn.addEventListener('click', () => setActiveRecommendationSubtab('all'));
 
 signalModeSelect.addEventListener('change', () => {
   try {

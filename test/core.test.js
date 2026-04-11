@@ -117,6 +117,9 @@ test('analyzeTechnicalSetup scores strong trend higher than weak trend', () => {
   assert.ok(strongResult.score > weakResult.score);
   assert.ok(Number.isFinite(strongResult.buyScore));
   assert.ok(Number.isFinite(strongResult.sellScore));
+  assert.ok(['Buy', 'Hold', 'Sell'].includes(strongResult.recommendation));
+  assert.ok(Number.isFinite(strongResult.recommendationStrengthScore));
+  assert.ok(typeof strongResult.recommendationStrength === 'string');
   assert.equal(strongResult.profileKey, 'medium');
 });
 
@@ -222,12 +225,15 @@ test('getTopRecommendations returns top-ranked items and skips failing histories
     assert.equal(result.recommendations.length, 2);
     assert.equal(result.buyRecommendations.length, 2);
     assert.equal(result.sellRecommendations.length, 2);
+    assert.equal(result.allRecommendations.length, 3);
     assert.equal(result.buyRecommendations[0].rank, 1);
     assert.equal(result.buyRecommendations[1].rank, 2);
     assert.equal(result.sellRecommendations[0].rank, 1);
     assert.equal(result.sellRecommendations[1].rank, 2);
     assert.ok(result.buyRecommendations[0].score >= result.buyRecommendations[1].score);
     assert.ok(result.sellRecommendations[0].score >= result.sellRecommendations[1].score);
+    assert.ok(result.allRecommendations.every(item => ['Buy', 'Hold', 'Sell'].includes(item.recommendation)));
+    assert.ok(result.allRecommendations.every(item => Number.isFinite(item.recommendationStrengthScore)));
     assert.equal(result.skippedItems[0].ticker, 'ERR');
     assert.match(result.skippedItems[0].error, /Yahoo offline/);
   });
@@ -257,10 +263,12 @@ test('getTopRecommendations respects long-horizon profile and requested limit', 
     assert.equal(result.profileLabel, 'Langfristig');
     assert.equal(result.buyRecommendations.length, 3);
     assert.equal(result.sellRecommendations.length, 3);
+    assert.equal(result.allRecommendations.length, 3);
     assert.deepEqual(result.buyRecommendations.map(item => item.rank), [1, 2, 3]);
     assert.deepEqual(result.sellRecommendations.map(item => item.rank), [1, 2, 3]);
     assert.ok(result.buyRecommendations.every(item => item.profileKey === 'long'));
     assert.ok(result.sellRecommendations.every(item => item.profileKey === 'long'));
+    assert.ok(result.allRecommendations.every(item => ['Buy', 'Hold', 'Sell'].includes(item.recommendation)));
     assert.ok(result.buyRecommendations[0].score >= result.buyRecommendations[2].score);
     assert.ok(result.sellRecommendations[0].score >= result.sellRecommendations[2].score);
   });
