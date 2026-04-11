@@ -451,6 +451,16 @@
     </div>
 
     <div id="tabDbContent" class="hidden">
+    <section class="controls-panel db-controls-panel">
+      <div class="controls-row">
+        <label class="input-label" for="dbAssetClassFilter">DB-Filter</label>
+        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach ETFs oder DAX40-Einzelwerten filtern">
+          <option value="etf" selected>ETFs</option>
+          <option value="dax40">DAX40-Einzelwerte</option>
+        </select>
+      </div>
+    </section>
+
     <!-- ── Database ETF List ─────────────────────────────────────────────── -->
     <section id="dbEtfSection" class="results-section">
       <h2 class="section-title">

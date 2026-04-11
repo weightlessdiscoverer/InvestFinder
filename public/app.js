@@ -100,6 +100,7 @@ const dbEtfBadge = document.getElementById('dbEtfBadge');
 const dbFreshnessBadge = document.getElementById('dbFreshnessBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
 const dbEtfEmpty = document.getElementById('dbEtfEmpty');
+const dbAssetClassFilter = document.getElementById('dbAssetClassFilter');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
@@ -153,6 +154,7 @@ let currentRecommendationProviderFilter = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
 let recommendationStatusInterval = null;
 let activeDurationFilterMenu = null;
+let currentDbAssetClass = 'etf';
 
 const DURATION_TABLE_KEYS = {
   all: 'all',
@@ -399,7 +401,6 @@ function applyAssetClassUiState() {
     assetHintLabel.textContent = 'DAX40-Einzelwerte';
     resultsTitleLabel.textContent = '✅ Breakout-Signale (DAX40-Einzelwerte)';
     errorsTitleLabel.textContent = '⚠️ Nicht abrufbare DAX40-Einzelwerte';
-    dbSectionTitleLabel.textContent = '📚 DAX40-Einzelwerte mit vorhandenen DB-Daten';
     return;
   }
 
@@ -407,7 +408,25 @@ function applyAssetClassUiState() {
   assetHintLabel.textContent = 'ETFs (iShares/Xtrackers)';
   resultsTitleLabel.textContent = '✅ Breakout-Signale (ETFs)';
   errorsTitleLabel.textContent = '⚠️ Nicht abrufbare ETFs';
+}
+
+function getSelectedDbAssetClass() {
+  const value = String(dbAssetClassFilter.value || 'etf').trim().toLowerCase();
+  if (!ALLOWED_ASSET_CLASSES.has(value)) {
+    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40.');
+  }
+  return value;
+}
+
+function applyDbAssetClassUiState() {
+  if (currentDbAssetClass === 'dax40') {
+    dbSectionTitleLabel.textContent = '📚 DAX40-Einzelwerte mit vorhandenen DB-Daten';
+    dbEtfEmpty.textContent = 'Noch keine DAX40-Einzelwerte mit gespeicherten Yahoo-Daten vorhanden.';
+    return;
+  }
+
   dbSectionTitleLabel.textContent = '📚 ETFs mit vorhandenen DB-Daten';
+  dbEtfEmpty.textContent = 'Noch keine ETFs mit gespeicherten Yahoo-Daten vorhanden.';
 }
 
 function applyRecommendationAssetClassUiState() {
@@ -1179,8 +1198,8 @@ function renderAllRecommendations(items, preserveState = false) {
 async function loadDbEtfList() {
   try {
     const params = new URLSearchParams({
-      provider: currentProviderFilter,
-      assetClass: currentAssetClass,
+      provider: 'all',
+      assetClass: currentDbAssetClass,
     });
     const response = await fetch(`/api/available-instruments?${params.toString()}`);
     if (!response.ok) {
@@ -1520,9 +1539,6 @@ providerFilter.addEventListener('change', () => {
       return;
     }
     currentProviderFilter = getSelectedProviderFilter();
-    if (currentTab === 'db') {
-      loadDbEtfList();
-    }
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -1549,10 +1565,6 @@ assetClassFilter.addEventListener('change', () => {
     currentAssetClass = getSelectedAssetClass();
     applyAssetClassUiState();
 
-    if (currentTab === 'db') {
-      loadDbEtfList();
-    }
-
     setVisible(errorBanner, false);
   } catch (err) {
     errorMessage.textContent = err.message;
@@ -1568,6 +1580,23 @@ durationAssetClassFilter.addEventListener('change', () => {
   } catch (err) {
     recommendationErrorMessage.textContent = err.message;
     setVisible(recommendationErrorBanner, true);
+  }
+});
+
+dbAssetClassFilter.addEventListener('change', () => {
+  try {
+    currentDbAssetClass = getSelectedDbAssetClass();
+    applyDbAssetClassUiState();
+
+    if (currentTab === 'db') {
+      loadDbEtfList();
+    }
+  } catch (err) {
+    setVisible(dbEtfSection, true);
+    dbEtfBody.innerHTML = '';
+    dbEtfBadge.textContent = '0';
+    setVisible(dbEtfEmpty, true);
+    dbEtfEmpty.textContent = err.message;
   }
 });
 
@@ -1609,8 +1638,10 @@ currentLookbackWeeks = getSelectedLookbackWeeks();
 currentRecommendationAssetClass = getSelectedRecommendationAssetClass();
 currentRecommendationProviderFilter = getSelectedRecommendationProviderFilter();
 currentInvestmentDurationMonths = getSelectedInvestmentDurationMonths();
+currentDbAssetClass = getSelectedDbAssetClass();
 applyAssetClassUiState();
 applyRecommendationAssetClassUiState();
+applyDbAssetClassUiState();
 updateRecommendationCriteriaInfo();
 updateSignalLabels();
 initDurationTableHeaderControls();
