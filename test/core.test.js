@@ -18,9 +18,16 @@ const {
   normalizeAssetClass,
   normalizeProviderFilter,
 } = require('../src/etfUniverseService');
-const { computeSMA } = require('../src/indicators');
+const { computeRSI, computeSMA } = require('../src/indicators');
 const { detectBreakoutSignal } = require('../src/signals');
 const { classifyFreshness } = require('../src/yahooHistoryStore');
+const {
+  analyzeTechnicalSetup,
+  DEFAULT_INVESTMENT_DURATION_MONTHS,
+  getInvestmentProfile,
+  normalizeRecommendationLimit,
+  normalizeInvestmentDurationMonths,
+} = require('../src/recommendationEngine');
 const {
   isValidIsinFormat,
   getIdentifiersByTicker,
@@ -49,6 +56,203 @@ test('normalizeSmaPeriod rejects invalid values', () => {
 test('computeSMA calculates rolling average correctly', () => {
   const sma = computeSMA([1, 2, 3, 4, 5], 3);
   assert.deepEqual(sma, [null, null, 2, 3, 4]);
+});
+
+test('computeRSI returns bounded values after warmup period', () => {
+  const rsi = computeRSI([44, 44.15, 43.9, 44.35, 44.8, 45.1, 44.9, 45.2, 45.55, 45.4, 45.8, 46.2, 46.1, 46.5, 46.9, 47.1], 14);
+  assert.equal(rsi.length, 16);
+  assert.equal(rsi.slice(0, 14).every(value => value === null), true);
+  assert.ok(rsi[15] >= 0 && rsi[15] <= 100);
+});
+
+test('normalizeInvestmentDurationMonths returns default when input is empty', () => {
+  assert.equal(normalizeInvestmentDurationMonths(), DEFAULT_INVESTMENT_DURATION_MONTHS);
+  assert.equal(normalizeInvestmentDurationMonths(''), DEFAULT_INVESTMENT_DURATION_MONTHS);
+  assert.equal(normalizeInvestmentDurationMonths(null), DEFAULT_INVESTMENT_DURATION_MONTHS);
+});
+
+test('normalizeInvestmentDurationMonths validates bounds', () => {
+  assert.equal(normalizeInvestmentDurationMonths(3), 3);
+  assert.throws(() => normalizeInvestmentDurationMonths(0), /Ungueltige Anlagedauer/);
+  assert.throws(() => normalizeInvestmentDurationMonths(121), /Maximal erlaubt/);
+});
+
+test('normalizeRecommendationLimit validates bounds', () => {
+  assert.equal(normalizeRecommendationLimit(), 3);
+  assert.equal(normalizeRecommendationLimit(5), 5);
+  assert.throws(() => normalizeRecommendationLimit(0), /Ungueltiges Limit/);
+  assert.throws(() => normalizeRecommendationLimit(11), /Maximal erlaubt/);
+});
+
+test('getInvestmentProfile maps durations to short, medium and long horizons', () => {
+  assert.equal(getInvestmentProfile(3).key, 'short');
+  assert.equal(getInvestmentProfile(6).key, 'medium');
+  assert.equal(getInvestmentProfile(24).key, 'long');
+});
+
+test('analyzeTechnicalSetup scores strong trend higher than weak trend', () => {
+  const dates = Array.from({ length: 240 }, (_, index) => {
+    const day = String((index % 28) + 1).padStart(2, '0');
+    const month = String((Math.floor(index / 28) % 12) + 1).padStart(2, '0');
+    const year = 2025 + Math.floor(index / 336);
+    return `${year}-${month}-${day}`;
+  });
+
+  const strongTrend = Array.from({ length: 240 }, (_, index) => 100 + index * 0.55 + Math.sin(index / 6) * 0.8);
+  const weakTrend = Array.from({ length: 240 }, (_, index) => 180 - index * 0.25 + Math.sin(index / 4) * 1.2);
+
+  const strongResult = analyzeTechnicalSetup({
+    dates,
+    closes: strongTrend,
+    investmentDurationMonths: 12,
+  });
+  const weakResult = analyzeTechnicalSetup({
+    dates,
+    closes: weakTrend,
+    investmentDurationMonths: 12,
+  });
+
+  assert.equal(strongResult.ok, true);
+  assert.equal(weakResult.ok, true);
+  assert.ok(strongResult.score > weakResult.score);
+  assert.equal(strongResult.profileKey, 'medium');
+});
+
+test('analyzeTechnicalSetup reports insufficient data for too-short histories', () => {
+  const result = analyzeTechnicalSetup({
+    dates: ['2026-01-01', '2026-01-02'],
+    closes: [100, 101],
+    investmentDurationMonths: 6,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.insufficientData, true);
+  assert.equal(result.profileKey, 'medium');
+  assert.match(result.error, /Zu wenige Kursdaten/);
+});
+
+test('analyzeTechnicalSetup classifies a falling long-term setup as weak', () => {
+  const dates = Array.from({ length: 240 }, (_, index) => `2026-02-${String((index % 28) + 1).padStart(2, '0')}`);
+  const fallingSeries = Array.from({ length: 240 }, (_, index) => 220 - index * 0.45 + Math.sin(index / 3) * 0.6);
+
+  const result = analyzeTechnicalSetup({
+    dates,
+    closes: fallingSeries,
+    investmentDurationMonths: 24,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileKey, 'long');
+  assert.equal(result.outlook, 'Schwach');
+  assert.ok(result.score < 45);
+});
+
+async function withMockedRecommendationEngine({ universe, historiesByTicker }, callback) {
+  const recommendationEnginePath = require.resolve('../src/recommendationEngine');
+  const etfUniverseService = require('../src/etfUniverseService');
+  const priceHistoryService = require('../src/priceHistoryService');
+
+  const originalGetEtfUniverse = etfUniverseService.getEtfUniverse;
+  const originalGetPriceHistory = priceHistoryService.getPriceHistory;
+
+  etfUniverseService.getEtfUniverse = async () => universe;
+  priceHistoryService.getPriceHistory = async instrument => {
+    const history = historiesByTicker[instrument.ticker];
+    if (history instanceof Error) {
+      throw history;
+    }
+    return history;
+  };
+
+  delete require.cache[recommendationEnginePath];
+
+  try {
+    const mockedEngine = require('../src/recommendationEngine');
+    await callback(mockedEngine);
+  } finally {
+    etfUniverseService.getEtfUniverse = originalGetEtfUniverse;
+    priceHistoryService.getPriceHistory = originalGetPriceHistory;
+    delete require.cache[recommendationEnginePath];
+  }
+}
+
+function buildHistory({ length = 240, start = 100, slope = 0, amplitude = 0.5, frequency = 8 }) {
+  const dates = Array.from({ length }, (_, index) => {
+    const month = String((Math.floor(index / 28) % 12) + 1).padStart(2, '0');
+    const day = String((index % 28) + 1).padStart(2, '0');
+    return `2025-${month}-${day}`;
+  });
+  const closes = Array.from(
+    { length },
+    (_, index) => start + (index * slope) + (Math.sin(index / frequency) * amplitude)
+  );
+
+  return { dates, closes };
+}
+
+test('getTopRecommendations returns top-ranked items and skips failing histories', async () => {
+  const universe = [
+    { provider: 'iShares', ticker: 'AAA', name: 'Alpha ETF', isin: 'AAA', wkn: 'AAA', assetClass: 'etf' },
+    { provider: 'iShares', ticker: 'BBB', name: 'Beta ETF', isin: 'BBB', wkn: 'BBB', assetClass: 'etf' },
+    { provider: 'Xtrackers', ticker: 'CCC', name: 'Gamma ETF', isin: 'CCC', wkn: 'CCC', assetClass: 'etf' },
+    { provider: 'Xtrackers', ticker: 'ERR', name: 'Broken ETF', isin: 'ERR', wkn: 'ERR', assetClass: 'etf' },
+  ];
+  const historiesByTicker = {
+    AAA: buildHistory({ start: 90, slope: 0.62, amplitude: 0.45, frequency: 10 }),
+    BBB: buildHistory({ start: 105, slope: 0.38, amplitude: 0.5, frequency: 7 }),
+    CCC: buildHistory({ start: 140, slope: -0.12, amplitude: 1.1, frequency: 4 }),
+    ERR: new Error('Yahoo offline'),
+  };
+
+  await withMockedRecommendationEngine({ universe, historiesByTicker }, async mockedEngine => {
+    const result = await mockedEngine.getTopRecommendations({
+      assetClass: 'etf',
+      providerFilter: 'all',
+      investmentDurationMonths: 6,
+      limit: 2,
+    });
+
+    assert.equal(result.total, 4);
+    assert.equal(result.analyzed, 4);
+    assert.equal(result.successful, 3);
+    assert.equal(result.skipped, 1);
+    assert.equal(result.profileKey, 'medium');
+    assert.equal(result.recommendations.length, 2);
+    assert.equal(result.recommendations[0].rank, 1);
+    assert.equal(result.recommendations[1].rank, 2);
+    assert.ok(result.recommendations[0].score >= result.recommendations[1].score);
+    assert.equal(result.skippedItems[0].ticker, 'ERR');
+    assert.match(result.skippedItems[0].error, /Yahoo offline/);
+  });
+});
+
+test('getTopRecommendations respects long-horizon profile and requested limit', async () => {
+  const universe = [
+    { provider: 'DAX40', ticker: 'ONE', name: 'One', isin: 'ONE', wkn: 'ONE', assetClass: 'dax40' },
+    { provider: 'DAX40', ticker: 'TWO', name: 'Two', isin: 'TWO', wkn: 'TWO', assetClass: 'dax40' },
+    { provider: 'DAX40', ticker: 'THR', name: 'Three', isin: 'THR', wkn: 'THR', assetClass: 'dax40' },
+  ];
+  const historiesByTicker = {
+    ONE: buildHistory({ start: 70, slope: 0.52, amplitude: 0.4, frequency: 11 }),
+    TWO: buildHistory({ start: 82, slope: 0.2, amplitude: 0.35, frequency: 9 }),
+    THR: buildHistory({ start: 130, slope: -0.18, amplitude: 0.8, frequency: 5 }),
+  };
+
+  await withMockedRecommendationEngine({ universe, historiesByTicker }, async mockedEngine => {
+    const result = await mockedEngine.getTopRecommendations({
+      assetClass: 'dax40',
+      providerFilter: 'all',
+      investmentDurationMonths: 24,
+      limit: 3,
+    });
+
+    assert.equal(result.profileKey, 'long');
+    assert.equal(result.profileLabel, 'Langfristig');
+    assert.equal(result.recommendations.length, 3);
+    assert.deepEqual(result.recommendations.map(item => item.rank), [1, 2, 3]);
+    assert.ok(result.recommendations.every(item => item.profileKey === 'long'));
+    assert.ok(result.recommendations[0].score >= result.recommendations[2].score);
+  });
 });
 
 test('detectBreakoutSignal identifies bullish crossover', () => {

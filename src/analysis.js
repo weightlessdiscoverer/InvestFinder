@@ -5,14 +5,13 @@
 
 'use strict';
 
-const { fetchDailyCloses } = require('./dataService');
 const {
   getEtfUniverse,
   normalizeAssetClass,
   normalizeProviderFilter,
 } = require('./etfUniverseService');
 const { detectBreakoutSignal } = require('./signals');
-const { getTickerHistory, upsertTickerHistory } = require('./yahooHistoryStore');
+const { getPriceHistory } = require('./priceHistoryService');
 
 const DEFAULT_SMA_PERIOD = 200;
 const MIN_SMA_PERIOD = 2;
@@ -23,11 +22,7 @@ const DEFAULT_LOOKBACK_DAYS = 0; // 0 = nur Gestern vs. Heute
 const MAX_LOOKBACK_DAYS = 365;
 
 // ── In-memory cache ──────────────────────────────────────────────────────────
-const priceCache = new Map();
 const signalCache = new Map();
-
-/** Cache TTL in milliseconds (6 hours). */
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 function normalizeSmaPeriod(smaPeriodInput) {
   if (smaPeriodInput == null || smaPeriodInput === '') {
@@ -117,42 +112,6 @@ function normalizeLookbackDays(lookbackDaysInput) {
   }
 
   return parsed;
-}
-
-async function getPriceHistory(etf, bypassCache) {
-  const now = Date.now();
-  const key = etf.ticker;
-
-  if (!bypassCache && priceCache.has(key)) {
-    const cached = priceCache.get(key);
-    if (now < cached.expiresAt) {
-      return { dates: cached.dates, closes: cached.closes };
-    }
-  }
-
-  if (!bypassCache) {
-    const stored = await getTickerHistory(etf.ticker);
-    if (stored && Array.isArray(stored.dates) && Array.isArray(stored.closes) && stored.dates.length > 0) {
-      const snapshot = { dates: stored.dates, closes: stored.closes };
-      priceCache.set(key, {
-        dates: snapshot.dates,
-        closes: snapshot.closes,
-        expiresAt: now + CACHE_TTL_MS,
-      });
-      return snapshot;
-    }
-  }
-
-  const history = await fetchDailyCloses(etf.ticker);
-  await upsertTickerHistory(etf.ticker, history);
-
-  priceCache.set(key, {
-    dates: history.dates,
-    closes: history.closes,
-    expiresAt: now + CACHE_TTL_MS,
-  });
-
-  return history;
 }
 
 async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_LOOKBACK_DAYS }) {

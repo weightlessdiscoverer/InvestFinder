@@ -20,6 +20,7 @@
 
     <nav class="tab-nav" aria-label="Bereichsauswahl">
       <button id="tabMainBtn" class="tab-btn active" type="button">Scanner</button>
+      <button id="tabDurationBtn" class="tab-btn" type="button">Anlagedauer</button>
       <button id="tabDbBtn" class="tab-btn" type="button">DB-Daten</button>
     </nav>
 
@@ -274,6 +275,175 @@
       </div>
     </section>
 
+    </div>
+
+    <div id="tabDurationContent" class="hidden">
+    <section class="controls-panel">
+      <div class="controls-row">
+        <label class="input-label" for="durationAssetClassFilter">Asset-Typ</label>
+        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen ETFs und DAX40-Einzelwerten wechseln">
+          <option value="etf" selected>ETFs</option>
+          <option value="dax40">DAX40-Einzelwerte</option>
+        </select>
+
+        <label class="input-label" for="durationProviderFilter">Anbieter</label>
+        <select id="durationProviderFilter" class="provider-select" title="ETF-Anbieter filtern">
+          <option value="all" selected>Alle</option>
+          <option value="ishares">nur iShares</option>
+          <option value="xtrackers">nur Xtrackers</option>
+        </select>
+
+        <label class="input-label" for="investmentDurationMonthsInput">Anlagedauer (Monate)</label>
+        <input
+          id="investmentDurationMonthsInput"
+          class="sma-input"
+          type="number"
+          min="1"
+          max="120"
+          step="1"
+          value="12"
+          title="Geplante Anlagedauer in Monaten"
+        />
+
+        <button id="btnRecommend" class="btn btn-primary" type="button">
+          <span class="btn-icon">🏁</span> Top 3 berechnen
+        </button>
+      </div>
+      <p class="hint" id="durationHint">
+        Liefert die drei technisch staerksten <strong id="durationAssetHintLabel">ETFs</strong> auf Basis von Trend, Momentum, RSI und Volatilitaet.
+      </p>
+
+      <section class="criteria-panel" aria-labelledby="criteriaTitle">
+        <h3 id="criteriaTitle" class="criteria-title">Aktuelle Bewertungskriterien</h3>
+        <div class="criteria-exact-box">
+          <p class="criteria-exact-lead">
+            <strong id="criteriaProfileName">Mittelfristig</strong> ist aktuell aktiv fuer <strong id="criteriaDurationRange">4 bis 12 Monate</strong>.
+          </p>
+          <p class="criteria-exact-text">
+            Gesamtscore = gewichtete Summe aus Trend, Momentum, RSI, Naehe zum 60-Tage-Hoch und Volatilitaet.
+          </p>
+          <div class="criteria-formula" id="criteriaFormula">
+            30% Trend + 10% 1M-Momentum + 25% 3M-Momentum + 10% RSI + 10% Hoch-Naehe + 15% Volatilitaet
+          </div>
+        </div>
+        <div class="criteria-grid">
+          <article class="criteria-card">
+            <h4>Trendstruktur</h4>
+            <p id="criteriaTrendText">Kurs relativ zu SMA20, SMA50 und SMA200 sowie Reihenfolge der Durchschnitte und Steigung des SMA200.</p>
+          </article>
+          <article class="criteria-card">
+            <h4>Momentum</h4>
+            <p id="criteriaMomentumText">Performance ueber 1, 3 und 6 Monate. Je nach Anlagedauer werden andere Zeitfenster staerker gewichtet.</p>
+          </article>
+          <article class="criteria-card">
+            <h4>RSI-Regime</h4>
+            <p id="criteriaRsiText">RSI14 wird auf ein passendes Zielniveau fuer kurz-, mittel- und langfristige Setups bewertet.</p>
+          </article>
+          <article class="criteria-card">
+            <h4>Naehe zum 60-Tage-Hoch</h4>
+            <p id="criteriaBreakoutText">Bevorzugt Werte, die technisch nahe an ihrem letzten Ausbruchsniveau handeln.</p>
+          </article>
+          <article class="criteria-card">
+            <h4>Volatilitaet</h4>
+            <p id="criteriaVolatilityText">Annualisierte 20-Tage-Volatilitaet. Ruhigere Verlaeufe erhalten einen besseren Teilscore.</p>
+          </article>
+        </div>
+        <div class="criteria-weights">
+          <div class="criteria-weight-card" id="criteriaShortCard">
+            <strong>Kurzfristig 1-3 Monate</strong>
+            <span>20% Trend, 30% 1M, 15% 3M, 20% RSI, 10% Hoch-Naehe, 5% Volatilitaet</span>
+          </div>
+          <div class="criteria-weight-card" id="criteriaMediumCard">
+            <strong>Mittelfristig 4-12 Monate</strong>
+            <span>30% Trend, 10% 1M, 25% 3M, 10% RSI, 10% Hoch-Naehe, 15% Volatilitaet</span>
+          </div>
+          <div class="criteria-weight-card" id="criteriaLongCard">
+            <strong>Langfristig ab 13 Monate</strong>
+            <span>40% Trend, 20% 3M, 20% 6M, 5% RSI, 5% Hoch-Naehe, 10% Volatilitaet</span>
+          </div>
+        </div>
+        <ul class="criteria-rules">
+          <li><strong>Trendscore:</strong> 15 Punkte fuer Kurs > SMA20, 20 fuer Kurs > SMA50, 25 fuer Kurs > SMA200, 15 fuer SMA20 > SMA50, 15 fuer SMA50 > SMA200, 10 fuer steigenden SMA200 gegenueber vor 20 Handelstagen.</li>
+          <li><strong>Momentum-Normalisierung:</strong> 1M wird aus etwa -12% bis +18% auf 0 bis 100 skaliert, 3M aus -18% bis +28%, 6M aus -25% bis +40%.</li>
+          <li><strong>RSI-Bewertung:</strong> Zielwert ist RSI 62 kurzfristig, 58 mittelfristig, 55 langfristig. Abweichung senkt den Score; ueber 75 gibt es einen zusaetzlichen Malus, unter 40 ebenfalls.</li>
+          <li><strong>Hoch-Naehe:</strong> Je naeher der Kurs am 60-Tage-Hoch liegt, desto hoeher der Teilscore. Eine Abweichung von 0% ist optimal, ab etwa 15% Abstand faellt der Score gegen 0.</li>
+          <li><strong>Volatilitaet:</strong> Die annualisierte 20-Tage-Volatilitaet wird invers bewertet. Etwa 15% ist stark, ab etwa 45% wird der Teilscore sehr schwach.</li>
+        </ul>
+      </section>
+    </section>
+
+    <div id="recommendationLoadingSection" class="loading-section hidden">
+      <div class="spinner"></div>
+      <div class="loading-text">
+        <p id="recommendationLoadingStatus">Analysiere technische Kennzahlen…</p>
+        <p class="loading-sub">
+          Bewertet alle Werte passend zur gewaehlten Anlagedauer.
+        </p>
+      </div>
+    </div>
+
+    <div id="recommendationErrorBanner" class="error-banner hidden">
+      <span class="error-icon">⚠️</span>
+      <span id="recommendationErrorMessage">Unbekannter Fehler</span>
+    </div>
+
+    <div id="recommendationSummaryBar" class="summary-bar hidden">
+      <div class="summary-item">
+        <span class="summary-label">Analysiert</span>
+        <span class="summary-value" id="recSumAnalyzed">–</span>
+      </div>
+      <div class="summary-item highlight">
+        <span class="summary-label">Bestes Rating</span>
+        <span class="summary-value" id="recSumBestScore">–</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Profil</span>
+        <span class="summary-value" id="recSumProfile">–</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Uebersprungen</span>
+        <span class="summary-value" id="recSumSkipped">–</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Zeitpunkt</span>
+        <span class="summary-value" id="recSumTime">–</span>
+      </div>
+    </div>
+
+    <section id="recommendationSection" class="results-section hidden">
+      <h2 class="section-title">
+        <span id="recommendationTitleLabel">🏆 Top 3 nach Anlagedauer</span>
+        <span class="badge" id="recommendationBadge">0</span>
+      </h2>
+
+      <div class="table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Rang</th>
+              <th>Anbieter</th>
+              <th>Name</th>
+              <th>Ticker</th>
+              <th>ISIN</th>
+              <th>WKN</th>
+              <th class="num">Score</th>
+              <th>Profil</th>
+              <th class="num">1M</th>
+              <th class="num">3M</th>
+              <th class="num">6M</th>
+              <th class="num">RSI14</th>
+              <th class="num">Vol. p.a.</th>
+              <th>Begruendung</th>
+            </tr>
+          </thead>
+          <tbody id="recommendationBody"></tbody>
+        </table>
+      </div>
+
+      <p id="recommendationEmpty" class="no-matches hidden">
+        Keine technisch verwertbaren Empfehlungen gefunden.
+      </p>
+    </section>
     </div>
 
     <div id="tabDbContent" class="hidden">

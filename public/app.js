@@ -56,9 +56,42 @@ const syncOldestUpdate = document.getElementById('syncOldestUpdate');
 const syncFreshness = document.getElementById('syncFreshness');
 const syncStatusNote = document.getElementById('syncStatusNote');
 const tabMainBtn = document.getElementById('tabMainBtn');
+const tabDurationBtn = document.getElementById('tabDurationBtn');
 const tabDbBtn = document.getElementById('tabDbBtn');
 const tabMainContent = document.getElementById('tabMainContent');
+const tabDurationContent = document.getElementById('tabDurationContent');
 const tabDbContent = document.getElementById('tabDbContent');
+const durationAssetClassFilter = document.getElementById('durationAssetClassFilter');
+const durationProviderFilter = document.getElementById('durationProviderFilter');
+const investmentDurationMonthsInput = document.getElementById('investmentDurationMonthsInput');
+const btnRecommend = document.getElementById('btnRecommend');
+const durationAssetHintLabel = document.getElementById('durationAssetHintLabel');
+const recommendationLoadingSection = document.getElementById('recommendationLoadingSection');
+const recommendationLoadingStatus = document.getElementById('recommendationLoadingStatus');
+const recommendationErrorBanner = document.getElementById('recommendationErrorBanner');
+const recommendationErrorMessage = document.getElementById('recommendationErrorMessage');
+const recommendationSummaryBar = document.getElementById('recommendationSummaryBar');
+const recSumAnalyzed = document.getElementById('recSumAnalyzed');
+const recSumBestScore = document.getElementById('recSumBestScore');
+const recSumProfile = document.getElementById('recSumProfile');
+const recSumSkipped = document.getElementById('recSumSkipped');
+const recSumTime = document.getElementById('recSumTime');
+const recommendationSection = document.getElementById('recommendationSection');
+const recommendationTitleLabel = document.getElementById('recommendationTitleLabel');
+const recommendationBadge = document.getElementById('recommendationBadge');
+const recommendationBody = document.getElementById('recommendationBody');
+const recommendationEmpty = document.getElementById('recommendationEmpty');
+const criteriaProfileName = document.getElementById('criteriaProfileName');
+const criteriaDurationRange = document.getElementById('criteriaDurationRange');
+const criteriaFormula = document.getElementById('criteriaFormula');
+const criteriaTrendText = document.getElementById('criteriaTrendText');
+const criteriaMomentumText = document.getElementById('criteriaMomentumText');
+const criteriaRsiText = document.getElementById('criteriaRsiText');
+const criteriaBreakoutText = document.getElementById('criteriaBreakoutText');
+const criteriaVolatilityText = document.getElementById('criteriaVolatilityText');
+const criteriaShortCard = document.getElementById('criteriaShortCard');
+const criteriaMediumCard = document.getElementById('criteriaMediumCard');
+const criteriaLongCard = document.getElementById('criteriaLongCard');
 const dbEtfSection = document.getElementById('dbEtfSection');
 const dbSectionTitleLabel = document.getElementById('dbSectionTitleLabel');
 const dbEtfBadge = document.getElementById('dbEtfBadge');
@@ -72,8 +105,34 @@ const DEFAULT_SMA_PERIOD = 200;
 const MIN_LOOKBACK_WEEKS = 0;
 const MAX_LOOKBACK_WEEKS = 52;
 const DEFAULT_LOOKBACK_WEEKS = 0;
+const MIN_INVESTMENT_DURATION_MONTHS = 1;
+const MAX_INVESTMENT_DURATION_MONTHS = 120;
+const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
 const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
+const RECOMMENDATION_PROFILES = {
+  short: {
+    rangeLabel: '1 bis 3 Monate',
+    profileLabel: 'Kurzfristig',
+    formula: '20% Trend + 30% 1M-Momentum + 15% 3M-Momentum + 20% RSI + 10% Hoch-Naehe + 5% Volatilitaet',
+    momentumText: '1-Monats-Momentum ist der staerkste Faktor. 3-Monats-Momentum fliesst als Bestaetigung ein, 6 Monate werden nicht gewichtet.',
+    rsiText: 'RSI14 wird auf ein Momentum-Ziel von 62 bewertet. Zu heiss ueber 75 und zu schwach unter 40 wird zusaetzlich abgestraft.',
+  },
+  medium: {
+    rangeLabel: '4 bis 12 Monate',
+    profileLabel: 'Mittelfristig',
+    formula: '30% Trend + 10% 1M-Momentum + 25% 3M-Momentum + 10% RSI + 10% Hoch-Naehe + 15% Volatilitaet',
+    momentumText: '3-Monats-Momentum ist der wichtigste Bewegungsfaktor. 1 Monat dient nur als kurzfristige Feinjustierung, 6 Monate werden nicht gewichtet.',
+    rsiText: 'RSI14 wird auf ein Ziel von 58 bewertet. Das bevorzugt intakten Aufwaertstrend ohne stark ueberdehntes Niveau.',
+  },
+  long: {
+    rangeLabel: 'ab 13 Monaten',
+    profileLabel: 'Langfristig',
+    formula: '40% Trend + 20% 3M-Momentum + 20% 6M-Momentum + 5% RSI + 5% Hoch-Naehe + 10% Volatilitaet',
+    momentumText: '3- und 6-Monats-Momentum zaehlen, kurzfristige 1-Monats-Bewegungen werden bewusst ausgeblendet.',
+    rsiText: 'RSI14 wird auf ein moderateres Ziel von 55 bewertet. Langfristig zaehlt Trendstaerke mehr als kurzfristige Ueberhitzung.',
+  },
+};
 
 /** Total number of ETFs in the current filter (filled after first response). */
 let knownTotal = '…';
@@ -87,6 +146,10 @@ let currentLookbackWeeks = DEFAULT_LOOKBACK_WEEKS;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
 let currentTab = 'main';
+let currentRecommendationAssetClass = 'etf';
+let currentRecommendationProviderFilter = 'all';
+let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
+let recommendationStatusInterval = null;
 
 /* ── Utility helpers ────────────────────────────────────────────────────── */
 
@@ -277,6 +340,37 @@ function getSelectedAssetClass() {
   return value;
 }
 
+function getSelectedRecommendationAssetClass() {
+  const value = String(durationAssetClassFilter.value || 'etf').trim().toLowerCase();
+  if (!ALLOWED_ASSET_CLASSES.has(value)) {
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40.');
+  }
+  return value;
+}
+
+function getSelectedRecommendationProviderFilter() {
+  const value = String(durationProviderFilter.value || 'all').trim().toLowerCase();
+  if (!ALLOWED_PROVIDER_FILTERS.has(value)) {
+    throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur iShares, nur Xtrackers.');
+  }
+  return value;
+}
+
+function getSelectedInvestmentDurationMonths() {
+  const raw = String(investmentDurationMonthsInput.value || '').trim();
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < MIN_INVESTMENT_DURATION_MONTHS) {
+    throw new Error(`Ungueltige Anlagedauer. Bitte eine ganze Zahl >= ${MIN_INVESTMENT_DURATION_MONTHS} eingeben.`);
+  }
+
+  if (parsed > MAX_INVESTMENT_DURATION_MONTHS) {
+    throw new Error(`Anlagedauer zu gross. Maximal erlaubt: ${MAX_INVESTMENT_DURATION_MONTHS} Monate.`);
+  }
+
+  return parsed;
+}
+
 function applyAssetClassUiState() {
   if (currentAssetClass === 'dax40') {
     providerFilter.value = 'all';
@@ -293,6 +387,44 @@ function applyAssetClassUiState() {
   resultsTitleLabel.textContent = '✅ Breakout-Signale (ETFs)';
   errorsTitleLabel.textContent = '⚠️ Nicht abrufbare ETFs';
   dbSectionTitleLabel.textContent = '📚 ETFs mit vorhandenen DB-Daten';
+}
+
+function applyRecommendationAssetClassUiState() {
+  if (currentRecommendationAssetClass === 'dax40') {
+    durationProviderFilter.value = 'all';
+    durationProviderFilter.disabled = true;
+    durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
+    recommendationTitleLabel.textContent = '🏆 Top 3 DAX40 nach Anlagedauer';
+    return;
+  }
+
+  durationProviderFilter.disabled = false;
+  durationAssetHintLabel.textContent = 'ETFs';
+  recommendationTitleLabel.textContent = '🏆 Top 3 nach Anlagedauer';
+}
+
+function getRecommendationProfileByDuration(months) {
+  if (months <= 3) return 'short';
+  if (months <= 12) return 'medium';
+  return 'long';
+}
+
+function updateRecommendationCriteriaInfo() {
+  const profileKey = getRecommendationProfileByDuration(currentInvestmentDurationMonths);
+  const profile = RECOMMENDATION_PROFILES[profileKey];
+
+  criteriaProfileName.textContent = profile.profileLabel;
+  criteriaDurationRange.textContent = profile.rangeLabel;
+  criteriaFormula.textContent = profile.formula;
+  criteriaTrendText.textContent = 'Trendscore von 0 bis 100: 15 Punkte fuer Kurs > SMA20, 20 fuer Kurs > SMA50, 25 fuer Kurs > SMA200, 15 fuer SMA20 > SMA50, 15 fuer SMA50 > SMA200 und 10 fuer einen steigenden SMA200.';
+  criteriaMomentumText.textContent = `${profile.momentumText} Die Momentum-Scores werden auf 0 bis 100 normiert.`;
+  criteriaRsiText.textContent = profile.rsiText;
+  criteriaBreakoutText.textContent = 'Je naeher der aktuelle Kurs am 60-Tage-Hoch liegt, desto besser. Der Teilscore faellt von optimal bei 0% Abstand bis schwach bei etwa 15% Abstand.';
+  criteriaVolatilityText.textContent = 'Die annualisierte 20-Tage-Volatilitaet wird invers bewertet: ruhiger ist besser. Etwa 15% ist stark, ab etwa 45% ist der Teilscore nahe 0.';
+
+  criteriaShortCard.classList.toggle('active', profileKey === 'short');
+  criteriaMediumCard.classList.toggle('active', profileKey === 'medium');
+  criteriaLongCard.classList.toggle('active', profileKey === 'long');
 }
 
 function updateSignalLabels() {
@@ -318,16 +450,21 @@ function updateSignalLabels() {
 }
 
 function setActiveTab(tab) {
-  currentTab = tab === 'db' ? 'db' : 'main';
+  currentTab = tab === 'db' || tab === 'duration' ? tab : 'main';
 
   const mainActive = currentTab === 'main';
+  const durationActive = currentTab === 'duration';
+  const dbActive = currentTab === 'db';
+
   setVisible(tabMainContent, mainActive);
-  setVisible(tabDbContent, !mainActive);
+  setVisible(tabDurationContent, durationActive);
+  setVisible(tabDbContent, dbActive);
 
   tabMainBtn.classList.toggle('active', mainActive);
-  tabDbBtn.classList.toggle('active', !mainActive);
+  tabDurationBtn.classList.toggle('active', durationActive);
+  tabDbBtn.classList.toggle('active', dbActive);
 
-  if (!mainActive) {
+  if (dbActive) {
     loadDbEtfList();
   }
 }
@@ -556,6 +693,57 @@ function renderDbFreshness(freshness) {
   setFreshnessClass(dbFreshnessBadge, freshness?.level);
 }
 
+function getScoreClass(score) {
+  if (score >= 75) return 'score-strong';
+  if (score >= 45) return 'score-neutral';
+  return 'score-weak';
+}
+
+function renderRecommendationSummary(data, scannedAt) {
+  const best = data.recommendations?.[0] || null;
+
+  recSumAnalyzed.textContent = data.successful ?? data.analyzed ?? '–';
+  recSumBestScore.textContent = best ? fmt(best.score, 1) : '–';
+  recSumProfile.textContent = data.profileLabel || '–';
+  recSumSkipped.textContent = data.skipped ?? '–';
+  recSumTime.textContent = scannedAt
+    ? new Date(scannedAt).toLocaleTimeString('de-DE')
+    : '–';
+  setVisible(recommendationSummaryBar, true);
+}
+
+function renderRecommendations(items) {
+  recommendationBadge.textContent = String(items.length);
+  setVisible(recommendationSection, true);
+
+  if (!items.length) {
+    recommendationBody.innerHTML = '';
+    setVisible(recommendationEmpty, true);
+    return;
+  }
+
+  setVisible(recommendationEmpty, false);
+  recommendationBody.innerHTML = items
+    .map(item => `
+      <tr>
+        <td><span class="rank-pill">${item.rank}</span></td>
+        <td><span class="id-chip">${escHtml(item.provider || 'nicht verfügbar')}</span></td>
+        <td>${escHtml(item.name || 'nicht verfügbar')}</td>
+        <td>${renderTickerLink(item.ticker)}</td>
+        <td><span class="id-chip">${escHtml(item.isin || 'nicht verfügbar')}</span></td>
+        <td><span class="id-chip">${escHtml(item.wkn || 'nicht verfügbar')}</span></td>
+        <td class="num"><span class="score-pill ${getScoreClass(item.score)}">${fmt(item.score, 1)}</span></td>
+        <td><span class="id-chip">${escHtml(item.profileLabel || '–')}</span></td>
+        <td class="num">${item.momentum20Pct != null ? `${fmt(item.momentum20Pct, 2)} %` : '–'}</td>
+        <td class="num">${item.momentum60Pct != null ? `${fmt(item.momentum60Pct, 2)} %` : '–'}</td>
+        <td class="num">${item.momentum120Pct != null ? `${fmt(item.momentum120Pct, 2)} %` : '–'}</td>
+        <td class="num">${fmt(item.rsi14, 2)}</td>
+        <td class="num">${item.annualizedVolatilityPct != null ? `${fmt(item.annualizedVolatilityPct, 2)} %` : '–'}</td>
+        <td><div class="recommendation-rationale">${escHtml(item.rationale || '–')}</div></td>
+      </tr>`)
+    .join('');
+}
+
 async function loadDbEtfList() {
   try {
     const params = new URLSearchParams({
@@ -592,6 +780,12 @@ const STATUS_MESSAGES = [
   'Suche Breakout-Signale …',
   'Fast fertig …',
 ];
+const RECOMMENDATION_STATUS_MESSAGES = [
+  'Analysiere Trendstruktur …',
+  'Bewerte Momentum je Anlagedauer …',
+  'Pruefe RSI und Volatilitaet …',
+  'Ermittle Top 3 …',
+];
 let statusInterval = null;
 
 function startStatusAnimation() {
@@ -607,6 +801,22 @@ function stopStatusAnimation() {
   if (statusInterval) {
     clearInterval(statusInterval);
     statusInterval = null;
+  }
+}
+
+function startRecommendationStatusAnimation() {
+  let idx = 0;
+  recommendationLoadingStatus.textContent = RECOMMENDATION_STATUS_MESSAGES[0];
+  recommendationStatusInterval = setInterval(() => {
+    idx = (idx + 1) % RECOMMENDATION_STATUS_MESSAGES.length;
+    recommendationLoadingStatus.textContent = RECOMMENDATION_STATUS_MESSAGES[idx];
+  }, 3500);
+}
+
+function stopRecommendationStatusAnimation() {
+  if (recommendationStatusInterval) {
+    clearInterval(recommendationStatusInterval);
+    recommendationStatusInterval = null;
   }
 }
 
@@ -736,9 +946,84 @@ async function runScan() {
   }
 }
 
+async function runRecommendations() {
+  let assetClass;
+  let provider;
+  let investmentDurationMonths;
+
+  try {
+    assetClass = getSelectedRecommendationAssetClass();
+    investmentDurationMonths = getSelectedInvestmentDurationMonths();
+    provider = assetClass === 'dax40' ? 'all' : getSelectedRecommendationProviderFilter();
+  } catch (validationErr) {
+    recommendationErrorMessage.textContent = validationErr.message;
+    setVisible(recommendationErrorBanner, true);
+    return;
+  }
+
+  currentRecommendationAssetClass = assetClass;
+  currentRecommendationProviderFilter = provider;
+  currentInvestmentDurationMonths = investmentDurationMonths;
+  applyRecommendationAssetClassUiState();
+
+  setVisible(recommendationErrorBanner, false);
+  setVisible(recommendationLoadingSection, true);
+  setVisible(recommendationSection, false);
+  setVisible(recommendationSummaryBar, false);
+  btnRecommend.disabled = true;
+  startRecommendationStatusAnimation();
+
+  try {
+    const params = new URLSearchParams({
+      assetClass: currentRecommendationAssetClass,
+      provider: currentRecommendationProviderFilter,
+      investmentDurationMonths: String(currentInvestmentDurationMonths),
+      limit: '3',
+    });
+
+    const response = await fetch(`/api/recommendations?${params.toString()}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Unbekannter Serverfehler');
+    }
+
+    if (data.results?.assetClass) {
+      currentRecommendationAssetClass = data.results.assetClass;
+      durationAssetClassFilter.value = currentRecommendationAssetClass;
+    }
+
+    if (data.results?.providerFilter) {
+      currentRecommendationProviderFilter = data.results.providerFilter;
+      durationProviderFilter.value = currentRecommendationProviderFilter;
+    }
+
+    if (data.results?.investmentDurationMonths) {
+      currentInvestmentDurationMonths = data.results.investmentDurationMonths;
+      investmentDurationMonthsInput.value = currentInvestmentDurationMonths;
+    }
+
+    applyRecommendationAssetClassUiState();
+    renderRecommendationSummary(data.results, data.scannedAt);
+    renderRecommendations(data.results.recommendations || []);
+  } catch (err) {
+    recommendationErrorMessage.textContent = `Fehler bei den Empfehlungen: ${err.message}`;
+    setVisible(recommendationErrorBanner, true);
+  } finally {
+    stopRecommendationStatusAnimation();
+    setVisible(recommendationLoadingSection, false);
+    btnRecommend.disabled = false;
+  }
+}
+
 /* ── Event listeners ─────────────────────────────────────────────────────── */
 
 btnScan.addEventListener('click', () => runScan());
+btnRecommend.addEventListener('click', () => runRecommendations());
 
 signalModeSelect.addEventListener('change', () => {
   try {
@@ -811,6 +1096,20 @@ providerFilter.addEventListener('change', () => {
   }
 });
 
+durationProviderFilter.addEventListener('change', () => {
+  try {
+    if (currentRecommendationAssetClass === 'dax40') {
+      durationProviderFilter.value = 'all';
+      return;
+    }
+    currentRecommendationProviderFilter = getSelectedRecommendationProviderFilter();
+    setVisible(recommendationErrorBanner, false);
+  } catch (err) {
+    recommendationErrorMessage.textContent = err.message;
+    setVisible(recommendationErrorBanner, true);
+  }
+});
+
 assetClassFilter.addEventListener('change', () => {
   try {
     currentAssetClass = getSelectedAssetClass();
@@ -827,6 +1126,28 @@ assetClassFilter.addEventListener('change', () => {
   }
 });
 
+durationAssetClassFilter.addEventListener('change', () => {
+  try {
+    currentRecommendationAssetClass = getSelectedRecommendationAssetClass();
+    applyRecommendationAssetClassUiState();
+    setVisible(recommendationErrorBanner, false);
+  } catch (err) {
+    recommendationErrorMessage.textContent = err.message;
+    setVisible(recommendationErrorBanner, true);
+  }
+});
+
+investmentDurationMonthsInput.addEventListener('change', () => {
+  try {
+    currentInvestmentDurationMonths = getSelectedInvestmentDurationMonths();
+    updateRecommendationCriteriaInfo();
+    setVisible(recommendationErrorBanner, false);
+  } catch (err) {
+    recommendationErrorMessage.textContent = err.message;
+    setVisible(recommendationErrorBanner, true);
+  }
+});
+
 chkShowErrors.addEventListener('change', () => {
   const errorCount = parseInt(errorBadge.textContent, 10) || 0;
   setVisible(errorsSection, chkShowErrors.checked && errorCount > 0);
@@ -839,6 +1160,7 @@ maxAboveSmaPctInput.addEventListener('input', () => {
 });
 
 tabMainBtn.addEventListener('click', () => setActiveTab('main'));
+tabDurationBtn.addEventListener('click', () => setActiveTab('duration'));
 tabDbBtn.addEventListener('click', () => setActiveTab('db'));
 
 /* ── Initialisation ──────────────────────────────────────────────────────── */
@@ -850,7 +1172,12 @@ currentSmaPeriod = getSelectedSmaPeriod();
 currentFastSmaPeriod = getSelectedFastSmaPeriod();
 currentSlowSmaPeriod = getSelectedSlowSmaPeriod();
 currentLookbackWeeks = getSelectedLookbackWeeks();
+currentRecommendationAssetClass = getSelectedRecommendationAssetClass();
+currentRecommendationProviderFilter = getSelectedRecommendationProviderFilter();
+currentInvestmentDurationMonths = getSelectedInvestmentDurationMonths();
 applyAssetClassUiState();
+applyRecommendationAssetClassUiState();
+updateRecommendationCriteriaInfo();
 updateSignalLabels();
 startSyncStatusPolling();
 setActiveTab('main');

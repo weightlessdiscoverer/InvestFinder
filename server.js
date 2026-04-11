@@ -19,6 +19,12 @@ const {
   DEFAULT_SMA_PERIOD,
 } = require('./src/analysis');
 const {
+  DEFAULT_INVESTMENT_DURATION_MONTHS,
+  getTopRecommendations,
+  normalizeInvestmentDurationMonths,
+  normalizeRecommendationLimit,
+} = require('./src/recommendationEngine');
+const {
   startYahooHistoryUpdater,
   getYahooHistoryUpdaterInfo,
 } = require('./src/yahooHistoryUpdater');
@@ -109,6 +115,40 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {
     console.error('[/api/scan] Error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/recommendations', scanLimiter, async (req, res) => {
+  const bypassCache = req.query.cache === 'false';
+
+  let assetClass;
+  let providerFilter;
+  let investmentDurationMonths;
+  let limit;
+
+  try {
+    assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
+    providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
+    investmentDurationMonths = normalizeInvestmentDurationMonths(
+      req.query.investmentDurationMonths ?? DEFAULT_INVESTMENT_DURATION_MONTHS
+    );
+    limit = normalizeRecommendationLimit(req.query.limit ?? 3);
+  } catch (validationErr) {
+    return res.status(400).json({ ok: false, error: validationErr.message });
+  }
+
+  try {
+    const results = await getTopRecommendations({
+      bypassCache,
+      assetClass,
+      providerFilter,
+      investmentDurationMonths,
+      limit,
+    });
+    res.json({ ok: true, results, scannedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('[/api/recommendations] Error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
