@@ -451,6 +451,17 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--color-border);
 }
 
+.table-wrapper-scrollable {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+}
+
+.table-wrapper-scrollable .results-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
 .results-table {
   width: 100%;
   border-collapse: collapse;
