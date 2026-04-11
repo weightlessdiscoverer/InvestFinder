@@ -86,34 +86,61 @@ async function processTicker(etf, cooldownMs) {
   await wait(LOOP_DELAY_MS);
 }
 
+function isCoolingDown() {
+  return Boolean(state.pausedUntil && Date.now() < state.pausedUntil);
+}
+
+function clearCooldownIfElapsed() {
+  if (state.pausedUntil && Date.now() >= state.pausedUntil) {
+    state.pausedUntil = null;
+  }
+}
+
+async function waitForCooldownIfNeeded() {
+  if (!isCoolingDown()) {
+    return false;
+  }
+
+  await wait(1000);
+  return true;
+}
+
+async function getQueueOrWait() {
+  const queue = await buildQueue();
+  if (queue.length === 0) {
+    await wait(5000);
+  }
+  return queue;
+}
+
+async function processQueue(queue, cooldownMs) {
+  for (const etf of queue) {
+    if (!state.running) {
+      return;
+    }
+
+    if (isCoolingDown()) {
+      return;
+    }
+
+    await processTicker(etf, cooldownMs);
+  }
+}
+
 async function runLoop(cooldownMs) {
   while (state.running) {
-    if (state.pausedUntil && Date.now() < state.pausedUntil) {
-      await wait(1000);
+    clearCooldownIfElapsed();
+
+    if (await waitForCooldownIfNeeded()) {
       continue;
     }
 
-    if (state.pausedUntil && Date.now() >= state.pausedUntil) {
-      state.pausedUntil = null;
-    }
-
-    const queue = await buildQueue();
+    const queue = await getQueueOrWait();
     if (queue.length === 0) {
-      await wait(5000);
       continue;
     }
 
-    for (const etf of queue) {
-      if (!state.running) {
-        return;
-      }
-
-      if (state.pausedUntil && Date.now() < state.pausedUntil) {
-        break;
-      }
-
-      await processTicker(etf, cooldownMs);
-    }
+    await processQueue(queue, cooldownMs);
   }
 }
 

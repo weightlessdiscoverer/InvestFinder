@@ -55,6 +55,46 @@ function getSourceForProvider(providerName) {
   return [];
 }
 
+function getDiscoveryProviderFilter(providerName) {
+  return providerName === 'iShares' ? 'ishares' : 'xtrackers';
+}
+
+function normalizeUniverseItem(item, providerName) {
+  const normalized = {
+    provider: providerName,
+    ticker: String(item.ticker || '').trim().toUpperCase(),
+    name: String(item.name || '').trim(),
+    isin: String(item.isin || '').trim().toUpperCase(),
+    wkn: item.wkn ? String(item.wkn).trim().toUpperCase() : 'nicht verfügbar',
+  };
+
+  return {
+    ...normalized,
+    isin: isValidIsinFormat(normalized.isin) ? normalized.isin : '',
+  };
+}
+
+function mergeTickerDuplicates(items) {
+  const byTicker = new Map();
+
+  for (const item of items) {
+    const existing = byTicker.get(item.ticker);
+    if (!existing) {
+      byTicker.set(item.ticker, item);
+      continue;
+    }
+
+    byTicker.set(item.ticker, {
+      ...existing,
+      name: existing.name.length >= item.name.length ? existing.name : item.name,
+      isin: existing.isin || item.isin,
+      wkn: existing.wkn !== 'nicht verfügbar' ? existing.wkn : item.wkn,
+    });
+  }
+
+  return Array.from(byTicker.values());
+}
+
 /**
  * Laedt eine Anbieterliste aus statischer Quelle und cached sie separat.
  * @param {string} providerName
@@ -74,46 +114,15 @@ async function getProviderEtfs(providerName, bypassCache) {
   const [rawStatic, rawDiscovered] = await Promise.all([
     Promise.resolve(getSourceForProvider(providerName)),
     getDiscoveredEtfs({
-      providerFilter: providerName === 'iShares' ? 'ishares' : 'xtrackers',
+      providerFilter: getDiscoveryProviderFilter(providerName),
       forceRefresh: bypassCache,
     }),
   ]);
 
-  const raw = [...rawStatic, ...rawDiscovered];
-
-  const normalized = raw
-    .map(item => ({
-      provider: providerName,
-      ticker: String(item.ticker || '').trim().toUpperCase(),
-      name: String(item.name || '').trim(),
-      isin: String(item.isin || '').trim().toUpperCase(),
-      wkn: item.wkn ? String(item.wkn).trim().toUpperCase() : 'nicht verfügbar',
-    }))
-    .map(item => ({
-      ...item,
-      isin: isValidIsinFormat(item.isin) ? item.isin : '',
-    }))
+  const normalized = [...rawStatic, ...rawDiscovered]
+    .map(item => normalizeUniverseItem(item, providerName))
     .filter(item => item.ticker && item.name);
-
-  const byTicker = new Map();
-  for (const item of normalized) {
-    const existing = byTicker.get(item.ticker);
-    if (!existing) {
-      byTicker.set(item.ticker, item);
-      continue;
-    }
-
-    // Prefer richer metadata when the same ticker appears in static + discovered data.
-    const pick = {
-      ...existing,
-      name: existing.name.length >= item.name.length ? existing.name : item.name,
-      isin: existing.isin || item.isin,
-      wkn: existing.wkn !== 'nicht verfügbar' ? existing.wkn : item.wkn,
-    };
-    byTicker.set(item.ticker, pick);
-  }
-
-  const dedupedByTicker = Array.from(byTicker.values());
+  const dedupedByTicker = mergeTickerDuplicates(normalized);
 
   providerCache.set(providerName, {
     data: dedupedByTicker,

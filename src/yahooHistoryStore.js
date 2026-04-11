@@ -2,6 +2,7 @@
 
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { classifyFreshness, getAgeInDays } = require('./yahooHistoryFreshness');
 
 const CACHE_DIR = path.join(__dirname, 'data', 'provider-cache');
 const STORE_PATH = path.join(CACHE_DIR, 'yahoo-history-db.json');
@@ -16,8 +17,6 @@ const EMPTY_STORE = {
 };
 
 let writeQueue = Promise.resolve();
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -71,52 +70,6 @@ function normalizeTicker(ticker) {
   return String(ticker || '').trim().toUpperCase();
 }
 
-function getAgeInDays(isoDateTime) {
-  if (!isoDateTime) return null;
-
-  const parsed = new Date(isoDateTime);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  const now = new Date();
-  const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startThen = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-  return Math.floor((startNow - startThen) / MS_PER_DAY);
-}
-
-function classifyFreshness(updatedAt) {
-  const ageInDays = getAgeInDays(updatedAt);
-
-  if (ageInDays == null) {
-    return {
-      level: 'unknown',
-      label: 'Unbekannt',
-      ageInDays: null,
-    };
-  }
-
-  if (ageInDays <= 0) {
-    return {
-      level: 'very-fresh',
-      label: 'Sehr aktuell',
-      ageInDays,
-    };
-  }
-
-  if (ageInDays <= 5) {
-    return {
-      level: 'acceptable',
-      label: 'Geht gerade noch',
-      ageInDays,
-    };
-  }
-
-  return {
-    level: 'stale',
-    label: 'Veraltet',
-    ageInDays,
-  };
-}
-
 function buildRecord({ dates, closes, fetchedAt }) {
   const length = Math.min(dates.length, closes.length);
   const normalizedDates = dates.slice(0, length);
@@ -130,6 +83,52 @@ function buildRecord({ dates, closes, fetchedAt }) {
     points: normalizedDates.length,
     updatedAt: fetchedAt,
   };
+}
+
+function updateSummaryBounds(currentBounds, row) {
+  const next = {
+    ...currentBounds,
+    totalPoints: currentBounds.totalPoints + Number(row?.points || 0),
+  };
+
+  if (!row?.updatedAt) {
+    return next;
+  }
+
+  if (!next.oldestUpdate || row.updatedAt < next.oldestUpdate) {
+    next.oldestUpdate = row.updatedAt;
+  }
+  if (!next.newestUpdate || row.updatedAt > next.newestUpdate) {
+    next.newestUpdate = row.updatedAt;
+  }
+
+  return next;
+}
+
+function getOrNull(row, key) {
+  return row && row[key] != null ? row[key] : null;
+}
+
+function toNumberOrZero(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toTickerRecordRow([ticker, row]) {
+  const updatedAt = getOrNull(row, 'updatedAt');
+
+  return {
+    ticker,
+    points: toNumberOrZero(row?.points),
+    firstDate: getOrNull(row, 'firstDate'),
+    lastDate: getOrNull(row, 'lastDate'),
+    updatedAt,
+    freshness: classifyFreshness(updatedAt),
+  };
+}
+
+function sortTickerRecords(a, b) {
+  return b.points - a.points || a.ticker.localeCompare(b.ticker);
 }
 
 async function upsertTickerHistory(ticker, history, fetchedAt = new Date().toISOString()) {
@@ -167,28 +166,21 @@ async function getTickerUpdatedAt(ticker) {
 async function getStoreSummary() {
   const store = await readStore();
   const tickers = Object.keys(store.tickers);
+  const rows = Object.values(store.tickers);
 
-  let totalPoints = 0;
-  let oldestUpdate = null;
-  let newestUpdate = null;
-
-  for (const ticker of tickers) {
-    const row = store.tickers[ticker];
-    totalPoints += Number(row?.points || 0);
-
-    if (row?.updatedAt) {
-      if (!oldestUpdate || row.updatedAt < oldestUpdate) oldestUpdate = row.updatedAt;
-      if (!newestUpdate || row.updatedAt > newestUpdate) newestUpdate = row.updatedAt;
-    }
-  }
+  const summaryBounds = rows.reduce(updateSummaryBounds, {
+    totalPoints: 0,
+    oldestUpdate: null,
+    newestUpdate: null,
+  });
 
   return {
     filePath: STORE_PATH,
     tickerCount: tickers.length,
-    totalPoints,
-    oldestUpdate,
-    newestUpdate,
-    freshness: classifyFreshness(oldestUpdate),
+    totalPoints: summaryBounds.totalPoints,
+    oldestUpdate: summaryBounds.oldestUpdate,
+    newestUpdate: summaryBounds.newestUpdate,
+    freshness: classifyFreshness(summaryBounds.oldestUpdate),
     metaUpdatedAt: store.meta?.updatedAt || null,
   };
 }
@@ -197,16 +189,9 @@ async function listAvailableTickerRecords() {
   const store = await readStore();
 
   return Object.entries(store.tickers)
-    .map(([ticker, row]) => ({
-      ticker,
-      points: Number(row?.points || 0),
-      firstDate: row?.firstDate || null,
-      lastDate: row?.lastDate || null,
-      updatedAt: row?.updatedAt || null,
-      freshness: classifyFreshness(row?.updatedAt || null),
-    }))
+    .map(toTickerRecordRow)
     .filter(row => row.points > 0)
-    .sort((a, b) => b.points - a.points || a.ticker.localeCompare(b.ticker));
+    .sort(sortTickerRecords);
 }
 
 module.exports = {

@@ -34,6 +34,7 @@ const {
   listAvailableTickerRecords,
 } = require('./src/yahooHistoryStore');
 const { getEtfUniverse } = require('./src/etfUniverseService');
+const { createAvailableInstrumentsHandler } = require('./src/availableInstrumentsService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -166,70 +167,14 @@ app.get('/api/yahoo-sync-status', async (_req, res) => {
   }
 });
 
-async function handleAvailableInstruments(req, res) {
-  try {
-    const assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
-    const providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
-    const [records, universe, summary] = await Promise.all([
-      listAvailableTickerRecords(),
-      getEtfUniverse({ providerFilter, bypassCache: false, assetClass }),
-      getStoreSummary(),
-    ]);
-
-    const byTicker = new Map(
-      universe.map(etf => [String(etf.ticker || '').toUpperCase(), etf])
-    );
-
-    const items = records
-      .map(record => {
-        const etf = byTicker.get(record.ticker);
-        if (!etf) return null;
-
-        return {
-          assetClass: etf.assetClass || assetClass,
-          provider: etf.provider,
-          ticker: etf.ticker,
-          name: etf.name,
-          isin: etf.isin || 'nicht verfügbar',
-          wkn: etf.wkn || 'nicht verfügbar',
-          points: record.points,
-          firstDate: record.firstDate,
-          lastDate: record.lastDate,
-          updatedAt: record.updatedAt,
-          freshness: record.freshness,
-          dataSource: 'Yahoo Finance',
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => {
-        if (a.provider !== b.provider) {
-          return a.provider.localeCompare(b.provider);
-        }
-        return a.ticker.localeCompare(b.ticker);
-      });
-
-    const oldestItemUpdate = items
-      .map(item => item.updatedAt)
-      .filter(Boolean)
-      .sort()[0] || null;
-
-    const effectiveFreshness = items.length > 0
-      ? classifyFreshness(oldestItemUpdate)
-      : summary.freshness;
-
-    res.json({
-      ok: true,
-      assetClass,
-      providerFilter,
-      count: items.length,
-      freshness: effectiveFreshness,
-      items,
-      listedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    res.status(400).json({ ok: false, error: err.message });
-  }
-}
+const handleAvailableInstruments = createAvailableInstrumentsHandler({
+  normalizeAssetClass,
+  normalizeProviderFilter,
+  listAvailableTickerRecords,
+  getEtfUniverse,
+  getStoreSummary,
+  classifyFreshness,
+});
 
 /**
  * GET /api/available-instruments
