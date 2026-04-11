@@ -1,0 +1,26 @@
+=== TESTABDECKUNGS-REPORT ===
+Projekt: InvestFinder
+Analysezeitpunkt: 2026-04-11
+Quelle: node --test --experimental-test-coverage
+
+=== GESAMT-COVERAGE ===
+- Line Coverage: 83.91%
+- Branch Coverage: 75.43%
+- Function Coverage: 90.83%
+- Tests gesamt: 43
+- Bestanden: 43
+- Fehlgeschlagen: 0
+
+=== DATEIEN MIT NIEDRIGER ABDECKUNG (Line < 80%) ===
+- src/analysis.js -> line 32.27%, branch 100.00%, funcs 33.33%
+- src/priceHistoryService.js -> line 25.00%, branch 100.00%, funcs 0.00%
+- src/yahooHistoryStore.js -> line 40.27%, branch 91.67%, funcs 14.29%
+
+=== DATEIEN MIT BRANCH-ABDECKUNG < 70% ===
+- src/masterDataService.js -> line 96.11%, branch 54.05%, funcs 100.00%
+- src/recommendationEngine.js -> line 94.74%, branch 64.42%, funcs 97.62%
+- src/yahooDiscoveryService.js -> line 89.29%, branch 58.73%, funcs 94.12%
+
+=== KURZFAZIT ===
+Die Gesamt-Coverage ist solide und liegt ueber den Zielwerten (80/70/80).
+Die groessten Abdeckungsluecken liegen in history/store-nahen Modulen und in analysis.js.

@@ -1,18 +1,24 @@
 === 1. HEADER ===
 Projektname: InvestFinder
-Analysezeitpunkt: 2026-04-06T08:24:14.256Z
+Analysezeitpunkt: 2026-04-11T18:55:48.713Z
 Node.js-Version: v20.19.0
 Analysierte Wurzelpfade: server.js, src, public
 Analysierte Dateipfade:
 - server.js
 - src/analysis.js
 - src/dataService.js
+- src/dax40List.js
 - src/etfList.js
 - src/etfUniverseService.js
 - src/indicators.js
 - src/masterDataService.js
+- src/priceHistoryService.js
+- src/recommendationEngine.js
 - src/signals.js
 - src/xtrackersList.js
+- src/yahooDiscoveryService.js
+- src/yahooHistoryStore.js
+- src/yahooHistoryUpdater.js
 - public/app.js
 - public/index.html
 - public/style.css
@@ -22,29 +28,37 @@ Gefundene Testdateien: 1
 Status: Coverage ueber Node --experimental-test-coverage erfolgreich gelesen.
 Empfohlene Grenzwerte: Statements >= 80%, Branches >= 70%, Functions >= 80%, Lines >= 80%
 Gesamt-Coverage:
-- Statements: 85.8% | Ziel >= 80% | Status: OK
-- Branches: 79.1% | Ziel >= 70% | Status: OK
-- Functions: 94.03% | Ziel >= 80% | Status: OK
-- Lines: 85.8% | Ziel >= 80% | Status: OK
+- Statements: 83.91% | Ziel >= 80% | Status: OK
+- Branches: 75.43% | Ziel >= 70% | Status: OK
+- Functions: 90.83% | Ziel >= 80% | Status: OK
+- Lines: 83.91% | Ziel >= 80% | Status: OK
 Coverage je Datei:
-- src/analysis.js: S=42.01% B=100% F=25% L=42.01%
+- src/analysis.js: S=32.27% B=100% F=33.33% L=32.27%
 - src/dataService.js: S=99.19% B=92% F=100% L=99.19%
+- src/dax40List.js: S=100% B=100% F=100% L=100%
 - src/etfList.js: S=100% B=100% F=100% L=100%
-- src/etfUniverseService.js: S=94.5% B=65.22% F=100% L=94.5%
-- src/indicators.js: S=100% B=100% F=100% L=100%
+- src/etfUniverseService.js: S=94.15% B=74.07% F=100% L=94.15%
+- src/indicators.js: S=97.7% B=94.74% F=100% L=97.7%
 - src/masterDataService.js: S=96.11% B=54.05% F=100% L=96.11%
-- src/signals.js: S=89.87% B=80% F=100% L=89.87%
+- src/priceHistoryService.js: S=25% B=100% F=0% L=25%
+- src/recommendationEngine.js: S=94.74% B=64.42% F=97.62% L=94.74%
+- src/signals.js: S=80.77% B=72.97% F=100% L=80.77%
 - src/xtrackersList.js: S=100% B=100% F=100% L=100%
-- test/core.test.js: S=99.47% B=100% F=96.3% L=99.47%
+- src/yahooDiscoveryService.js: S=89.29% B=58.73% F=94.12% L=89.29%
+- src/yahooHistoryStore.js: S=40.27% B=91.67% F=14.29% L=40.27%
+- test/core.test.js: S=99.86% B=100% F=98.89% L=99.86%
 
 === 3. CODE-KOMPLEXITAET ===
 Grenzwerte: <=5 GUT | 6-10 AKZEPTABEL | 11-20 WARNUNG | >20 KRITISCH
-Datei server.js: Modul-Komplexitaet 0 (GUT)
-Datei src/analysis.js: Modul-Komplexitaet 12 (WARNUNG)
-  - normalizeSmaPeriod (Zeile 43): 6 (AKZEPTABEL)
-  - getPriceHistory (Zeile 68): 4 (GUT)
-  - scanETF (Zeile 97): 1 (GUT)
-  - scanAllETFs (Zeile 164): 1 (GUT)
+Datei server.js: Modul-Komplexitaet 12 (WARNUNG)
+  - handleAvailableInstruments (Zeile 169): 12 (WARNUNG)
+Datei src/analysis.js: Modul-Komplexitaet 19 (WARNUNG)
+  - normalizeSmaPeriod (Zeile 27): 6 (AKZEPTABEL)
+  - normalizeOptionalSmaPeriod (Zeile 46): 4 (GUT)
+  - normalizeSignalConfig (Zeile 65): 1 (GUT)
+  - normalizeLookbackDays (Zeile 98): 6 (AKZEPTABEL)
+  - scanETF (Zeile 117): 1 (GUT)
+  - scanAllETFs (Zeile 229): 1 (GUT)
 Datei src/dataService.js: Modul-Komplexitaet 31 (KRITISCH)
   - createHttpErrorMessage (Zeile 27): 4 (GUT)
   - assertResponseOk (Zeile 34): 2 (GUT)
@@ -55,14 +69,18 @@ Datei src/dataService.js: Modul-Komplexitaet 31 (KRITISCH)
   - normalizePriceSeries (Zeile 72): 2 (GUT)
   - buildUrl (Zeile 89): 2 (GUT)
   - fetchDailyCloses (Zeile 110): 1 (GUT)
+Datei src/dax40List.js: Modul-Komplexitaet 0 (GUT)
 Datei src/etfList.js: Modul-Komplexitaet 0 (GUT)
-Datei src/etfUniverseService.js: Modul-Komplexitaet 17 (WARNUNG)
-  - normalizeProviderFilter (Zeile 28): 3 (GUT)
-  - getSourceForProvider (Zeile 36): 3 (GUT)
-  - getProviderEtfs (Zeile 48): 10 (AKZEPTABEL)
-  - getEtfUniverse (Zeile 85): 1 (GUT)
-Datei src/indicators.js: Modul-Komplexitaet 4 (GUT)
+Datei src/etfUniverseService.js: Modul-Komplexitaet 35 (KRITISCH)
+  - normalizeProviderFilter (Zeile 36): 3 (GUT)
+  - normalizeAssetClass (Zeile 44): 3 (GUT)
+  - getSourceForProvider (Zeile 52): 3 (GUT)
+  - getProviderEtfs (Zeile 64): 16 (WARNUNG)
+  - getDax40Universe (Zeile 126): 9 (AKZEPTABEL)
+  - getEtfUniverse (Zeile 159): 1 (GUT)
+Datei src/indicators.js: Modul-Komplexitaet 14 (WARNUNG)
   - computeSMA (Zeile 25): 4 (GUT)
+  - computeRSI (Zeile 44): 10 (AKZEPTABEL)
 Datei src/masterDataService.js: Modul-Komplexitaet 34 (KRITISCH)
   - isValidIsinFormat (Zeile 27): 2 (GUT)
   - normalizeTicker (Zeile 35): 2 (GUT)
@@ -75,35 +93,117 @@ Datei src/masterDataService.js: Modul-Komplexitaet 34 (KRITISCH)
   - getMasterDataIndex (Zeile 117): 1 (GUT)
   - warmMasterDataCache (Zeile 142): 1 (GUT)
   - getIdentifiersByTicker (Zeile 153): 6 (AKZEPTABEL)
-Datei src/signals.js: Modul-Komplexitaet 1 (GUT)
-  - detectBreakoutSignal (Zeile 30): 1 (GUT)
+Datei src/priceHistoryService.js: Modul-Komplexitaet 12 (WARNUNG)
+  - getPriceHistory (Zeile 9): 12 (WARNUNG)
+Datei src/recommendationEngine.js: Modul-Komplexitaet 61 (KRITISCH)
+  - clamp (Zeile 101): 1 (GUT)
+  - round (Zeile 105): 2 (GUT)
+  - scaleToScore (Zeile 110): 3 (GUT)
+  - inverseScaleToScore (Zeile 116): 1 (GUT)
+  - normalizeInvestmentDurationMonths (Zeile 120): 6 (AKZEPTABEL)
+  - normalizeRecommendationLimit (Zeile 141): 6 (AKZEPTABEL)
+  - getInvestmentProfile (Zeile 158): 3 (GUT)
+  - getPercentChange (Zeile 172): 6 (AKZEPTABEL)
+  - computeAnnualizedVolatilityPct (Zeile 186): 7 (AKZEPTABEL)
+  - getDistanceToRecentHighPct (Zeile 206): 6 (AKZEPTABEL)
+  - computeTrendScore (Zeile 221): 1 (GUT)
+  - computeBearishTrendScore (Zeile 234): 1 (GUT)
+  - computeRsiScore (Zeile 247): 4 (GUT)
+  - computeSellRsiScore (Zeile 266): 4 (GUT)
+  - buildRationale (Zeile 285): 1 (GUT)
+  - buildSellRationale (Zeile 310): 1 (GUT)
+  - getStrengthLabel (Zeile 343): 4 (GUT)
+  - deriveUnifiedRecommendation (Zeile 350): 1 (GUT)
+  - analyzeTechnicalSetup (Zeile 378): 1 (GUT)
+  - analyzeInstrumentForDuration (Zeile 554): 1 (GUT)
+  - getTopRecommendations (Zeile 589): 1 (GUT)
+Datei src/signals.js: Modul-Komplexitaet 20 (WARNUNG)
+  - getStartIdxForLookback (Zeile 10): 3 (GUT)
+  - detectPriceBreakoutSignal (Zeile 32): 1 (GUT)
+  - detectSmaCrossoverSignal (Zeile 148): 1 (GUT)
+  - detectBreakoutSignal (Zeile 275): 4 (GUT)
+  - hasCrossUp (Zeile 170): 6 (AKZEPTABEL)
+  - toSpreadPct (Zeile 174): 5 (GUT)
 Datei src/xtrackersList.js: Modul-Komplexitaet 0 (GUT)
+Datei src/yahooDiscoveryService.js: Modul-Komplexitaet 49 (KRITISCH)
+  - wait (Zeile 31): 1 (GUT)
+  - buildSeeds (Zeile 35): 2 (GUT)
+  - readDiscoveryCache (Zeile 44): 6 (AKZEPTABEL)
+  - writeDiscoveryCache (Zeile 60): 1 (GUT)
+  - looksLikeEtfQuote (Zeile 65): 9 (AKZEPTABEL)
+  - detectProvider (Zeile 77): 4 (GUT)
+  - normalizeQuoteToEtf (Zeile 96): 5 (GUT)
+  - fetchSearchQuotes (Zeile 107): 6 (AKZEPTABEL)
+  - discoverProviderEtfs (Zeile 128): 9 (AKZEPTABEL)
+  - isCacheFresh (Zeile 160): 4 (GUT)
+  - buildAndPersistDiscoveryCache (Zeile 167): 1 (GUT)
+  - getDiscoveredEtfs (Zeile 192): 1 (GUT)
+Datei src/yahooHistoryStore.js: Modul-Komplexitaet 58 (KRITISCH)
+  - clone (Zeile 22): 1 (GUT)
+  - ensureCacheDir (Zeile 26): 1 (GUT)
+  - withMeta (Zeile 30): 3 (GUT)
+  - readStore (Zeile 42): 7 (AKZEPTABEL)
+  - persistStore (Zeile 62): 1 (GUT)
+  - normalizeTicker (Zeile 70): 2 (GUT)
+  - getAgeInDays (Zeile 74): 3 (GUT)
+  - classifyFreshness (Zeile 86): 4 (GUT)
+  - buildRecord (Zeile 120): 1 (GUT)
+  - upsertTickerHistory (Zeile 135): 5 (GUT)
+  - getTickerHistory (Zeile 152): 3 (GUT)
+  - getTickerUpdatedAt (Zeile 162): 3 (GUT)
+  - getStoreSummary (Zeile 167): 12 (WARNUNG)
+  - listAvailableTickerRecords (Zeile 196): 12 (WARNUNG)
+Datei src/yahooHistoryUpdater.js: Modul-Komplexitaet 32 (KRITISCH)
+  - wait (Zeile 24): 1 (GUT)
+  - isRateLimitError (Zeile 28): 4 (GUT)
+  - buildQueue (Zeile 33): 5 (GUT)
+  - getStatus (Zeile 57): 3 (GUT)
+  - processTicker (Zeile 65): 5 (GUT)
+  - runLoop (Zeile 89): 11 (WARNUNG)
+  - startYahooHistoryUpdater (Zeile 120): 1 (GUT)
+  - stopYahooHistoryUpdater (Zeile 135): 1 (GUT)
+  - getYahooHistoryUpdaterInfo (Zeile 139): 1 (GUT)
 Top-5 komplexeste Funktionen/Module:
-- src/dataService.js:41 getChartResult -> 10 (AKZEPTABEL)
-- src/etfUniverseService.js:48 getProviderEtfs -> 10 (AKZEPTABEL)
-- src/analysis.js:43 normalizeSmaPeriod -> 6 (AKZEPTABEL)
-- src/masterDataService.js:39 normalizeIsin -> 6 (AKZEPTABEL)
-- src/masterDataService.js:153 getIdentifiersByTicker -> 6 (AKZEPTABEL)
+- src/etfUniverseService.js:64 getProviderEtfs -> 16 (WARNUNG)
+- server.js:169 handleAvailableInstruments -> 12 (WARNUNG)
+- src/priceHistoryService.js:9 getPriceHistory -> 12 (WARNUNG)
+- src/yahooHistoryStore.js:167 getStoreSummary -> 12 (WARNUNG)
+- src/yahooHistoryStore.js:196 listAvailableTickerRecords -> 12 (WARNUNG)
 
 === 4. CODE-METRIKEN ===
-- server.js: LOC=76, SLOC=47, Funktionen=0, TODO/FIXME=0
-- src/analysis.js: LOC=220, SLOC=142, Funktionen=4, TODO/FIXME=0
+- server.js: LOC=259, SLOC=195, Funktionen=1, TODO/FIXME=0
+- src/analysis.js: LOC=314, SLOC=254, Funktionen=6, TODO/FIXME=0
+  -> WARNUNG: SLOC > 200, Modularisierung empfohlen
 - src/dataService.js: LOC=124, SLOC=80, Funktionen=9, TODO/FIXME=0
+- src/dax40List.js: LOC=53, SLOC=45, Funktionen=0, TODO/FIXME=0
 - src/etfList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
-- src/etfUniverseService.js: LOC=110, SLOC=67, Funktionen=4, TODO/FIXME=0
-- src/indicators.js: LOC=45, SLOC=16, Funktionen=1, TODO/FIXME=0
+- src/etfUniverseService.js: LOC=206, SLOC=150, Funktionen=6, TODO/FIXME=0
+- src/indicators.js: LOC=88, SLOC=49, Funktionen=2, TODO/FIXME=0
 - src/masterDataService.js: LOC=181, SLOC=113, Funktionen=11, TODO/FIXME=0
-- src/signals.js: LOC=80, SLOC=44, Funktionen=1, TODO/FIXME=0
+- src/priceHistoryService.js: LOC=52, SLOC=42, Funktionen=1, TODO/FIXME=0
+- src/recommendationEngine.js: LOC=684, SLOC=603, Funktionen=21, TODO/FIXME=0
+  -> WARNUNG: SLOC > 200, Modularisierung empfohlen
+- src/signals.js: LOC=287, SLOC=215, Funktionen=6, TODO/FIXME=0
+  -> WARNUNG: SLOC > 200, Modularisierung empfohlen
 - src/xtrackersList.js: LOC=57, SLOC=46, Funktionen=0, TODO/FIXME=0
+- src/yahooDiscoveryService.js: LOC=225, SLOC=181, Funktionen=12, TODO/FIXME=0
+- src/yahooHistoryStore.js: LOC=222, SLOC=183, Funktionen=14, TODO/FIXME=0
+- src/yahooHistoryUpdater.js: LOC=152, SLOC=125, Funktionen=9, TODO/FIXME=0
 Datei-Risiko-Scores (heuristisch):
-- src/analysis.js: Score=4 | Risiko=MITTEL
+- src/recommendationEngine.js: Score=6 | Risiko=HOCH
+- src/analysis.js: Score=5 | Risiko=MITTEL
+- src/etfUniverseService.js: Score=5 | Risiko=MITTEL
+- src/signals.js: Score=5 | Risiko=MITTEL
+- src/yahooDiscoveryService.js: Score=5 | Risiko=MITTEL
+- src/yahooHistoryStore.js: Score=5 | Risiko=MITTEL
+- src/yahooHistoryUpdater.js: Score=5 | Risiko=MITTEL
+- server.js: Score=4 | Risiko=MITTEL
 - src/dataService.js: Score=4 | Risiko=MITTEL
 - src/masterDataService.js: Score=4 | Risiko=MITTEL
-- src/etfUniverseService.js: Score=3 | Risiko=MITTEL
-- server.js: Score=0 | Risiko=NIEDRIG
+- src/indicators.js: Score=2 | Risiko=NIEDRIG
+- src/priceHistoryService.js: Score=2 | Risiko=NIEDRIG
+- src/dax40List.js: Score=0 | Risiko=NIEDRIG
 - src/etfList.js: Score=0 | Risiko=NIEDRIG
-- src/indicators.js: Score=0 | Risiko=NIEDRIG
-- src/signals.js: Score=0 | Risiko=NIEDRIG
 - src/xtrackersList.js: Score=0 | Risiko=NIEDRIG
 
 === 5. ABHAENGIGKEITSANALYSE ===
@@ -113,28 +213,53 @@ require()-Imports je Datei:
   - Zeile 10: require('cors')
   - Zeile 11: require('path')
   - Zeile 12: require('express-rate-limit')
-  - Zeile 18: require('./src/analysis')
+  - Zeile 20: require('./src/analysis')
+  - Zeile 26: require('./src/recommendationEngine')
+  - Zeile 30: require('./src/yahooHistoryUpdater')
+  - Zeile 35: require('./src/yahooHistoryStore')
+  - Zeile 36: require('./src/etfUniverseService')
 - src/analysis.js:
-  - Zeile 17: require('./dataService')
-  - Zeile 18: require('./etfUniverseService')
-  - Zeile 19: require('./signals')
+  - Zeile 12: require('./etfUniverseService')
+  - Zeile 13: require('./signals')
+  - Zeile 14: require('./priceHistoryService')
 - src/dataService.js:
+  (keine require-Imports)
+- src/dax40List.js:
   (keine require-Imports)
 - src/etfList.js:
   (keine require-Imports)
 - src/etfUniverseService.js:
   - Zeile 13: require('./etfList')
   - Zeile 14: require('./xtrackersList')
-  - Zeile 15: require('./masterDataService')
+  - Zeile 15: require('./dax40List')
+  - Zeile 16: require('./masterDataService')
+  - Zeile 17: require('./yahooDiscoveryService')
 - src/indicators.js:
   (keine require-Imports)
 - src/masterDataService.js:
   - Zeile 13: require('fs/promises')
   - Zeile 14: require('path')
+- src/priceHistoryService.js:
+  - Zeile 3: require('./dataService')
+  - Zeile 4: require('./yahooHistoryStore')
+- src/recommendationEngine.js:
+  - Zeile 3: require('./indicators')
+  - Zeile 4: require('./etfUniverseService')
+  - Zeile 5: require('./priceHistoryService')
 - src/signals.js:
   - Zeile 8: require('./indicators')
 - src/xtrackersList.js:
   (keine require-Imports)
+- src/yahooDiscoveryService.js:
+  - Zeile 3: require('node:fs/promises')
+  - Zeile 4: require('node:path')
+- src/yahooHistoryStore.js:
+  - Zeile 3: require('node:fs/promises')
+  - Zeile 4: require('node:path')
+- src/yahooHistoryUpdater.js:
+  - Zeile 3: require('./dataService')
+  - Zeile 4: require('./etfUniverseService')
+  - Zeile 9: require('./yahooHistoryStore')
 Zirkulaere Abhaengigkeiten: keine gefunden
 Externe npm-Pakete (package.json):
 - cors: ^2.8.5
@@ -149,7 +274,15 @@ Input-Validierung in API-Pfad:
 - src/analysis.js: vorhanden
 
 === 7. HANDLUNGSEMPFEHLUNGEN (ZUSAMMENFASSUNG) ===
-Findings gesamt: KRITISCH=0, WARNUNG=0, INFO=1
+Findings gesamt: KRITISCH=0, WARNUNG=8, INFO=1
+[WARNUNG] Hohe Komplexitaet (16) in Funktion getProviderEtfs. Refactoring empfohlen. | Datei: src/etfUniverseService.js:64
+[WARNUNG] Hohe Komplexitaet (12) in Funktion handleAvailableInstruments. Refactoring empfohlen. | Datei: server.js:169
+[WARNUNG] Hohe Komplexitaet (12) in Funktion getPriceHistory. Refactoring empfohlen. | Datei: src/priceHistoryService.js:9
+[WARNUNG] Hohe Komplexitaet (12) in Funktion getStoreSummary. Refactoring empfohlen. | Datei: src/yahooHistoryStore.js:167
+[WARNUNG] Hohe Komplexitaet (12) in Funktion listAvailableTickerRecords. Refactoring empfohlen. | Datei: src/yahooHistoryStore.js:196
+[WARNUNG] Datei hat hohe SLOC (254) und sollte modularisiert werden. | Datei: src/analysis.js
+[WARNUNG] Datei hat hohe SLOC (603) und sollte modularisiert werden. | Datei: src/recommendationEngine.js
+[WARNUNG] Datei hat hohe SLOC (215) und sollte modularisiert werden. | Datei: src/signals.js
 [INFO] Input-Validierung in server.js und src/analysis.js erkannt. | Datei: server.js
 
 === 8. DYNAMISCHE SMOKE-CHECKS ===
