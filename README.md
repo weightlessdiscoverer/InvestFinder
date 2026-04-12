@@ -66,6 +66,8 @@ Dieser Prozess priorisiert ETFs mit dem aeltesten Aktualisierungszeitpunkt und p
 
 Wenn du die App wie eine installierte Anwendung starten willst, gibt es einen Launcher mit sauberem Stop-Verhalten.
 
+Der Launcher ist verschiebefest: Nach der Installation zeigt der Desktop-Eintrag auf einen stabilen Wrapper in `~/.local/bin`, der den aktuellen Projektpfad automatisch findet und in `~/.config/investfinder/launcher.conf` aktualisiert.
+
 ```bash
 # 1) Launcher in Anwendungsmenue installieren
 npm run install:linux-launcher
@@ -80,6 +82,7 @@ Wichtig:
 
 - Das Startskript oeffnet den Browser automatisch.
 - Wenn das Launcher-Terminal geschlossen wird (oder `Strg+C`), wird der Node-Server automatisch gestoppt.
+- Wenn du `scripts/start-investfinder.sh` direkt aus einer verschobenen Kopie startest, aktualisiert sich der gespeicherte Launcher-Pfad automatisch.
 
 ---
 

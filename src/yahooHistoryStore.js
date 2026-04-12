@@ -6,6 +6,7 @@ const { classifyFreshness, getAgeInDays } = require('./yahooHistoryFreshness');
 
 const CACHE_DIR = path.join(__dirname, 'data', 'provider-cache');
 const STORE_PATH = path.join(CACHE_DIR, 'yahoo-history-db.json');
+const STORE_BACKUP_PATH = path.join(CACHE_DIR, 'yahoo-history-db.backup.json');
 
 const EMPTY_STORE = {
   version: 1,
@@ -26,6 +27,39 @@ async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
 }
 
+async function writeFileAtomic(filePath, content) {
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tempPath, content, 'utf8');
+  await fs.rename(tempPath, filePath);
+}
+
+async function tryReadJson(filePath) {
+  const raw = await fs.readFile(filePath, 'utf8');
+  return JSON.parse(raw);
+}
+
+function isValidStoreShape(parsed) {
+  return Boolean(parsed && typeof parsed === 'object' && parsed.tickers && typeof parsed.tickers === 'object');
+}
+
+async function tryRecoverStoreFromBackup() {
+  try {
+    const backup = await tryReadJson(STORE_BACKUP_PATH);
+    if (!isValidStoreShape(backup)) {
+      return null;
+    }
+
+    await writeFileAtomic(STORE_PATH, JSON.stringify(backup, null, 2));
+    console.warn(`[HistoryStore] Wiederherstellung aus Backup erfolgreich: ${STORE_BACKUP_PATH}`);
+    return backup;
+  } catch (err) {
+    if (err && err.code === 'ENOENT') {
+      return null;
+    }
+    return null;
+  }
+}
+
 function withMeta(store) {
   const nowIso = new Date().toISOString();
   if (!store.meta) {
@@ -42,10 +76,9 @@ async function readStore() {
   await ensureCacheDir();
 
   try {
-    const raw = await fs.readFile(STORE_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
+    const parsed = await tryReadJson(STORE_PATH);
 
-    if (!parsed || typeof parsed !== 'object' || !parsed.tickers) {
+    if (!isValidStoreShape(parsed)) {
       return clone(EMPTY_STORE);
     }
 
@@ -54,6 +87,18 @@ async function readStore() {
     if (err && err.code === 'ENOENT') {
       return clone(EMPTY_STORE);
     }
+
+    if (err instanceof SyntaxError) {
+      console.warn(`[HistoryStore] Defekte JSON erkannt in ${STORE_PATH}. Versuche Wiederherstellung aus Backup ...`);
+      const recovered = await tryRecoverStoreFromBackup();
+      if (recovered) {
+        return recovered;
+      }
+
+      console.warn('[HistoryStore] Kein nutzbares Backup gefunden. Starte mit leerem Store.');
+      return clone(EMPTY_STORE);
+    }
+
     throw err;
   }
 }
@@ -61,7 +106,19 @@ async function readStore() {
 function persistStore(store) {
   writeQueue = writeQueue.then(async () => {
     await ensureCacheDir();
-    await fs.writeFile(STORE_PATH, JSON.stringify(withMeta(store), null, 2), 'utf8');
+
+    // Keep a valid backup of the last readable store to recover from external file corruption.
+    try {
+      const existingRaw = await fs.readFile(STORE_PATH, 'utf8');
+      JSON.parse(existingRaw);
+      await writeFileAtomic(STORE_BACKUP_PATH, existingRaw);
+    } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        console.warn(`[HistoryStore] Backup konnte nicht aktualisiert werden: ${err.message}`);
+      }
+    }
+
+    await writeFileAtomic(STORE_PATH, JSON.stringify(withMeta(store), null, 2));
   });
   return writeQueue;
 }
@@ -196,6 +253,7 @@ async function listAvailableTickerRecords() {
 
 module.exports = {
   STORE_PATH,
+  STORE_BACKUP_PATH,
   readStore,
   getTickerHistory,
   getTickerUpdatedAt,

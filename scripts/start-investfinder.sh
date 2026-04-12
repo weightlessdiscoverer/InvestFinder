@@ -3,6 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+LAUNCHER_CONFIG_DIR="$HOME/.config/investfinder"
+LAUNCHER_CONFIG_FILE="$LAUNCHER_CONFIG_DIR/launcher.conf"
 
 APP_PORT="${PORT:-3000}"
 APP_URL="http://localhost:${APP_PORT}"
@@ -19,6 +21,9 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd "$REPO_DIR"
+
+mkdir -p "$LAUNCHER_CONFIG_DIR"
+printf 'REPO_DIR=%q\n' "$REPO_DIR" > "$LAUNCHER_CONFIG_FILE"
 
 echo "[InvestFinder] Starte in: $REPO_DIR"
 
