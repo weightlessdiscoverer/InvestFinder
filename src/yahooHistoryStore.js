@@ -205,6 +205,54 @@ async function upsertTickerHistory(ticker, history, fetchedAt = new Date().toISO
   return clone(store.tickers[key]);
 }
 
+async function deleteTickerHistory(ticker) {
+  const key = normalizeTicker(ticker);
+  if (!key) {
+    return false;
+  }
+
+  const store = await readStore();
+  if (!Object.prototype.hasOwnProperty.call(store.tickers, key)) {
+    return false;
+  }
+
+  delete store.tickers[key];
+  await persistStore(store);
+  return true;
+}
+
+async function pruneTickerHistories(tickers) {
+  const uniqueKeys = Array.from(
+    new Set((Array.isArray(tickers) ? tickers : []).map(normalizeTicker).filter(Boolean))
+  );
+
+  if (uniqueKeys.length === 0) {
+    return { deletedTickers: [], skippedTickers: [] };
+  }
+
+  const store = await readStore();
+  const deletedTickers = [];
+  const skippedTickers = [];
+
+  for (const key of uniqueKeys) {
+    if (Object.prototype.hasOwnProperty.call(store.tickers, key)) {
+      delete store.tickers[key];
+      deletedTickers.push(key);
+    } else {
+      skippedTickers.push(key);
+    }
+  }
+
+  if (deletedTickers.length > 0) {
+    await persistStore(store);
+  }
+
+  return {
+    deletedTickers,
+    skippedTickers,
+  };
+}
+
 async function getTickerHistory(ticker) {
   const key = normalizeTicker(ticker);
   if (!key) {
@@ -258,6 +306,8 @@ module.exports = {
   getTickerHistory,
   getTickerUpdatedAt,
   upsertTickerHistory,
+  deleteTickerHistory,
+  pruneTickerHistories,
   getStoreSummary,
   listAvailableTickerRecords,
   classifyFreshness,

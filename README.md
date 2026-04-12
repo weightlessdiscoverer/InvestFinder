@@ -20,6 +20,9 @@ A locally running web app that scans ETFs from **iShares and Xtrackers** for **S
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
 - 🧱 Modular provider architecture with separate source modules and merged processing layer
 - 🖥️ UI filter for provider scope: **Alle**, **nur iShares**, **nur Xtrackers**
+- 🧭 Hintergrund-Check fuer DAX40-Aktualitaet mit regelmaessigem Soll/Ist-Abgleich gegen externe Quelle
+- 🤖 Optionales DAX40-Auto-Update: Bei Abweichungen wird `src/dax40List.js` automatisch aktualisiert
+- 🧹 Optionales DAX40-History-Pruning: Rausgeflogene DAX-Ticker werden aus `yahoo-history-db.json` entfernt
 - 🏆 Separater Tab **"Empfehlungen"** mit Top-3-Kauf- und Top-3-Verkaufskandidaten sowie Buy/Hold/Sell-Empfehlung je Einzelwert inklusive Staerke
 
 ---
@@ -194,6 +197,33 @@ Beispiel:
     "newestUpdate": "2026-04-06T08:12:00.000Z"
   },
   "checkedAt": "2026-04-06T08:12:05.000Z"
+}
+```
+
+### `GET /api/dax40-freshness-status`
+
+Liefert den Status des Hintergrund-Checks fuer die DAX40-Aktualitaet.
+
+Beispiel:
+
+```jsonc
+{
+  "ok": true,
+  "status": {
+    "running": true,
+    "intervalMs": 86400000,
+    "fetchTimeoutMs": 15000,
+    "autoUpdateEnabled": true,
+    "pruneHistoryEnabled": true,
+    "lastCheckedAt": "2026-04-12T10:15:00.000Z",
+    "lastError": null,
+    "sourceUrl": "https://en.wikipedia.org/wiki/DAX",
+    "mismatches": {
+      "missingInLocal": [],
+      "staleInLocal": []
+    }
+  },
+  "checkedAt": "2026-04-12T10:15:00.100Z"
 }
 ```
 
@@ -394,6 +424,12 @@ Signal fires when:
 - Yahoo Finance is a **public, unofficial API** – no API key is required but it is subject to rate limits. The app processes ETFs in batches of 5 with a 300 ms delay to mitigate this.
 - Die persistente Yahoo-Datenbank liegt lokal unter `src/data/provider-cache/yahoo-history-db.json` und wird fortlaufend erweitert/aktualisiert.
 - Das Cooldown-Intervall ist ueber `YAHOO_COOLDOWN_MS` konfigurierbar (Default: 60000 ms).
+- Die DAX40-Liste in `src/dax40List.js` wird regelmaessig gegen eine externe Quelle geprueft.
+- Standardmaessig ist Auto-Update aktiv und schreibt bei Abweichungen die Datei `src/dax40List.js` neu.
+- Das DAX40-Pruefintervall ist ueber `DAX40_CHECK_INTERVAL_MS` konfigurierbar (Default: 86400000 ms = 24 h).
+- Das Timeout pro DAX40-Quellabruf ist ueber `DAX40_CHECK_TIMEOUT_MS` konfigurierbar (Default: 15000 ms).
+- Auto-Update kann mit `DAX40_AUTO_UPDATE=false` deaktiviert werden.
+- Das Entfernen alter DAX-Ticker aus der lokalen History-DB ist ueber `DAX40_PRUNE_HISTORY` steuerbar (Default: `true`).
 - Instrument universes are cached **separately per provider** and then merged internally; this avoids unnecessary reloads and makes provider-level scaling easy.
 - Bei SMA-Aenderungen werden vorhandene Kursdaten aus dem lokalen Cache wiederverwendet. Dadurch sind Folgescans (anderes N) deutlich schneller und vermeiden unnoetige API-Calls.
 - Duplicate entries are prevented during merge via unique identity (ISIN first, fallback provider+ticker).

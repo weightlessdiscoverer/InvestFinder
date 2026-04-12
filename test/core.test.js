@@ -51,6 +51,7 @@ const {
     spearmanRankCorrelation,
   },
 } = backtestModule;
+const dax40FreshnessServiceModule = require('../src/dax40FreshnessService');
 
 test('normalizeSmaPeriod returns default when input is empty', () => {
   assert.equal(normalizeSmaPeriod(), DEFAULT_SMA_PERIOD);
@@ -314,6 +315,92 @@ test('recommendationEngine internal helpers cover defensive guards and threshold
   assert.equal(buy.recommendation, 'Buy');
   assert.equal(hold.recommendation, 'Hold');
   assert.equal(sell.recommendation, 'Sell');
+});
+
+test('dax40FreshnessService extracts ticker records from wikitable html', () => {
+  const { extractDaxRecordsFromWikipediaHtml } = dax40FreshnessServiceModule._internal;
+
+  const html = `
+    <table class="wikitable sortable">
+      <tr><th>Company</th><th>Ticker symbol</th><th>ISIN</th></tr>
+      <tr><td>adidas</td><td>ADS</td><td>DE000A1EWWW0</td></tr>
+      <tr><td>Allianz</td><td>ALV</td><td>DE0008404005</td></tr>
+      <tr><td>Covestro</td><td>1COV</td><td>DE0006062144</td></tr>
+      <tr><td>Symrise</td><td>SY1</td><td>DE000SYM9999</td></tr>
+      <tr><td>BASF</td><td>BAS</td><td>DE000BASF111</td></tr>
+      <tr><td>Bayer</td><td>BAYN</td><td>DE000BAY0017</td></tr>
+      <tr><td>BMW</td><td>BMW</td><td>DE0005190003</td></tr>
+      <tr><td>Commerzbank</td><td>CBK</td><td>DE000CBK1001</td></tr>
+      <tr><td>SAP</td><td>SAP</td><td>DE0007164600</td></tr>
+      <tr><td>RWE</td><td>RWE</td><td>DE0007037129</td></tr>
+      <tr><td>E.ON</td><td>EOAN</td><td>DE000ENAG999</td></tr>
+      <tr><td>Siemens</td><td>SIE</td><td>DE0007236101</td></tr>
+      <tr><td>Infineon</td><td>IFX</td><td>DE0006231004</td></tr>
+      <tr><td>Brenntag</td><td>BNR</td><td>DE000A1DAHH0</td></tr>
+      <tr><td>Rheinmetall</td><td>RHM</td><td>DE0007030009</td></tr>
+      <tr><td>Fresenius</td><td>FRE</td><td>DE0005785604</td></tr>
+      <tr><td>Fresenius Medical Care</td><td>FME</td><td>DE0005785802</td></tr>
+      <tr><td>Hannover Rueck</td><td>HNR1</td><td>DE0008402215</td></tr>
+      <tr><td>Vonovia</td><td>VNA</td><td>DE000A1ML7J1</td></tr>
+      <tr><td>Zalando</td><td>ZAL</td><td>DE000ZAL1111</td></tr>
+      <tr><td>DHL Group</td><td>DHL</td><td>DE0005552004</td></tr>
+      <tr><td>Deutsche Telekom</td><td>DTE</td><td>DE0005557508</td></tr>
+      <tr><td>Deutsche Bank</td><td>DBK</td><td>DE0005140008</td></tr>
+      <tr><td>Deutsche Boerse</td><td>DB1</td><td>DE0005810055</td></tr>
+      <tr><td>Porsche AG</td><td>P911</td><td>DE000PAG9113</td></tr>
+      <tr><td>Porsche SE</td><td>PAH3</td><td>DE000PAH0038</td></tr>
+      <tr><td>Mercedes-Benz Group</td><td>MBG</td><td>DE0007100000</td></tr>
+      <tr><td>Merck</td><td>MRK</td><td>DE0006599905</td></tr>
+      <tr><td>MTU</td><td>MTX</td><td>DE000A0D9PT0</td></tr>
+      <tr><td>Muenchener Rueck</td><td>MUV2</td><td>DE0008430026</td></tr>
+      <tr><td>Henkel</td><td>HEN3</td><td>DE0006048432</td></tr>
+      <tr><td>Heidelberg Materials</td><td>HEI</td><td>DE0006047004</td></tr>
+    </table>
+  `;
+
+  const records = extractDaxRecordsFromWikipediaHtml(html);
+  const byTicker = new Map(records.map(item => [item.ticker, item]));
+
+  assert.ok(records.length >= 30);
+  assert.equal(byTicker.has('ADS.DE'), true);
+  assert.equal(byTicker.has('ALV.DE'), true);
+  assert.equal(byTicker.has('1COV.DE'), true);
+  assert.equal(byTicker.has('HNR1.DE'), true);
+  assert.equal(byTicker.get('ADS.DE').name, 'adidas');
+});
+
+test('dax40FreshnessService compares local and remote ticker sets', () => {
+  const { compareTickerSets } = dax40FreshnessServiceModule._internal;
+
+  const diff = compareTickerSets(
+    ['ADS.DE', 'ALV.DE', 'BAS.DE'],
+    ['ADS.DE', 'ALV.DE', 'RHM.DE']
+  );
+
+  assert.deepEqual(diff.missingInLocal, ['RHM.DE']);
+  assert.deepEqual(diff.staleInLocal, ['BAS.DE']);
+});
+
+test('dax40FreshnessService merge keeps existing local metadata', () => {
+  const { buildUpdatedDaxRecords } = dax40FreshnessServiceModule._internal;
+
+  const merged = buildUpdatedDaxRecords(
+    [
+      { ticker: 'ADS.DE', name: 'adidas AG (remote)' },
+      { ticker: 'RHM.DE', name: 'Rheinmetall AG' },
+    ],
+    [
+      { provider: 'DAX40', ticker: 'ADS.DE', name: 'adidas AG', isin: '', wkn: 'A1EWWW' },
+      { provider: 'DAX40', ticker: 'ALV.DE', name: 'Allianz SE', isin: '', wkn: '840400' },
+    ]
+  );
+
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].ticker, 'ADS.DE');
+  assert.equal(merged[0].name, 'adidas AG');
+  assert.equal(merged[0].wkn, 'A1EWWW');
+  assert.equal(merged[1].ticker, 'RHM.DE');
+  assert.equal(merged[1].wkn, '');
 });
 
 test('recommendationEngine rationale helpers return fallback text when no weighted signals exist', () => {
@@ -1499,12 +1586,59 @@ async function withMockedYahooHistoryStore({
   const originalReadFile = fsPromises.readFile;
   const originalWriteFile = fsPromises.writeFile;
   const originalMkdir = fsPromises.mkdir;
+  const originalRename = fsPromises.rename;
 
   let persistedRaw = initialRaw;
+  let backupRaw = null;
+  const tmpFiles = new Map();
+
+  function isStorePath(filePath) {
+    return String(filePath).endsWith('yahoo-history-db.json');
+  }
+
+  function isBackupPath(filePath) {
+    return String(filePath).endsWith('yahoo-history-db.backup.json');
+  }
+
+  function readVirtualFile(filePath) {
+    if (isStorePath(filePath)) {
+      return persistedRaw;
+    }
+    if (isBackupPath(filePath)) {
+      return backupRaw;
+    }
+    return tmpFiles.has(filePath) ? tmpFiles.get(filePath) : null;
+  }
+
+  function writeVirtualFile(filePath, content) {
+    if (isStorePath(filePath)) {
+      persistedRaw = content;
+      return;
+    }
+    if (isBackupPath(filePath)) {
+      backupRaw = content;
+      return;
+    }
+    tmpFiles.set(filePath, content);
+  }
+
+  function deleteVirtualFile(filePath) {
+    if (isStorePath(filePath)) {
+      persistedRaw = null;
+      return;
+    }
+    if (isBackupPath(filePath)) {
+      backupRaw = null;
+      return;
+    }
+    tmpFiles.delete(filePath);
+  }
+
   const io = {
     mkdirCalls: 0,
     readCalls: 0,
     writeCalls: 0,
+    renameCalls: 0,
     lastWritePath: null,
   };
 
@@ -1512,14 +1646,15 @@ async function withMockedYahooHistoryStore({
     io.mkdirCalls += 1;
   };
 
-  fsPromises.readFile = async () => {
+  fsPromises.readFile = async filePath => {
     io.readCalls += 1;
-    if (persistedRaw == null) {
+    const content = readVirtualFile(filePath);
+    if (content == null) {
       const err = new Error('not found');
       err.code = 'ENOENT';
       throw err;
     }
-    return persistedRaw;
+    return content;
   };
 
   fsPromises.writeFile = async (filePath, content) => {
@@ -1528,7 +1663,24 @@ async function withMockedYahooHistoryStore({
     if (writeError) {
       throw writeError;
     }
-    persistedRaw = content;
+    writeVirtualFile(filePath, content);
+  };
+
+  fsPromises.rename = async (fromPath, toPath) => {
+    io.renameCalls += 1;
+    if (writeError) {
+      throw writeError;
+    }
+
+    const content = readVirtualFile(fromPath);
+    if (content == null) {
+      const err = new Error('not found');
+      err.code = 'ENOENT';
+      throw err;
+    }
+
+    writeVirtualFile(toPath, content);
+    deleteVirtualFile(fromPath);
   };
 
   delete require.cache[storeModulePath];
@@ -1540,6 +1692,7 @@ async function withMockedYahooHistoryStore({
     fsPromises.readFile = originalReadFile;
     fsPromises.writeFile = originalWriteFile;
     fsPromises.mkdir = originalMkdir;
+    fsPromises.rename = originalRename;
     delete require.cache[storeModulePath];
   }
 }
@@ -1697,6 +1850,44 @@ test('yahooHistoryStore getTickerHistory returns null for unknown ticker key', a
 
     const unknown = await mockedStore.getTickerHistory('UNKNOWN');
     assert.equal(unknown, null);
+  });
+});
+
+test('yahooHistoryStore deleteTickerHistory removes existing ticker', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    await mockedStore.upsertTickerHistory(
+      'REMOVE.ME',
+      { dates: ['2026-01-01'], closes: [10] },
+      '2026-01-01T00:00:00.000Z'
+    );
+
+    const deleted = await mockedStore.deleteTickerHistory(' remove.me ');
+    const record = await mockedStore.getTickerHistory('REMOVE.ME');
+
+    assert.equal(deleted, true);
+    assert.equal(record, null);
+  });
+});
+
+test('yahooHistoryStore pruneTickerHistories removes matching tickers and reports skipped', async () => {
+  await withMockedYahooHistoryStore({ initialRaw: null }, async ({ mockedStore }) => {
+    await mockedStore.upsertTickerHistory(
+      'AAA',
+      { dates: ['2026-01-01'], closes: [1] },
+      '2026-01-01T00:00:00.000Z'
+    );
+    await mockedStore.upsertTickerHistory(
+      'BBB',
+      { dates: ['2026-01-01'], closes: [2] },
+      '2026-01-01T00:00:00.000Z'
+    );
+
+    const result = await mockedStore.pruneTickerHistories(['aaa', 'missing', 'bbb']);
+
+    assert.deepEqual(result.deletedTickers, ['AAA', 'BBB']);
+    assert.deepEqual(result.skippedTickers, ['MISSING']);
+    assert.equal(await mockedStore.getTickerHistory('AAA'), null);
+    assert.equal(await mockedStore.getTickerHistory('BBB'), null);
   });
 });
 

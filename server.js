@@ -33,6 +33,10 @@ const {
   getStoreSummary,
   listAvailableTickerRecords,
 } = require('./src/yahooHistoryStore');
+const {
+  startDax40FreshnessChecker,
+  getDax40FreshnessStatus,
+} = require('./src/dax40FreshnessService');
 const { getEtfUniverse } = require('./src/etfUniverseService');
 const { createAvailableInstrumentsHandler } = require('./src/availableInstrumentsService');
 const { runFullBacktest } = require('./src/backtest');
@@ -168,6 +172,19 @@ app.get('/api/yahoo-sync-status', async (_req, res) => {
   }
 });
 
+/**
+ * GET /api/dax40-freshness-status
+ * Returns status of the background DAX40 freshness checker.
+ */
+app.get('/api/dax40-freshness-status', (_req, res) => {
+  try {
+    const info = getDax40FreshnessStatus();
+    res.json({ ok: true, status: info, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 const handleAvailableInstruments = createAvailableInstrumentsHandler({
   normalizeAssetClass,
   normalizeProviderFilter,
@@ -230,6 +247,14 @@ function startServer(port = PORT) {
       cooldownMs: Number(process.env.YAHOO_COOLDOWN_MS || 60_000),
     });
     console.log('Yahoo history updater started in background.');
+
+    startDax40FreshnessChecker({
+      intervalMs: Number(process.env.DAX40_CHECK_INTERVAL_MS || 24 * 60 * 60 * 1000),
+      fetchTimeoutMs: Number(process.env.DAX40_CHECK_TIMEOUT_MS || 15_000),
+      autoUpdateEnabled: String(process.env.DAX40_AUTO_UPDATE ?? 'true').toLowerCase() !== 'false',
+      pruneHistoryEnabled: String(process.env.DAX40_PRUNE_HISTORY ?? 'true').toLowerCase() !== 'false',
+    });
+    console.log('DAX40 freshness checker started in background.');
   });
 }
 
