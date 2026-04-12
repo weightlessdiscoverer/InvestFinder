@@ -13,12 +13,14 @@
 const ISHARES_ETFS = require('./etfList');
 const XTRACKERS_ETFS = require('./xtrackersList');
 const DAX40_STOCKS = require('./dax40List');
+const MDAX_STOCKS = require('./mdaxList');
 const { isValidIsinFormat } = require('./masterDataService');
 const { getDiscoveredEtfs } = require('./yahooDiscoveryService');
 
 const ASSET_CLASSES = {
   etf: 'etf',
   dax40: 'dax40',
+  mdax: 'mdax',
   all: 'all',
 };
 
@@ -44,7 +46,7 @@ function normalizeProviderFilter(providerFilter) {
 function normalizeAssetClass(assetClass) {
   const key = String(assetClass || 'etf').trim().toLowerCase();
   if (!ASSET_CLASSES[key]) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, all.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, all.');
   }
   return key;
 }
@@ -132,11 +134,11 @@ async function getProviderEtfs(providerName, bypassCache) {
   return dedupedByTicker;
 }
 
-function getDax40Universe() {
-  const normalized = DAX40_STOCKS
+function getIndexedStockUniverse(items, { assetClass, provider }) {
+  const normalized = items
     .map(item => ({
-      assetClass: 'dax40',
-      provider: 'DAX40',
+      assetClass,
+      provider,
       ticker: String(item.ticker || '').trim().toUpperCase(),
       name: String(item.name || '').trim(),
       isin: String(item.isin || '').trim().toUpperCase(),
@@ -158,6 +160,20 @@ function getDax40Universe() {
   return Array.from(byTicker.values());
 }
 
+function getDax40Universe() {
+  return getIndexedStockUniverse(DAX40_STOCKS, {
+    assetClass: 'dax40',
+    provider: 'DAX40',
+  });
+}
+
+function getMdaxUniverse() {
+  return getIndexedStockUniverse(MDAX_STOCKS, {
+    assetClass: 'mdax',
+    provider: 'MDAX',
+  });
+}
+
 /**
  * Liefert gefiltertes und dedupliziertes ETF-Universum.
  * Deduplizierung bevorzugt eindeutige ISIN (sonst Anbieter+Ticker).
@@ -176,12 +192,17 @@ async function getEtfUniverse({
     return getDax40Universe();
   }
 
+  if (normalizedAssetClass === 'mdax') {
+    return getMdaxUniverse();
+  }
+
   if (normalizedAssetClass === 'all') {
-    const [etfs, dax40] = await Promise.all([
+    const [etfs, dax40, mdax] = await Promise.all([
       getEtfUniverse({ providerFilter, bypassCache, assetClass: 'etf' }),
       Promise.resolve(getDax40Universe()),
+      Promise.resolve(getMdaxUniverse()),
     ]);
-    return [...etfs, ...dax40];
+    return [...etfs, ...dax40, ...mdax];
   }
 
   const normalizedFilter = normalizeProviderFilter(providerFilter);
@@ -215,5 +236,6 @@ module.exports = {
     getSourceForProvider,
     providerCache,
     getDax40Universe,
+    getMdaxUniverse,
   },
 };

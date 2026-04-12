@@ -123,7 +123,7 @@ const DEFAULT_LOOKBACK_WEEKS = 0;
 const MIN_INVESTMENT_DURATION_MONTHS = 1;
 const MAX_INVESTMENT_DURATION_MONTHS = 120;
 const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
-const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40']);
+const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40', 'mdax']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 const RECOMMENDATION_PROFILES = {
   short: {
@@ -369,7 +369,7 @@ function getSelectedProviderFilter() {
 function getSelectedAssetClass() {
   const value = String(assetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax.');
   }
   return value;
 }
@@ -377,9 +377,19 @@ function getSelectedAssetClass() {
 function getSelectedRecommendationAssetClass() {
   const value = String(durationAssetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax.');
   }
   return value;
+}
+
+function isStockUniverseAssetClass(assetClass) {
+  return assetClass === 'dax40' || assetClass === 'mdax';
+}
+
+function getAssetClassLabel(assetClass) {
+  if (assetClass === 'dax40') return 'DAX40-Einzelwerte';
+  if (assetClass === 'mdax') return 'MDAX-Einzelwerte';
+  return 'ETFs';
 }
 
 function getSelectedInvestmentDurationMonths() {
@@ -398,12 +408,13 @@ function getSelectedInvestmentDurationMonths() {
 }
 
 function applyAssetClassUiState() {
-  if (currentAssetClass === 'dax40') {
+  if (isStockUniverseAssetClass(currentAssetClass)) {
     providerFilter.value = 'all';
     providerFilter.disabled = true;
-    assetHintLabel.textContent = 'DAX40-Einzelwerte';
-    resultsTitleLabel.textContent = '✅ Breakout-Signale (DAX40-Einzelwerte)';
-    errorsTitleLabel.textContent = '⚠️ Nicht abrufbare DAX40-Einzelwerte';
+    const label = getAssetClassLabel(currentAssetClass);
+    assetHintLabel.textContent = label;
+    resultsTitleLabel.textContent = `✅ Breakout-Signale (${label})`;
+    errorsTitleLabel.textContent = `⚠️ Nicht abrufbare ${label}`;
     return;
   }
 
@@ -416,15 +427,16 @@ function applyAssetClassUiState() {
 function getSelectedDbAssetClass() {
   const value = String(dbAssetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40.');
+    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40, mdax.');
   }
   return value;
 }
 
 function applyDbAssetClassUiState() {
-  if (currentDbAssetClass === 'dax40') {
-    dbSectionTitleLabel.textContent = '📚 DAX40-Einzelwerte mit vorhandenen DB-Daten';
-    dbEtfEmpty.textContent = 'Noch keine DAX40-Einzelwerte mit gespeicherten Yahoo-Daten vorhanden.';
+  if (isStockUniverseAssetClass(currentDbAssetClass)) {
+    const label = getAssetClassLabel(currentDbAssetClass);
+    dbSectionTitleLabel.textContent = `📚 ${label} mit vorhandenen DB-Daten`;
+    dbEtfEmpty.textContent = `Noch keine ${label} mit gespeicherten Yahoo-Daten vorhanden.`;
     return;
   }
 
@@ -433,10 +445,11 @@ function applyDbAssetClassUiState() {
 }
 
 function applyRecommendationAssetClassUiState() {
-  if (currentRecommendationAssetClass === 'dax40') {
-    durationAssetHintLabel.textContent = 'DAX40-Einzelwerte';
+  if (isStockUniverseAssetClass(currentRecommendationAssetClass)) {
+    const label = getAssetClassLabel(currentRecommendationAssetClass);
+    durationAssetHintLabel.textContent = label;
     recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
-    allRecommendationTitleLabel.textContent = 'Empfehlung je DAX40-Einzelwert (Buy/Hold/Sell)';
+    allRecommendationTitleLabel.textContent = `Empfehlung je ${label} (Buy/Hold/Sell)`;
     return;
   }
 
@@ -1310,7 +1323,7 @@ async function runScan() {
       throw new Error('Fast-SMA und Slow-SMA muessen unterschiedlich sein.');
     }
 
-    provider = assetClass === 'dax40' ? 'all' : getSelectedProviderFilter();
+    provider = isStockUniverseAssetClass(assetClass) ? 'all' : getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
     setVisible(errorBanner, true);
@@ -1622,7 +1635,7 @@ async function runBacktest() {
       throw new Error('Ungueltiger Asset-Typ.');
     }
     providerFilter = String(backtestProviderFilter.value || 'all').trim().toLowerCase();
-    if (assetClass === 'dax40') {
+    if (isStockUniverseAssetClass(assetClass)) {
       providerFilter = 'all';
     }
     if (!ALLOWED_PROVIDER_FILTERS.has(providerFilter)) {
@@ -1727,7 +1740,7 @@ lookbackWeeksInput.addEventListener('change', () => {
 
 providerFilter.addEventListener('change', () => {
   try {
-    if (currentAssetClass === 'dax40') {
+    if (isStockUniverseAssetClass(currentAssetClass)) {
       providerFilter.value = 'all';
       return;
     }

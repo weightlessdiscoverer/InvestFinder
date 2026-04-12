@@ -622,6 +622,113 @@ async function withMockedBacktestApi(mockRunFullBacktest, callback) {
   }
 }
 
+async function withMockedScanApi(mockScanAllETFs, callback) {
+  const serverPath = require.resolve('../server');
+  const analysis = require('../src/analysis');
+  const originalScanAllETFs = analysis.scanAllETFs;
+
+  analysis.scanAllETFs = mockScanAllETFs;
+  delete require.cache[serverPath];
+
+  let server;
+  try {
+    const { app } = require('../server');
+    await new Promise(resolve => {
+      server = app.listen(0, resolve);
+    });
+
+    const { port } = server.address();
+    await callback(`http://127.0.0.1:${port}`);
+  } finally {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    analysis.scanAllETFs = originalScanAllETFs;
+    delete require.cache[serverPath];
+  }
+}
+
+async function withMockedRecommendationsApi(mockGetTopRecommendations, callback) {
+  const serverPath = require.resolve('../server');
+  const recommendationEngine = require('../src/recommendationEngine');
+  const originalGetTopRecommendations = recommendationEngine.getTopRecommendations;
+
+  recommendationEngine.getTopRecommendations = mockGetTopRecommendations;
+  delete require.cache[serverPath];
+
+  let server;
+  try {
+    const { app } = require('../server');
+    await new Promise(resolve => {
+      server = app.listen(0, resolve);
+    });
+
+    const { port } = server.address();
+    await callback(`http://127.0.0.1:${port}`);
+  } finally {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    recommendationEngine.getTopRecommendations = originalGetTopRecommendations;
+    delete require.cache[serverPath];
+  }
+}
+
+async function withMockedAvailableInstrumentsApi(mocks, callback) {
+  const serverPath = require.resolve('../server');
+  const etfUniverseService = require('../src/etfUniverseService');
+  const yahooHistoryStore = require('../src/yahooHistoryStore');
+
+  const originalGetEtfUniverse = etfUniverseService.getEtfUniverse;
+  const originalListAvailableTickerRecords = yahooHistoryStore.listAvailableTickerRecords;
+  const originalGetStoreSummary = yahooHistoryStore.getStoreSummary;
+  const originalClassifyFreshness = yahooHistoryStore.classifyFreshness;
+
+  etfUniverseService.getEtfUniverse = mocks.getEtfUniverse;
+  yahooHistoryStore.listAvailableTickerRecords = mocks.listAvailableTickerRecords;
+  yahooHistoryStore.getStoreSummary = mocks.getStoreSummary;
+  yahooHistoryStore.classifyFreshness = mocks.classifyFreshness;
+  delete require.cache[serverPath];
+
+  let server;
+  try {
+    const { app } = require('../server');
+    await new Promise(resolve => {
+      server = app.listen(0, resolve);
+    });
+
+    const { port } = server.address();
+    await callback(`http://127.0.0.1:${port}`);
+  } finally {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    etfUniverseService.getEtfUniverse = originalGetEtfUniverse;
+    yahooHistoryStore.listAvailableTickerRecords = originalListAvailableTickerRecords;
+    yahooHistoryStore.getStoreSummary = originalGetStoreSummary;
+    yahooHistoryStore.classifyFreshness = originalClassifyFreshness;
+    delete require.cache[serverPath];
+  }
+}
+
 test('/api/backtest returns 200 with expected response contract', async () => {
   const mockedPayload = {
     profiles: {
@@ -729,6 +836,109 @@ test('/api/backtest enforces rate limit after too many requests', async () => {
     assert.equal(blockedBody.ok, false);
     assert.match(blockedBody.error, /Too many scan requests/i);
     assert.equal(callCount, 10);
+  });
+});
+
+test('/api/scan accepts assetClass=mdax and forwards to analysis', async () => {
+  await withMockedScanApi(async ({ assetClass, providerFilter }) => {
+    assert.equal(assetClass, 'mdax');
+    assert.equal(providerFilter, 'all');
+
+    return {
+      assetClass: 'mdax',
+      providerFilter: 'all',
+      mode: 'price-breakout',
+      smaPeriod: 200,
+      smaLabel: 'SMA200',
+      total: 1,
+      scanned: 1,
+      matches: [],
+      errors: [],
+    };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/scan?assetClass=mdax&provider=all&sma=200`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.results.assetClass, 'mdax');
+    assert.equal(body.results.providerFilter, 'all');
+  });
+});
+
+test('/api/recommendations accepts assetClass=mdax and forwards to engine', async () => {
+  await withMockedRecommendationsApi(async ({ assetClass, providerFilter, investmentDurationMonths, limit }) => {
+    assert.equal(assetClass, 'mdax');
+    assert.equal(providerFilter, 'all');
+    assert.equal(investmentDurationMonths, 12);
+    assert.equal(limit, 3);
+
+    return {
+      assetClass: 'mdax',
+      providerFilter: 'all',
+      investmentDurationMonths: 12,
+      profileKey: 'medium',
+      profileLabel: 'Mittelfristig',
+      total: 1,
+      analyzed: 1,
+      successful: 1,
+      skipped: 0,
+      recommendations: [],
+      buyRecommendations: [],
+      sellRecommendations: [],
+      allRecommendations: [],
+      skippedItems: [],
+    };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/recommendations?assetClass=mdax&provider=all&investmentDurationMonths=12&limit=3`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.results.assetClass, 'mdax');
+    assert.equal(body.results.providerFilter, 'all');
+  });
+});
+
+test('/api/available-instruments returns mdax entries', async () => {
+  await withMockedAvailableInstrumentsApi({
+    listAvailableTickerRecords: async () => ([
+      {
+        ticker: 'HFG.DE',
+        points: 120,
+        firstDate: '2026-01-01',
+        lastDate: '2026-04-10',
+        updatedAt: '2026-04-12T08:00:00.000Z',
+        freshness: { label: 'Sehr aktuell', level: 'very-fresh', ageInDays: 0 },
+      },
+    ]),
+    getEtfUniverse: async ({ assetClass }) => {
+      assert.equal(assetClass, 'mdax');
+      return [
+        {
+          assetClass: 'mdax',
+          provider: 'MDAX',
+          ticker: 'HFG.DE',
+          name: 'HelloFresh SE',
+          isin: '',
+          wkn: '',
+        },
+      ];
+    },
+    getStoreSummary: async () => ({
+      freshness: { label: 'Sehr aktuell', level: 'very-fresh', ageInDays: 0 },
+    }),
+    classifyFreshness: () => ({ label: 'Sehr aktuell', level: 'very-fresh', ageInDays: 0 }),
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/available-instruments?assetClass=mdax&provider=all`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.assetClass, 'mdax');
+    assert.equal(body.count, 1);
+    assert.equal(body.items[0].provider, 'MDAX');
+    assert.equal(body.items[0].ticker, 'HFG.DE');
   });
 });
 
@@ -952,6 +1162,7 @@ test('detectBreakoutSignal computes breakoutSteepnessPct correctly', () => {
 test('normalizeAssetClass validates allowed asset types', () => {
   assert.equal(normalizeAssetClass('etf'), 'etf');
   assert.equal(normalizeAssetClass(' DAX40 '), 'dax40');
+  assert.equal(normalizeAssetClass(' mdax '), 'mdax');
   assert.equal(normalizeAssetClass('all'), 'all');
   assert.throws(() => normalizeAssetClass('stocks'), /Ungueltiger Asset-Typ/);
 });
@@ -971,6 +1182,11 @@ test('getEtfUniverse returns deduplicated valid entries', async () => {
   assert.ok(dax40.length > 0);
   assert.ok(dax40.every(item => item.provider === 'DAX40'));
   assert.ok(dax40.every(item => item.assetClass === 'dax40'));
+
+  const mdax = await getEtfUniverse({ assetClass: 'mdax', bypassCache: true });
+  assert.ok(mdax.length > 0);
+  assert.ok(mdax.every(item => item.provider === 'MDAX'));
+  assert.ok(mdax.every(item => item.assetClass === 'mdax'));
 });
 
 test('masterDataService resolves identifiers and supports cache warmup', async () => {
@@ -1342,6 +1558,7 @@ test('getEtfUniverse supports assetClass=all and provider cache reuse', async ()
     assert.ok(firstEtf.length > 0);
     assert.equal(secondEtf.length, firstEtf.length);
     assert.ok(allAssets.some(item => item.assetClass === 'dax40'));
+    assert.ok(allAssets.some(item => item.assetClass === 'mdax'));
     assert.ok(allAssets.some(item => item.assetClass === 'etf'));
     assert.equal(calls.discovered, 2);
   } finally {
