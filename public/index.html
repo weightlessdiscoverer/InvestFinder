@@ -31,10 +31,11 @@
     <section class="controls-panel">
       <div class="controls-row">
         <label class="input-label" for="assetClassFilter">Asset-Typ</label>
-        <select id="assetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40- und MDAX-Einzelwerten wechseln">
+        <select id="assetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40, MDAX und indexuebergreifender Ansicht wechseln">
           <option value="etf" selected>ETFs</option>
           <option value="dax40">DAX40-Einzelwerte</option>
           <option value="mdax">MDAX-Einzelwerte</option>
+          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
         </select>
         <label class="input-label" for="signalMode">Signaltyp</label>
         <select id="signalMode" class="provider-select" title="Signal-Logik auswaehlen">
@@ -283,10 +284,11 @@
     <section class="controls-panel">
       <div class="controls-row">
         <label class="input-label" for="durationAssetClassFilter">Asset-Typ</label>
-        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40- und MDAX-Einzelwerten wechseln">
+        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40, MDAX und indexuebergreifender Ansicht wechseln">
           <option value="etf" selected>ETFs</option>
           <option value="dax40">DAX40-Einzelwerte</option>
           <option value="mdax">MDAX-Einzelwerte</option>
+          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
         </select>
 
         <label class="input-label" for="investmentDurationMonthsInput">Anlagedauer (Monate)</label>
@@ -466,10 +468,11 @@
     <section class="controls-panel db-controls-panel">
       <div class="controls-row">
         <label class="input-label" for="dbAssetClassFilter">DB-Filter</label>
-        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach ETFs, DAX40- oder MDAX-Einzelwerten filtern">
+        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach ETFs, DAX40, MDAX oder indexuebergreifend filtern">
           <option value="etf" selected>ETFs</option>
           <option value="dax40">DAX40-Einzelwerte</option>
           <option value="mdax">MDAX-Einzelwerte</option>
+          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
         </select>
       </div>
     </section>
@@ -515,10 +518,11 @@
       <section class="controls-panel">
         <div class="controls-row">
           <label class="input-label" for="backtestAssetClassFilter">Asset-Typ</label>
-          <select id="backtestAssetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40- und MDAX-Einzelwerten wechseln">
+          <select id="backtestAssetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40, MDAX und indexuebergreifender Ansicht wechseln">
             <option value="etf" selected>ETFs</option>
             <option value="dax40">DAX40-Einzelwerte</option>
             <option value="mdax">MDAX-Einzelwerte</option>
+            <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
           </select>
           <label class="input-label" for="backtestProviderFilter">Anbieter</label>
           <select id="backtestProviderFilter" class="provider-select" title="ETF-Anbieter filtern">

@@ -128,7 +128,7 @@ Scans Instrumente fuer den gewaehlten Asset-Typ und gibt Treffer zurueck.
 | Param | Values | Description |
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force a fresh scan |
-| `assetClass` | `etf`, `dax40` | Asset-Typ (default: `etf`) |
+| `assetClass` | `etf`, `dax40`, `mdax`, `daxmdax`, `all` | Asset-Typ (default: `etf`) |
 | `sma` | `20`, `50`, `100`, `200`, ... | SMA period for `price-breakout` mode (integer > 1, max 400; default: 200) |
 | `fastSma` | `20`, `50`, ... | Fast SMA period for `sma-crossover` mode (optional; must be used together with `slowSma`) |
 | `slowSma` | `50`, `100`, `200`, ... | Slow SMA period for `sma-crossover` mode (optional; must be used together with `fastSma`) |
@@ -236,7 +236,7 @@ Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer sowie ei
 | Param | Values | Description |
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force fresh price loading |
-| `assetClass` | `etf`, `dax40` | Asset-Typ (default: `etf`) |
+| `assetClass` | `etf`, `dax40`, `mdax`, `daxmdax`, `all` | Asset-Typ (default: `etf`) |
 | `provider` | `all`, `ishares`, `xtrackers` | Provider filter (default: `all`) |
 | `investmentDurationMonths` | `1`..`120` | Geplante Anlagedauer in Monaten |
 | `limit` | `1`..`10` | Anzahl der zurueckgegebenen Top-Werte |
@@ -361,7 +361,7 @@ Liefert die Liste der Instrumente, fuer die in der lokalen Yahoo-Datenbank berei
 Optionaler Query-Parameter:
 
 - `provider=all|ishares|xtrackers` (Default: `all`)
-- `assetClass=etf|dax40` (Default: `etf`)
+- `assetClass=etf|dax40|mdax|daxmdax|all` (Default: `etf`)
 
 Legacy-Alias (rueckwaertskompatibel):
 

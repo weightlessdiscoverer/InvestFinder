@@ -197,7 +197,7 @@ const handleAvailableInstruments = createAvailableInstrumentsHandler({
 /**
  * GET /api/available-instruments
  * Returns persisted Yahoo history entries for selected asset class.
- * Optional query: provider=all|ishares|xtrackers and assetClass=etf|dax40
+ * Optional query: provider=all|ishares|xtrackers and assetClass=etf|dax40|mdax|daxmdax|all
  */
 app.get('/api/available-instruments', handleAvailableInstruments);
 
@@ -212,7 +212,7 @@ app.get('/api/available-etfs', handleAvailableInstruments);
  * Tests whether Buy/Hold/Sell signals produced higher forward returns historically.
  *
  * Query params:
- *   - assetClass=etf|dax40
+ *   - assetClass=etf|dax40|mdax|daxmdax|all
  *   - provider=all|ishares|xtrackers
  */
 app.get('/api/backtest', scanLimiter, async (req, res) => {

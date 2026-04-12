@@ -21,6 +21,7 @@ const ASSET_CLASSES = {
   etf: 'etf',
   dax40: 'dax40',
   mdax: 'mdax',
+  daxmdax: 'daxmdax',
   all: 'all',
 };
 
@@ -46,7 +47,7 @@ function normalizeProviderFilter(providerFilter) {
 function normalizeAssetClass(assetClass) {
   const key = String(assetClass || 'etf').trim().toLowerCase();
   if (!ASSET_CLASSES[key]) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, all.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, daxmdax, all.');
   }
   return key;
 }
@@ -174,6 +175,10 @@ function getMdaxUniverse() {
   });
 }
 
+function getDaxMdaxUniverse() {
+  return [...getDax40Universe(), ...getMdaxUniverse()];
+}
+
 /**
  * Liefert gefiltertes und dedupliziertes ETF-Universum.
  * Deduplizierung bevorzugt eindeutige ISIN (sonst Anbieter+Ticker).
@@ -194,6 +199,10 @@ async function getEtfUniverse({
 
   if (normalizedAssetClass === 'mdax') {
     return getMdaxUniverse();
+  }
+
+  if (normalizedAssetClass === 'daxmdax') {
+    return getDaxMdaxUniverse();
   }
 
   if (normalizedAssetClass === 'all') {
@@ -237,5 +246,6 @@ module.exports = {
     providerCache,
     getDax40Universe,
     getMdaxUniverse,
+    getDaxMdaxUniverse,
   },
 };

@@ -3,7 +3,7 @@
 const { fetchDailyCloses } = require('./dataService');
 const { getEtfUniverse } = require('./etfUniverseService');
 const {
-  getTickerUpdatedAt,
+  readStore,
   upsertTickerHistory,
   getStoreSummary,
 } = require('./yahooHistoryStore');
@@ -37,12 +37,12 @@ async function buildQueue() {
     assetClass: 'all',
   });
 
-  const rows = await Promise.all(
-    universe.map(async etf => ({
-      etf,
-      updatedAt: await getTickerUpdatedAt(etf.ticker),
-    }))
-  );
+  // Read the history store once to avoid N full-file reads/parses during startup.
+  const store = await readStore();
+  const rows = universe.map(etf => ({
+    etf,
+    updatedAt: store.tickers?.[String(etf.ticker || '').trim().toUpperCase()]?.updatedAt || null,
+  }));
 
   rows.sort((a, b) => {
     if (!a.updatedAt && !b.updatedAt) return 0;

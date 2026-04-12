@@ -866,6 +866,33 @@ test('/api/scan accepts assetClass=mdax and forwards to analysis', async () => {
   });
 });
 
+test('/api/scan accepts assetClass=daxmdax and forwards to analysis', async () => {
+  await withMockedScanApi(async ({ assetClass, providerFilter }) => {
+    assert.equal(assetClass, 'daxmdax');
+    assert.equal(providerFilter, 'all');
+
+    return {
+      assetClass: 'daxmdax',
+      providerFilter: 'all',
+      mode: 'price-breakout',
+      smaPeriod: 200,
+      smaLabel: 'SMA200',
+      total: 2,
+      scanned: 2,
+      matches: [],
+      errors: [],
+    };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/scan?assetClass=daxmdax&provider=all&sma=200`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.results.assetClass, 'daxmdax');
+    assert.equal(body.results.providerFilter, 'all');
+  });
+});
+
 test('/api/recommendations accepts assetClass=mdax and forwards to engine', async () => {
   await withMockedRecommendationsApi(async ({ assetClass, providerFilter, investmentDurationMonths, limit }) => {
     assert.equal(assetClass, 'mdax');
@@ -896,6 +923,40 @@ test('/api/recommendations accepts assetClass=mdax and forwards to engine', asyn
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.results.assetClass, 'mdax');
+    assert.equal(body.results.providerFilter, 'all');
+  });
+});
+
+test('/api/recommendations accepts assetClass=daxmdax and forwards to engine', async () => {
+  await withMockedRecommendationsApi(async ({ assetClass, providerFilter, investmentDurationMonths, limit }) => {
+    assert.equal(assetClass, 'daxmdax');
+    assert.equal(providerFilter, 'all');
+    assert.equal(investmentDurationMonths, 12);
+    assert.equal(limit, 3);
+
+    return {
+      assetClass: 'daxmdax',
+      providerFilter: 'all',
+      investmentDurationMonths: 12,
+      profileKey: 'medium',
+      profileLabel: 'Mittelfristig',
+      total: 2,
+      analyzed: 2,
+      successful: 2,
+      skipped: 0,
+      recommendations: [],
+      buyRecommendations: [],
+      sellRecommendations: [],
+      allRecommendations: [],
+      skippedItems: [],
+    };
+  }, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/recommendations?assetClass=daxmdax&provider=all&investmentDurationMonths=12&limit=3`);
+    assert.equal(response.status, 200);
+
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.results.assetClass, 'daxmdax');
     assert.equal(body.results.providerFilter, 'all');
   });
 });
@@ -1163,6 +1224,7 @@ test('normalizeAssetClass validates allowed asset types', () => {
   assert.equal(normalizeAssetClass('etf'), 'etf');
   assert.equal(normalizeAssetClass(' DAX40 '), 'dax40');
   assert.equal(normalizeAssetClass(' mdax '), 'mdax');
+  assert.equal(normalizeAssetClass(' daxmdax '), 'daxmdax');
   assert.equal(normalizeAssetClass('all'), 'all');
   assert.throws(() => normalizeAssetClass('stocks'), /Ungueltiger Asset-Typ/);
 });
@@ -1187,6 +1249,11 @@ test('getEtfUniverse returns deduplicated valid entries', async () => {
   assert.ok(mdax.length > 0);
   assert.ok(mdax.every(item => item.provider === 'MDAX'));
   assert.ok(mdax.every(item => item.assetClass === 'mdax'));
+
+  const daxmdax = await getEtfUniverse({ assetClass: 'daxmdax', bypassCache: true });
+  assert.ok(daxmdax.length > 0);
+  assert.ok(daxmdax.some(item => item.provider === 'DAX40'));
+  assert.ok(daxmdax.some(item => item.provider === 'MDAX'));
 });
 
 test('masterDataService resolves identifiers and supports cache warmup', async () => {

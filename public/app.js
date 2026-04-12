@@ -123,7 +123,7 @@ const DEFAULT_LOOKBACK_WEEKS = 0;
 const MIN_INVESTMENT_DURATION_MONTHS = 1;
 const MAX_INVESTMENT_DURATION_MONTHS = 120;
 const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
-const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40', 'mdax']);
+const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40', 'mdax', 'daxmdax']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
 const RECOMMENDATION_PROFILES = {
   short: {
@@ -369,7 +369,7 @@ function getSelectedProviderFilter() {
 function getSelectedAssetClass() {
   const value = String(assetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, daxmdax.');
   }
   return value;
 }
@@ -377,18 +377,19 @@ function getSelectedAssetClass() {
 function getSelectedRecommendationAssetClass() {
   const value = String(durationAssetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, daxmdax.');
   }
   return value;
 }
 
 function isStockUniverseAssetClass(assetClass) {
-  return assetClass === 'dax40' || assetClass === 'mdax';
+  return assetClass === 'dax40' || assetClass === 'mdax' || assetClass === 'daxmdax';
 }
 
 function getAssetClassLabel(assetClass) {
   if (assetClass === 'dax40') return 'DAX40-Einzelwerte';
   if (assetClass === 'mdax') return 'MDAX-Einzelwerte';
+  if (assetClass === 'daxmdax') return 'DAX40 + MDAX (indexuebergreifend)';
   return 'ETFs';
 }
 
@@ -427,7 +428,7 @@ function applyAssetClassUiState() {
 function getSelectedDbAssetClass() {
   const value = String(dbAssetClassFilter.value || 'etf').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40, mdax.');
+    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40, mdax, daxmdax.');
   }
   return value;
 }
