@@ -9,6 +9,11 @@ function round(value, decimals = 2) {
   return Number(value.toFixed(decimals));
 }
 
+function fmtScore(value, decimals = 1) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return Number(safeValue.toFixed(decimals));
+}
+
 function scaleToScore(value, min, max) {
   if (!Number.isFinite(value)) return 0;
   if (max <= min) return 0;
@@ -163,14 +168,14 @@ function deriveUnifiedRecommendation({ buyScore, sellScore }) {
   const dominantScore = Math.max(safeBuy, safeSell);
 
   let recommendation = 'Hold';
-  let recommendationReason = 'Trend, Momentum und Risikoregime liefern kein ausreichend eindeutiges Signal.';
+  let recommendationReason = `Hold: Buy ${fmtScore(safeBuy)}, Sell ${fmtScore(safeSell)}, Delta ${delta >= 0 ? '+' : ''}${fmtScore(delta, 2)}. Schwellen nicht erreicht.`;
 
   if (safeBuy >= 58 && delta >= 8) {
     recommendation = 'Buy';
-    recommendationReason = 'Trend- und Momentum-Evidenz ueberwiegen, ohne dass das Risikoregime klar dagegen spricht.';
+    recommendationReason = `Buy: Buy ${fmtScore(safeBuy)} >= 58 und Delta ${delta >= 0 ? '+' : ''}${fmtScore(delta, 2)} >= +8.`;
   } else if (safeSell >= 58 && delta <= -8) {
     recommendation = 'Sell';
-    recommendationReason = 'Bearishe Trend-, Drawdown- und Risikosignale ueberwiegen deutlich.';
+    recommendationReason = `Sell: Sell ${fmtScore(safeSell)} >= 58 und Delta ${delta >= 0 ? '+' : ''}${fmtScore(delta, 2)} <= -8.`;
   }
 
   const balancePenalty = clamp(25 - conviction, 0, 25);

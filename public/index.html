@@ -328,7 +328,7 @@
             <strong id="criteriaProfileName">Mittelfristig</strong> ist aktuell aktiv fuer <strong id="criteriaDurationRange">4 bis 12 Monate</strong>.
           </p>
           <p class="criteria-exact-text">
-            Gesamtscore = gewichtete Summe aus Trend, Momentum, RSI, Naehe zum 60-Tage-Hoch und Volatilitaet.
+            Regel: Buy bei Buy >= 58 und Delta >= +8. Sell bei Sell >= 58 und Delta <= -8. Sonst Hold.
           </p>
           <div class="criteria-formula" id="criteriaFormula">
             30% Trend + 10% 1M-Momentum + 25% 3M-Momentum + 10% RSI + 10% Hoch-Naehe + 15% Volatilitaet
@@ -371,11 +371,11 @@
           </div>
         </div>
         <ul class="criteria-rules">
-          <li><strong>Trendscore:</strong> 15 Punkte fuer Kurs > SMA20, 20 fuer Kurs > SMA50, 25 fuer Kurs > SMA200, 15 fuer SMA20 > SMA50, 15 fuer SMA50 > SMA200, 10 fuer steigenden SMA200 gegenueber vor 20 Handelstagen.</li>
-          <li><strong>Momentum-Normalisierung:</strong> 1M wird aus etwa -12% bis +18% auf 0 bis 100 skaliert, 3M aus -18% bis +28%, 6M aus -25% bis +40%.</li>
-          <li><strong>RSI-Bewertung:</strong> Zielwert ist RSI 62 kurzfristig, 58 mittelfristig, 55 langfristig. Abweichung senkt den Score; ueber 75 gibt es einen zusaetzlichen Malus, unter 40 ebenfalls.</li>
-          <li><strong>Hoch-Naehe:</strong> Je naeher der Kurs am 60-Tage-Hoch liegt, desto hoeher der Teilscore. Eine Abweichung von 0% ist optimal, ab etwa 15% Abstand faellt der Score gegen 0.</li>
-          <li><strong>Volatilitaet:</strong> Die annualisierte 20-Tage-Volatilitaet wird invers bewertet. Etwa 15% ist stark, ab etwa 45% wird der Teilscore sehr schwach.</li>
+          <li><strong>Trendscore:</strong> Kurs vs. SMA20/50/200, SMA-Reihenfolge, SMA200-Steigung.</li>
+          <li><strong>Momentum:</strong> 1M/3M/6M, je nach Profil gewichtet und auf 0 bis 100 skaliert.</li>
+          <li><strong>RSI:</strong> Wird berechnet, hat aktuell Gewicht 0.</li>
+          <li><strong>Hoch-Naehe/Breakdown:</strong> Buy bevorzugt Naehe zum 60-Tage-Hoch, Sell grosse Distanz.</li>
+          <li><strong>Volatilitaet:</strong> Buy nahe Profil-Ziel, Sell bei deutlich erhoehter Volatilitaet.</li>
         </ul>
         </div>
       </section>

@@ -458,11 +458,16 @@ function updateRecommendationCriteriaInfo() {
   criteriaProfileName.textContent = profile.profileLabel;
   criteriaDurationRange.textContent = profile.rangeLabel;
   criteriaFormula.textContent = profile.formula;
-  criteriaTrendText.textContent = 'Trendscore von 0 bis 100: 15 Punkte fuer Kurs > SMA20, 20 fuer Kurs > SMA50, 25 fuer Kurs > SMA200, 15 fuer SMA20 > SMA50, 15 fuer SMA50 > SMA200 und 10 fuer einen steigenden SMA200.';
-  criteriaMomentumText.textContent = `${profile.momentumText} Die Momentum-Scores werden auf 0 bis 100 normiert.`;
-  criteriaRsiText.textContent = profile.rsiText;
-  criteriaBreakoutText.textContent = 'Statt eines simplen Breakout-Bonus wird jetzt Drawdown-Stabilitaet bewertet: kleine Abstaende zum 60-Tage-Hoch sind positiv, tiefe Ruecksetzer sprechen gegen einen robusten Trend.';
-  criteriaVolatilityText.textContent = 'Die annualisierte 20-Tage-Volatilitaet wird an einem horizon-spezifischen Risikobudget gemessen. Optimal ist nicht minimal, sondern ein tragbares Volatilitaetsregime ohne Krisencharakter.';
+  const criteriaExactTextEl = document.querySelector('.criteria-exact-text');
+  if (criteriaExactTextEl) {
+    criteriaExactTextEl.textContent = 'Regel: Buy bei Buy >= 58 und Delta >= +8. Sell bei Sell >= 58 und Delta <= -8. Sonst Hold.';
+  }
+
+  criteriaTrendText.textContent = 'Trendscore: Kurs vs. SMA20/50/200, SMA-Reihenfolge, SMA200-Steigung.';
+  criteriaMomentumText.textContent = 'Momentum: 1M/3M/6M, je nach Profil gewichtet und auf 0-100 skaliert.';
+  criteriaRsiText.textContent = 'RSI wird berechnet, hat aktuell aber Gewicht 0 in Buy/Sell.';
+  criteriaBreakoutText.textContent = 'Buy: Naehe zum 60-Tage-Hoch positiv. Sell: grosse Distanz zum Hoch positiv.';
+  criteriaVolatilityText.textContent = 'Buy: Volatilitaet nahe Profil-Ziel. Sell: deutlich erhoehte Volatilitaet.';
 
   criteriaShortCard.classList.toggle('active', profileKey === 'short');
   criteriaMediumCard.classList.toggle('active', profileKey === 'medium');
