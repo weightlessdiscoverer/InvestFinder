@@ -102,17 +102,6 @@ const dbFreshnessBadge = document.getElementById('dbFreshnessBadge');
 const dbEtfBody = document.getElementById('dbEtfBody');
 const dbEtfEmpty = document.getElementById('dbEtfEmpty');
 const dbAssetClassFilter = document.getElementById('dbAssetClassFilter');
-const tabBacktestBtn = document.getElementById('tabBacktestBtn');
-const tabBacktestContent = document.getElementById('tabBacktestContent');
-const btnBacktest = document.getElementById('btnBacktest');
-const backtestAssetClassFilter = document.getElementById('backtestAssetClassFilter');
-const backtestProviderFilter = document.getElementById('backtestProviderFilter');
-const backtestLoadingSection = document.getElementById('backtestLoadingSection');
-const backtestLoadingStatus = document.getElementById('backtestLoadingStatus');
-const backtestErrorBanner = document.getElementById('backtestErrorBanner');
-const backtestErrorMessage = document.getElementById('backtestErrorMessage');
-const backtestResultsSection = document.getElementById('backtestResultsSection');
-const backtestProfileGrid = document.getElementById('backtestProfileGrid');
 
 const MIN_SMA_PERIOD = 2;
 const MAX_SMA_PERIOD = 400;
@@ -519,23 +508,20 @@ function updateSignalLabels() {
 }
 
 function setActiveTab(tab) {
-  const allowed = ['main', 'duration', 'db', 'backtest'];
+  const allowed = ['main', 'duration', 'db'];
   currentTab = allowed.includes(tab) ? tab : 'main';
 
   const mainActive = currentTab === 'main';
   const durationActive = currentTab === 'duration';
   const dbActive = currentTab === 'db';
-  const backtestActive = currentTab === 'backtest';
 
   setVisible(tabMainContent, mainActive);
   setVisible(tabDurationContent, durationActive);
   setVisible(tabDbContent, dbActive);
-  setVisible(tabBacktestContent, backtestActive);
 
   tabMainBtn.classList.toggle('active', mainActive);
   tabDurationBtn.classList.toggle('active', durationActive);
   tabDbBtn.classList.toggle('active', dbActive);
-  tabBacktestBtn.classList.toggle('active', backtestActive);
 
   if (dbActive) {
     loadDbEtfList();
@@ -1497,185 +1483,6 @@ async function runRecommendations() {
   }
 }
 
-/* ── Backtest ────────────────────────────────────────────────────────────── */
-
-const BACKTEST_STATUS_MESSAGES = [
-  'Lade Kurszeitreihen …',
-  'Berechne Scores je Zeitpunkt …',
-  'Ermittle Folgerenditen …',
-  'Berechne Info-Koeffizient …',
-];
-let backtestStatusInterval = null;
-
-function startBacktestStatusAnimation() {
-  let idx = 0;
-  backtestLoadingStatus.textContent = BACKTEST_STATUS_MESSAGES[0];
-  backtestStatusInterval = setInterval(() => {
-    idx = (idx + 1) % BACKTEST_STATUS_MESSAGES.length;
-    backtestLoadingStatus.textContent = BACKTEST_STATUS_MESSAGES[idx];
-  }, 3000);
-}
-
-function stopBacktestStatusAnimation() {
-  if (backtestStatusInterval) {
-    clearInterval(backtestStatusInterval);
-    backtestStatusInterval = null;
-  }
-}
-
-function icBadgeClass(interpretation) {
-  if (interpretation === 'Bedeutsam') return 'backtest-badge backtest-badge--green';
-  if (interpretation === 'Schwach') return 'backtest-badge backtest-badge--yellow';
-  return 'backtest-badge backtest-badge--gray';
-}
-
-function sepBadgeClass(interpretation) {
-  if (interpretation === 'Klare Trennschaerfe') return 'backtest-badge backtest-badge--green';
-  if (interpretation === 'Leichte Trennschaerfe') return 'backtest-badge backtest-badge--yellow';
-  return 'backtest-badge backtest-badge--gray';
-}
-
-function renderSignalRow(label, signalData, actionClass) {
-  if (!signalData || signalData.count === 0) {
-    return `<tr>
-      <td><span class="recommendation-action ${actionClass}">${escHtml(label)}</span></td>
-      <td class="num" colspan="4" style="color: var(--color-text-muted);">Keine Datenpunkte</td>
-    </tr>`;
-  }
-  const hitRateColor = signalData.hitRatePct >= 55
-    ? 'style="color: var(--color-green); font-weight: 700;"'
-    : signalData.hitRatePct <= 45
-      ? 'style="color: var(--color-red);"'
-      : '';
-  return `<tr>
-    <td><span class="recommendation-action ${actionClass}">${escHtml(label)}</span></td>
-    <td class="num">${fmt(signalData.avgForwardReturnPct, 2)} %</td>
-    <td class="num">${fmt(signalData.annualizedReturnPct, 1)} %</td>
-    <td class="num" ${hitRateColor}>${fmt(signalData.hitRatePct, 1)} %</td>
-    <td class="num">${signalData.count}</td>
-  </tr>`;
-}
-
-function renderBacktestCard(profile) {
-  const { label, forwardDays, sampleSize, infoCoefficient, icInterpretation, separationPct, separationInterpretation, bySignal } = profile;
-  const buyRow = renderSignalRow('Buy', bySignal?.Buy, 'action-buy');
-  const holdRow = renderSignalRow('Hold', bySignal?.Hold, 'action-hold');
-  const sellRow = renderSignalRow('Sell', bySignal?.Sell, 'action-sell');
-
-  return `
-    <div class="backtest-card">
-      <div class="backtest-card-header">
-        <span class="backtest-card-title">${escHtml(label)}</span>
-        <span class="backtest-card-sub">${forwardDays} Handelstage voraus</span>
-      </div>
-      <div class="backtest-meta">
-        <div class="backtest-meta-item">
-          <span class="backtest-meta-label">IC</span>
-          <span class="${icBadgeClass(icInterpretation)}">${fmt(infoCoefficient, 3)}</span>
-          <span class="backtest-meta-interp">${escHtml(icInterpretation)}</span>
-        </div>
-        <div class="backtest-meta-item">
-          <span class="backtest-meta-label">Trennschaerfe</span>
-          <span class="${sepBadgeClass(separationInterpretation)}">${fmt(separationPct, 2)} %</span>
-          <span class="backtest-meta-interp">${escHtml(separationInterpretation)}</span>
-        </div>
-        <div class="backtest-meta-item">
-          <span class="backtest-meta-label">Datenpunkte</span>
-          <span class="backtest-meta-value">${sampleSize}</span>
-        </div>
-      </div>
-      <div class="table-wrapper" style="margin-top: 12px;">
-        <table class="results-table backtest-signal-table">
-          <thead>
-            <tr>
-              <th>Signal</th>
-              <th class="num">Ø Rendite</th>
-              <th class="num">Ann. p.a.</th>
-              <th class="num">Hit-Rate</th>
-              <th class="num">n</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${buyRow}
-            ${holdRow}
-            ${sellRow}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
-}
-
-function normalizeBacktestProfiles(results) {
-  if (Array.isArray(results)) {
-    return results;
-  }
-
-  if (results && typeof results === 'object' && results.profiles && typeof results.profiles === 'object') {
-    const orderedKeys = ['short', 'medium', 'long'];
-    return orderedKeys
-      .map(key => results.profiles[key])
-      .filter(Boolean);
-  }
-
-  return [];
-}
-
-function renderBacktestResults(results) {
-  const profiles = normalizeBacktestProfiles(results);
-  backtestProfileGrid.innerHTML = profiles.map(renderBacktestCard).join('');
-  setVisible(backtestResultsSection, true);
-}
-
-async function runBacktest() {
-  let assetClass;
-  let providerFilter;
-
-  try {
-    assetClass = String(backtestAssetClassFilter.value || 'etf').trim().toLowerCase();
-    if (!ALLOWED_ASSET_CLASSES.has(assetClass)) {
-      throw new Error('Ungueltiger Asset-Typ.');
-    }
-    providerFilter = String(backtestProviderFilter.value || 'all').trim().toLowerCase();
-    if (isStockUniverseAssetClass(assetClass)) {
-      providerFilter = 'all';
-    }
-    if (!ALLOWED_PROVIDER_FILTERS.has(providerFilter)) {
-      throw new Error('Ungueltiger Anbieterfilter.');
-    }
-  } catch (validationErr) {
-    backtestErrorMessage.textContent = validationErr.message;
-    setVisible(backtestErrorBanner, true);
-    return;
-  }
-
-  setVisible(backtestErrorBanner, false);
-  setVisible(backtestResultsSection, false);
-  setVisible(backtestLoadingSection, true);
-  btnBacktest.disabled = true;
-  startBacktestStatusAnimation();
-
-  try {
-    const params = new URLSearchParams({ assetClass, provider: providerFilter });
-    const response = await fetch(`/api/backtest?${params.toString()}`);
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || `HTTP ${response.status}`);
-    }
-    const data = await response.json();
-    if (!data.ok) {
-      throw new Error(data.error || 'Unbekannter Serverfehler');
-    }
-    renderBacktestResults(data.results || []);
-  } catch (err) {
-    backtestErrorMessage.textContent = `Backtest-Fehler: ${err.message}`;
-    setVisible(backtestErrorBanner, true);
-  } finally {
-    stopBacktestStatusAnimation();
-    setVisible(backtestLoadingSection, false);
-    btnBacktest.disabled = false;
-  }
-}
-
 /* ── Event listeners ─────────────────────────────────────────────────────── */
 
 btnScan.addEventListener('click', () => runScan());
@@ -1818,8 +1625,6 @@ maxAboveSmaPctInput.addEventListener('input', () => {
 tabMainBtn.addEventListener('click', () => setActiveTab('main'));
 tabDurationBtn.addEventListener('click', () => setActiveTab('duration'));
 tabDbBtn.addEventListener('click', () => setActiveTab('db'));
-tabBacktestBtn.addEventListener('click', () => setActiveTab('backtest'));
-btnBacktest.addEventListener('click', () => runBacktest());
 
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 

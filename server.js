@@ -39,7 +39,6 @@ const {
 } = require('./src/dax40FreshnessService');
 const { getEtfUniverse } = require('./src/etfUniverseService');
 const { createAvailableInstrumentsHandler } = require('./src/availableInstrumentsService');
-const { runFullBacktest } = require('./src/backtest');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -205,34 +204,6 @@ app.get('/api/available-instruments', handleAvailableInstruments);
  * Backward-compatible alias for legacy clients.
  */
 app.get('/api/available-etfs', handleAvailableInstruments);
-
-/**
- * GET /api/backtest
- * Runs an out-of-sample backtest for the current instrument universe.
- * Tests whether Buy/Hold/Sell signals produced higher forward returns historically.
- *
- * Query params:
- *   - assetClass=etf|dax40|mdax|daxmdax|all
- *   - provider=all|ishares|xtrackers
- */
-app.get('/api/backtest', scanLimiter, async (req, res) => {
-  let assetClass;
-  let providerFilter;
-  try {
-    assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
-    providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
-  } catch (err) {
-    return res.status(400).json({ ok: false, error: err.message });
-  }
-
-  try {
-    const results = await runFullBacktest({ assetClass, providerFilter });
-    return res.json({ ok: true, results, runAt: new Date().toISOString() });
-  } catch (err) {
-    console.error('Backtest error:', err);
-    return res.status(500).json({ ok: false, error: 'Backtest fehlgeschlagen: ' + err.message });
-  }
-});
 
 // Catch-all: serve index.html for any unknown path (SPA fallback)
 app.use((_req, res) => {
