@@ -1068,6 +1068,35 @@ test('detectBreakoutSignal with lookbackDays returns false when no crossing foun
   assert.equal(result.lookbackDays, 10);
 });
 
+test('detectBreakoutSignal with lookbackDays returns false when current price is below SMA after a prior crossing', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05'],
+    closes: [8, 8, 7, 12, 8],
+    smaPeriod: 3,
+    lookbackDays: 10,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+  assert.equal(result.todayDate, '2026-01-05');
+});
+
+test('detectBreakoutSignal with performanceDays and minPerformancePct filters weak breakouts', () => {
+  const result = detectBreakoutSignal({
+    dates: ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04'],
+    closes: [10, 9, 10.5, 10.8],
+    smaPeriod: 2,
+    lookbackDays: 10,
+    performanceDays: 1,
+    minPerformancePct: 3,
+  });
+
+  assert.equal(result.signal, false);
+  assert.equal(result.insufficientData, false);
+  assert.ok(result.performancePct != null);
+  assert.ok(result.performancePct < 3);
+});
+
 test('detectBreakoutSignal with lookbackDays respects timeframe limit', () => {
   // Crossing at index 3, but lookbackDays=1 means only last 2 data points (indices 4-5)
   // Should NOT find the crossing at index 3

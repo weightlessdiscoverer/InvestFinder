@@ -29,13 +29,13 @@
     <section class="controls-panel">
       <div class="controls-row">
         <label class="input-label" for="assetClassFilter">Aktienbasis</label>
-        <select id="assetClassFilter" class="provider-select" title="Zwischen DAX40, MDAX oder beiden Aktienindizes wechseln">
+        <select id="assetClassFilter" class="provider-select" title="Auswahl des Aktienuniversums für den Scan: DAX40, MDAX oder beide Indizes.">
           <option value="all" selected>DAX40 + MDAX</option>
           <option value="dax40">nur DAX40</option>
           <option value="mdax">nur MDAX</option>
         </select>
         <label class="input-label" for="signalMode">Signaltyp</label>
-        <select id="signalMode" class="provider-select" title="Signal-Logik auswaehlen">
+        <select id="signalMode" class="provider-select" title="Wähle den Typ des Signals. Für dein beschriebenes Vorgehen verwende 'Kurs über SMA'.">
           <option value="price-breakout" selected>Kurs ueber SMA</option>
           <option value="sma-crossover">SMA-Crossover</option>
         </select>
@@ -51,7 +51,7 @@
             step="1"
             value="200"
             list="smaPresetList"
-            title="Nur fuer Modus 'Kurs ueber SMA'"
+            title="SMA-Periode zur Durchbruchserkennung. Nur im Modus 'Kurs über SMA' verwenden."
           />
           <datalist id="smaPresetList">
             <option value="20"></option>
@@ -71,7 +71,7 @@
             max="400"
             step="1"
             value="50"
-            title="Schnelle Linie fuer SMA-Crossover"
+            title="Schnelle SMA-Linie für den Crossover-Vergleich."
           />
 
           <label class="input-label" for="slowSmaPeriodInput">Slow-SMA (z)</label>
@@ -83,7 +83,7 @@
             max="400"
             step="1"
             value="200"
-            title="Langsame Linie fuer SMA-Crossover"
+            title="Langsame SMA-Linie für den Crossover-Vergleich."
           />
         </div>
 
@@ -96,10 +96,32 @@
           max="52"
           step="1"
           value="0"
-          title="Lookback-Periode in Wochen. 0 = nur gestern vs. heute"
+          title="Zeitraum, in dem das SMA-Durchbrechen gesucht wird. 0 = nur gestern vs. heute."
+        />
+        <label class="input-label" for="performanceDaysInput">Performance (Tage)</label>
+        <input
+          id="performanceDaysInput"
+          class="sma-input"
+          type="number"
+          min="0"
+          max="250"
+          step="1"
+          value="0"
+          title="Anzahl der letzten Handelstage für die Performance-Berechnung."
+        />
+        <label class="input-label" for="minPerformancePctInput">Min. Performance (%)</label>
+        <input
+          id="minPerformancePctInput"
+          class="sma-input"
+          type="number"
+          min="0"
+          max="1000"
+          step="0.1"
+          placeholder="z.B. 3"
+          title="Minimale Performance in Prozent, die über den angegebenen Performance-Tagen erreicht werden muss."
         />
         <label class="input-label" for="providerFilter">Indexfilter</label>
-        <select id="providerFilter" class="provider-select" title="Indexbereich filtern">
+        <select id="providerFilter" class="provider-select" title="Wähle den Indexbereich für den Scan: Alle, nur DAX40 oder nur MDAX.">
           <option value="all" selected>Alle</option>
           <option value="dax40">nur DAX40</option>
           <option value="mdax">nur MDAX</option>
@@ -113,7 +135,7 @@
           max="100"
           step="0.1"
           placeholder="kein Limit"
-          title="Maximaler Abstand des aktuellen Kurses über dem SMA-Schnittpunkt in Prozent. Leer = kein Limit."
+          title="Optionales Limit für den maximalen Abstand des Kurses über dem SMA-Schnittpunkt in Prozent. Leer = kein Limit."
         />
         <button id="btnScan" class="btn btn-primary">
           <span class="btn-icon">🔍</span> Scan starten
@@ -127,6 +149,7 @@
         Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">DAX40 + MDAX Aktien</strong> auf das Signal
         <strong id="selectedSmaLabel">Kurs ueber SMA200</strong> (Tagesbasis).
       </p>
+      <div class="field-help" id="signalHelpBox"></div>
     </section>
 
     <!-- ── Loading Indicator ────────────────────────────────────────────── -->
@@ -231,6 +254,7 @@
               <th>Datum</th>
               <th class="num">Kurs (heute)</th>
               <th class="num" id="thSmaValue">SMA200 (heute)</th>
+              <th class="num">Performance</th>
               <th class="num">
                 <span class="th-with-help">
                   Durchstoss-Steilheit

@@ -21,6 +21,8 @@ const {
   normalizeSmaPeriod,
   normalizeSignalConfig,
   normalizeLookbackDays,
+  normalizePerformanceDays,
+  normalizeMinPerformancePct,
 } = require('./analysisConfig');
 const { detectBreakoutSignal } = require('./signals');
 const { getPriceHistory } = require('./priceHistoryService');
@@ -28,12 +30,12 @@ const { getPriceHistory } = require('./priceHistoryService');
 // ── In-memory cache ──────────────────────────────────────────────────────────
 const signalCache = new Map();
 
-async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_LOOKBACK_DAYS }) {
+async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_LOOKBACK_DAYS, performanceDays = 0, minPerformancePct = null }) {
   const signalCacheSuffix = signalConfig.mode === 'sma-crossover'
     ? `fast:${signalConfig.fastSmaPeriod}|slow:${signalConfig.slowSmaPeriod}`
     : `sma:${signalConfig.smaPeriod}`;
 
-  const cacheKey = `${etf.ticker}|${signalConfig.mode}|${signalCacheSuffix}|lookback:${lookbackDays}`;
+  const cacheKey = `${etf.ticker}|${signalConfig.mode}|${signalCacheSuffix}|lookback:${lookbackDays}|perfDays:${performanceDays}|minPerf:${minPerformancePct}`;
   const now = Date.now();
 
   if (!bypassCache && signalCache.has(cacheKey)) {
@@ -49,6 +51,8 @@ async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_
       dates,
       closes,
       lookbackDays,
+      performanceDays,
+      minPerformancePct,
       ...(signalConfig.mode === 'sma-crossover'
         ? {
             fastSmaPeriod: signalConfig.fastSmaPeriod,
@@ -81,6 +85,8 @@ async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_
             signalLabel: `Kurs ueber ${signalConfig.smaLabel}`,
           }),
       ...(lookbackDays > 0 && { lookbackDays }),
+      ...(performanceDays > 0 && { performanceDays }),
+      ...(minPerformancePct != null && { minPerformancePct }),
     };
 
     const result = signalResult.insufficientData
@@ -148,6 +154,8 @@ async function scanAllETFs({
   providerFilter = 'all',
   assetClass: assetClassInput = 'all',
   lookbackDays: lookbackDaysInput,
+  performanceDays: performanceDaysInput,
+  minPerformancePct: minPerformancePctInput,
 } = {}) {
   const signalConfig = normalizeSignalConfig({
     smaPeriodInput,
@@ -155,6 +163,8 @@ async function scanAllETFs({
     slowSmaPeriodInput,
   });
   const lookbackDays = normalizeLookbackDays(lookbackDaysInput);
+  const performanceDays = normalizePerformanceDays(performanceDaysInput);
+  const minPerformancePct = normalizeMinPerformancePct(minPerformancePctInput);
   const normalizedAssetClass = normalizeAssetClass(assetClassInput);
   const normalizedProviderFilter = normalizeProviderFilter(providerFilter);
 
@@ -172,7 +182,7 @@ async function scanAllETFs({
   for (let i = 0; i < etfUniverse.length; i += BATCH_SIZE) {
     const batch = etfUniverse.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(etf => scanETF(etf, { bypassCache, signalConfig, lookbackDays }))
+      batch.map(etf => scanETF(etf, { bypassCache, signalConfig, lookbackDays, performanceDays, minPerformancePct }))
     );
     allResults.push(...batchResults);
 
@@ -216,6 +226,8 @@ module.exports = {
   normalizeProviderFilter,
   normalizeSmaPeriod,
   normalizeLookbackDays,
+  normalizePerformanceDays,
+  normalizeMinPerformancePct,
   normalizeSignalConfig,
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,

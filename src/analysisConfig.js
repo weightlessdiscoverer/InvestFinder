@@ -7,6 +7,9 @@ const DEFAULT_FAST_SMA_PERIOD = 50;
 const DEFAULT_SLOW_SMA_PERIOD = 200;
 const DEFAULT_LOOKBACK_DAYS = 0;
 const MAX_LOOKBACK_DAYS = 365;
+const DEFAULT_PERFORMANCE_DAYS = 0;
+const MAX_PERFORMANCE_DAYS = 250;
+const MAX_PERFORMANCE_PCT = 1000;
 
 function normalizeSmaPeriod(smaPeriodInput) {
   if (smaPeriodInput == null || smaPeriodInput === '') {
@@ -91,6 +94,40 @@ function normalizeLookbackDays(lookbackDaysInput) {
   return parsed;
 }
 
+function normalizePerformanceDays(daysInput) {
+  if (daysInput == null || daysInput === '') {
+    return 0;
+  }
+
+  const parsed = Number(daysInput);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error('Ungueltige Performance-Tage. Bitte eine ganze Zahl >= 0 angeben.');
+  }
+
+  if (parsed > MAX_PERFORMANCE_DAYS) {
+    throw new Error(`Performance-Tage ${parsed} ist zu gross. Maximal erlaubt: ${MAX_PERFORMANCE_DAYS}.`);
+  }
+
+  return parsed;
+}
+
+function normalizeMinPerformancePct(pctInput) {
+  if (pctInput == null || pctInput === '') {
+    return null;
+  }
+
+  const parsed = Number(pctInput);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    throw new Error('Ungueltige Mindestperformance. Bitte einen Wert >= 0 angeben.');
+  }
+
+  if (parsed > MAX_PERFORMANCE_PCT) {
+    throw new Error(`Mindestperformance ${parsed} % ist zu hoch. Maximal erlaubt: ${MAX_PERFORMANCE_PCT} %.`);
+  }
+
+  return parsed;
+}
+
 module.exports = {
   DEFAULT_SMA_PERIOD,
   MIN_SMA_PERIOD,
@@ -99,7 +136,12 @@ module.exports = {
   DEFAULT_SLOW_SMA_PERIOD,
   DEFAULT_LOOKBACK_DAYS,
   MAX_LOOKBACK_DAYS,
+  DEFAULT_PERFORMANCE_DAYS,
+  MAX_PERFORMANCE_DAYS,
+  MAX_PERFORMANCE_PCT,
   normalizeSmaPeriod,
   normalizeSignalConfig,
   normalizeLookbackDays,
+  normalizePerformanceDays,
+  normalizeMinPerformancePct,
 };

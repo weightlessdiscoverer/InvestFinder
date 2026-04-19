@@ -14,6 +14,26 @@ const detectSmaCrossoverSignal = createDetectSmaCrossoverSignal({
   getStartIdxForLookback,
 });
 
+function computePerformancePct(closes, days) {
+  if (!Number.isInteger(days) || days <= 0) {
+    return null;
+  }
+
+  const todayIdx = closes.length - 1;
+  const referenceIdx = todayIdx - days;
+  if (referenceIdx < 0) {
+    return null;
+  }
+
+  const referenceClose = closes[referenceIdx];
+  const todayClose = closes[todayIdx];
+  if (referenceClose == null || referenceClose === 0 || todayClose == null) {
+    return null;
+  }
+
+  return ((todayClose - referenceClose) / referenceClose) * 100;
+}
+
 /**
  * Ermittelt einen Breakout von unten nach oben relativ zum SMA(N)
  * innerhalb eines optionalen Lookback-Zeitraums.
@@ -29,7 +49,7 @@ const detectSmaCrossoverSignal = createDetectSmaCrossoverSignal({
  * }} input
  * @returns {object}
  */
-function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays }) {
+function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays, performanceDays = 0, minPerformancePct = null }) {
   const smaLabel = `SMA${smaPeriod}`;
 
   if (!Array.isArray(closes) || closes.length < smaPeriod + 1) {
@@ -44,6 +64,20 @@ function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays }) {
   }
 
   const smaValues = computeSMA(closes, smaPeriod);
+  const performancePct = performanceDays > 0 ? computePerformancePct(closes, performanceDays) : null;
+
+  if (performanceDays > 0 && minPerformancePct != null && performancePct == null) {
+    return {
+      signal: false,
+      insufficientData: true,
+      error: `Zu wenige Kursdaten fuer ${performanceDays} Tage Performance-Berechnung.`,
+      smaPeriod,
+      smaLabel,
+      performanceDays,
+      minPerformancePct,
+      ...(lookbackDays && { lookbackDays }),
+    };
+  }
 
   if (lookbackDays == null || lookbackDays <= 0) {
     const todayIdx = closes.length - 1;
@@ -68,9 +102,10 @@ function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays }) {
     const todaySpreadPct = ((todayClose - todaySMA) / todaySMA) * 100;
     const yesterdaySpreadPct = ((yesterdayClose - yesterdaySMA) / yesterdaySMA) * 100;
     const breakoutSteepnessPct = todaySpreadPct - yesterdaySpreadPct;
+    const passesPerformance = minPerformancePct == null || performancePct == null || performancePct >= minPerformancePct;
 
     return {
-      signal,
+      signal: signal && passesPerformance,
       insufficientData: false,
       mode: 'price-breakout',
       smaPeriod,
@@ -82,6 +117,9 @@ function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays }) {
       yesterdayClose: +yesterdayClose.toFixed(4),
       yesterdaySMA: +yesterdaySMA.toFixed(4),
       breakoutSteepnessPct: +breakoutSteepnessPct.toFixed(4),
+      ...(performanceDays > 0 && { performanceDays }),
+      ...(performancePct != null && { performancePct: +performancePct.toFixed(4) }),
+      ...(minPerformancePct != null && { minPerformancePct }),
     };
   }
 
@@ -107,28 +145,53 @@ function detectPriceBreakoutSignal({ dates, closes, smaPeriod, lookbackDays }) {
       smaPeriod,
       smaLabel,
       lookbackDays,
+      ...(performanceDays > 0 && { performanceDays }),
+      ...(minPerformancePct != null && { minPerformancePct }),
+    };
+  }
+
+  const todayIdx = closes.length - 1;
+  const todayClose = closes[todayIdx];
+  const todaySMA = smaValues[todayIdx];
+
+  if (todaySMA == null) {
+    return {
+      signal: false,
+      insufficientData: true,
+      error: `Keine gueltigen SMA-Werte fuer ${smaLabel} verfuegbar.`,
+      smaPeriod,
+      smaLabel,
+      lookbackDays,
+      ...(performanceDays > 0 && { performanceDays }),
+      ...(minPerformancePct != null && { minPerformancePct }),
     };
   }
 
   const crossingClose = closes[lastCrossingIdx];
   const crossingSMA = smaValues[lastCrossingIdx];
   const crossingSpreadPct = ((crossingClose - crossingSMA) / crossingSMA) * 100;
+  const currentAboveSMA = todayClose > todaySMA;
+  const passesPerformance = minPerformancePct == null || performancePct == null || performancePct >= minPerformancePct;
+  const signal = currentAboveSMA && passesPerformance;
 
   return {
-    signal: true,
+    signal,
     insufficientData: false,
     mode: 'price-breakout',
     smaPeriod,
     smaLabel,
     lookbackDays,
     crossingDate: dates[lastCrossingIdx],
-    todayDate: dates[closes.length - 1],
-    todayClose: +closes[closes.length - 1].toFixed(4),
-    todaySMA: +(smaValues[closes.length - 1] || 0).toFixed(4),
+    todayDate: dates[todayIdx],
+    todayClose: +todayClose.toFixed(4),
+    todaySMA: +todaySMA.toFixed(4),
     breakoutDate: dates[lastCrossingIdx],
     breakoutClose: +crossingClose.toFixed(4),
     breakoutSMA: +crossingSMA.toFixed(4),
     breakoutSpreadPct: +crossingSpreadPct.toFixed(4),
+    ...(performanceDays > 0 && { performanceDays }),
+    ...(performancePct != null && { performancePct: +performancePct.toFixed(4) }),
+    ...(minPerformancePct != null && { minPerformancePct }),
   };
 }
 

@@ -19,12 +19,15 @@ const smaPeriodInput = document.getElementById('smaPeriodInput');
 const fastSmaPeriodInput = document.getElementById('fastSmaPeriodInput');
 const slowSmaPeriodInput = document.getElementById('slowSmaPeriodInput');
 const lookbackWeeksInput = document.getElementById('lookbackWeeksInput');
+const performanceDaysInput = document.getElementById('performanceDaysInput');
+const minPerformancePctInput = document.getElementById('minPerformancePctInput');
 const providerFilter = document.getElementById('providerFilter');
 const chkShowErrors = document.getElementById('chkShowErrors');
 const maxAboveSmaPctInput = document.getElementById('maxAboveSmaPctInput');
 const etfCountEl = document.getElementById('etfCount');
 const assetHintLabel = document.getElementById('assetHintLabel');
 const selectedSmaLabel = document.getElementById('selectedSmaLabel');
+const signalHelpBox = document.getElementById('signalHelpBox');
 const loadingSection = document.getElementById('loadingSection');
 const loadingStatus = document.getElementById('loadingStatus');
 const errorBanner = document.getElementById('errorBanner');
@@ -107,6 +110,11 @@ const DEFAULT_SMA_PERIOD = 200;
 const MIN_LOOKBACK_WEEKS = 0;
 const MAX_LOOKBACK_WEEKS = 52;
 const DEFAULT_LOOKBACK_WEEKS = 0;
+const MIN_PERFORMANCE_DAYS = 0;
+const MAX_PERFORMANCE_DAYS = 250;
+const DEFAULT_PERFORMANCE_DAYS = 0;
+const MIN_PERFORMANCE_PCT = 0;
+const MAX_PERFORMANCE_PCT = 1000;
 const MIN_INVESTMENT_DURATION_MONTHS = 1;
 const MAX_INVESTMENT_DURATION_MONTHS = 120;
 const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
@@ -176,6 +184,36 @@ const durationTableStates = {
 
 function setVisible(el, visible) {
   el.classList.toggle('hidden', !visible);
+}
+
+function getSignalHelpItems(mode) {
+  if (mode === 'sma-crossover') {
+    return [
+      'Signaltyp: <strong>SMA-Crossover</strong> sucht ein Überschreiten der schnellen SMA-Linie über die langsame SMA-Linie.',
+      'Fast-SMA (y): Periode der schnellen SMA-Linie, die den Crossover auslöst.',
+      'Slow-SMA (z): Periode der langsamen SMA-Linie, über die die Fast-SMA steigen muss.',
+      'Zeitraum (Wochen): Zeitraum, in dem ein aktueller Crossover innerhalb des Datenverlaufs gesucht wird.',
+      'Performance-Felder: gelten nur im Modus <strong>Kurs über SMA</strong> und werden beim SMA-Crossover aktuell nicht verwendet.',
+      'Max. Abstand (%): optionaler Filter für die aktuelle Differenz der beiden SMAs.',
+    ];
+  }
+
+  return [
+    'Signaltyp: <strong>Kurs über SMA</strong> sucht einen Durchbruch des Kurses über die ausgewählte SMA.',
+    'SMA (Kurs): Periode der einfachen gleitenden Durchschnittslinie, über die der Kurs steigen muss.',
+    'Zeitraum (Wochen): Zeitraum, in dem der Durchbruch über die SMA gesucht wird. 0 bedeutet nur gestern vs. heute.',
+    'Performance (Tage): Anzahl der letzten Handelstage zur Messung der Performance nach dem Durchbruch.',
+    'Min. Performance (%): Mindestperformance über die letzten Performance-Tage, die erfüllt sein muss.',
+    'Max. Abstand (%): optionaler Filter für den Abstand des Kurses über der SMA. Leer bedeutet kein Limit.',
+  ];
+}
+
+function renderSignalHelp(mode) {
+  if (!signalHelpBox) return;
+  const items = getSignalHelpItems(mode);
+  signalHelpBox.innerHTML = items
+    .map(item => `<div class="field-help-item">${item}</div>`)
+    .join('');
 }
 
 function fmt(val, decimals = 2) {
@@ -345,6 +383,40 @@ function getSelectedLookbackWeeks() {
   return parsed;
 }
 
+function getSelectedPerformanceDays() {
+  const raw = String(performanceDaysInput.value || '').trim();
+  if (raw === '') {
+    return DEFAULT_PERFORMANCE_DAYS;
+  }
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < MIN_PERFORMANCE_DAYS) {
+    throw new Error(`Ungueltige Performance-Tage. Bitte eine ganze Zahl >= ${MIN_PERFORMANCE_DAYS} eingeben.`);
+  }
+
+  if (parsed > MAX_PERFORMANCE_DAYS) {
+    throw new Error(`Performance-Tage zu gross. Maximal erlaubt: ${MAX_PERFORMANCE_DAYS}.`);
+  }
+
+  return parsed;
+}
+
+function getSelectedMinPerformancePct() {
+  const raw = String(minPerformancePctInput.value || '').trim();
+  if (raw === '') return null;
+  const parsed = Number(raw);
+
+  if (Number.isNaN(parsed) || parsed < MIN_PERFORMANCE_PCT) {
+    throw new Error(`Ungueltige Mindestperformance. Bitte einen Wert >= ${MIN_PERFORMANCE_PCT} angeben.`);
+  }
+
+  if (parsed > MAX_PERFORMANCE_PCT) {
+    throw new Error(`Mindestperformance zu hoch. Maximal erlaubt: ${MAX_PERFORMANCE_PCT} %.`);
+  }
+
+  return parsed;
+}
+
 function getSelectedProviderFilter() {
   const value = String(providerFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_PROVIDER_FILTERS.has(value)) {
@@ -478,6 +550,7 @@ function updateSignalLabels() {
     selectedSmaLabel.textContent = label;
     sumSma.textContent = label;
     thSmaValue.textContent = `SMA${currentFastSmaPeriod}/SMA${currentSlowSmaPeriod} (heute)`;
+    renderSignalHelp('sma-crossover');
     return;
   }
 
@@ -487,6 +560,7 @@ function updateSignalLabels() {
   selectedSmaLabel.textContent = label;
   sumSma.textContent = `SMA${currentSmaPeriod}`;
   thSmaValue.textContent = `SMA${currentSmaPeriod} (heute)`;
+  renderSignalHelp('price-breakout');
 }
 
 function setActiveTab(tab) {
@@ -651,6 +725,9 @@ function renderMatches(matches) {
       const todayLineValue = r.mode === 'sma-crossover'
         ? `${fmt(r.todayFastSMA, 4)} / ${fmt(r.todaySlowSMA, 4)}`
         : fmt(r.todaySMA, 4);
+      const performanceHtml = r.performancePct != null
+        ? `<span class="spread-positive">+${fmt(r.performancePct, 2)} %</span>`
+        : '–';
 
       return `
         <tr>
@@ -663,6 +740,7 @@ function renderMatches(matches) {
           <td><span class="date-badge">${fmtDate(dateValue)}</span></td>
           <td class="num">${fmt(priceValue, 4)}</td>
           <td class="num">${todayLineValue}</td>
+          <td class="num">${performanceHtml}</td>
           <td class="num">${steepnessHtml}</td>
           <td class="num">${spreadHtml}</td>
         </tr>`;
@@ -1276,6 +1354,8 @@ async function runScan() {
   let provider;
   let assetClass;
   let lookbackWeeks;
+  let performanceDays;
+  let minPerformancePct;
 
   try {
     assetClass = getSelectedAssetClass();
@@ -1284,6 +1364,8 @@ async function runScan() {
     fastSmaPeriod = getSelectedFastSmaPeriod();
     slowSmaPeriod = getSelectedSlowSmaPeriod();
     lookbackWeeks = getSelectedLookbackWeeks();
+    performanceDays = getSelectedPerformanceDays();
+    minPerformancePct = getSelectedMinPerformancePct();
 
     if (signalMode === 'sma-crossover' && fastSmaPeriod === slowSmaPeriod) {
       throw new Error('Fast-SMA und Slow-SMA muessen unterschiedlich sein.');
@@ -1323,6 +1405,8 @@ async function runScan() {
         slowSma: String(currentSlowSmaPeriod),
       }),
       ...(currentLookbackWeeks > 0 && { lookbackWeeks: String(currentLookbackWeeks) }),
+      ...(performanceDays > 0 && { performanceDays: String(performanceDays) }),
+      ...(minPerformancePct != null && { minPerformancePct: String(minPerformancePct) }),
       provider: currentProviderFilter,
     });
 
@@ -1371,6 +1455,14 @@ async function runScan() {
     if (data.results?.lookbackDays != null) {
       currentLookbackWeeks = Math.floor(Number(data.results.lookbackDays) / 7);
       lookbackWeeksInput.value = currentLookbackWeeks;
+    }
+
+    if (data.results?.performanceDays != null) {
+      performanceDaysInput.value = data.results.performanceDays;
+    }
+
+    if (data.results?.minPerformancePct != null) {
+      minPerformancePctInput.value = data.results.minPerformancePct;
     }
 
     if (data.results?.providerFilter) {

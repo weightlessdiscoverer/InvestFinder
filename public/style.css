@@ -178,6 +178,28 @@ a:hover { text-decoration: underline; }
   color: var(--color-text-muted);
 }
 
+.field-help {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+
+.field-help-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.field-help-item strong {
+  color: var(--color-text);
+}
+
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

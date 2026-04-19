@@ -15,6 +15,8 @@ const {
   normalizeAssetClass,
   normalizeSmaPeriod,
   normalizeLookbackDays,
+  normalizePerformanceDays,
+  normalizeMinPerformancePct,
   normalizeProviderFilter,
   DEFAULT_SMA_PERIOD,
 } = require('./src/analysis');
@@ -70,6 +72,8 @@ const scanLimiter = rateLimit({
  *   - lookbackDays=21        – lookback period in days (0 = only yesterday vs today)
  *   - lookbackWeeks=3        – Alternative zu lookbackDays; wird intern *7 gerechnet
  *   - provider=all|dax40|mdax
+ *   - performanceDays=5       – Anzahl der letzten Handelstage fuer die Performance-Berechnung
+ *   - minPerformancePct=3.5   – Mindestperformance in Prozent, die im definierten Zeitraum erreicht werden muss
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
@@ -80,6 +84,8 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
   let providerFilter;
   let assetClass;
   let lookbackDays;
+  let performanceDays;
+  let minPerformancePct;
   try {
     smaPeriod = normalizeSmaPeriod(req.query.sma ?? DEFAULT_SMA_PERIOD);
 
@@ -103,6 +109,12 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
     providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
     assetClass = normalizeAssetClass(req.query.assetClass ?? 'all');
     lookbackDays = normalizeLookbackDays(lookbackInput);
+    performanceDays = normalizePerformanceDays(req.query.performanceDays);
+    minPerformancePct = normalizeMinPerformancePct(req.query.minPerformancePct);
+
+    if (minPerformancePct != null && performanceDays === 0) {
+      throw new Error('Performance-Schwelle darf nur zusammen mit Performance-Tagen verwendet werden.');
+    }
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
   }
@@ -116,6 +128,8 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
       providerFilter,
       assetClass,
       lookbackDays,
+      performanceDays,
+      minPerformancePct,
     });
     res.json({ ok: true, results, scannedAt: new Date().toISOString() });
   } catch (err) {
