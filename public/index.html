@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>InvestFinder – ETF, DAX40 &amp; MDAX Empfehlungen</title>
+  <title>InvestFinder – DAX40/MDAX Aktien Scanner</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
         <span class="logo-icon">📈</span>
         <h1>InvestFinder</h1>
       </div>
-      <p class="subtitle">Buy / Hold / Sell Empfehlungen f&uuml;r ETFs, DAX40 &amp; MDAX</p>
+      <p class="subtitle">Buy / Hold / Sell Empfehlungen f&uuml;r DAX40 &amp; MDAX Aktien</p>
     </header>
 
     <nav class="tab-nav" aria-label="Bereichsauswahl">
@@ -29,12 +29,11 @@
     <!-- ── Scan Controls ────────────────────────────────────────────────── -->
     <section class="controls-panel">
       <div class="controls-row">
-        <label class="input-label" for="assetClassFilter">Asset-Typ</label>
-        <select id="assetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40, MDAX und indexuebergreifender Ansicht wechseln">
-          <option value="etf" selected>ETFs</option>
-          <option value="dax40">DAX40-Einzelwerte</option>
-          <option value="mdax">MDAX-Einzelwerte</option>
-          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
+        <label class="input-label" for="assetClassFilter">Aktienbasis</label>
+        <select id="assetClassFilter" class="provider-select" title="Zwischen DAX40, MDAX oder beiden Aktienindizes wechseln">
+          <option value="all" selected>DAX40 + MDAX</option>
+          <option value="dax40">nur DAX40</option>
+          <option value="mdax">nur MDAX</option>
         </select>
         <label class="input-label" for="signalMode">Signaltyp</label>
         <select id="signalMode" class="provider-select" title="Signal-Logik auswaehlen">
@@ -100,11 +99,11 @@
           value="0"
           title="Lookback-Periode in Wochen. 0 = nur gestern vs. heute"
         />
-        <label class="input-label" for="providerFilter">Anbieter</label>
-        <select id="providerFilter" class="provider-select" title="ETF-Anbieter filtern">
+        <label class="input-label" for="providerFilter">Indexfilter</label>
+        <select id="providerFilter" class="provider-select" title="Indexbereich filtern">
           <option value="all" selected>Alle</option>
-          <option value="ishares">nur iShares</option>
-          <option value="xtrackers">nur Xtrackers</option>
+          <option value="dax40">nur DAX40</option>
+          <option value="mdax">nur MDAX</option>
         </select>
         <label class="input-label" for="maxAboveSmaPctInput">Max. Abstand (%)</label>
         <input
@@ -122,11 +121,11 @@
         </button>
         <label class="toggle-label">
           <input type="checkbox" id="chkShowErrors" />
-          Fehlerhafte ETFs anzeigen
+          Fehlerhafte Werte anzeigen
         </label>
       </div>
       <p class="hint">
-        Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">ETFs (iShares/Xtrackers)</strong> auf das Signal
+        Scannt <strong id="etfCount">…</strong> <strong id="assetHintLabel">DAX40 + MDAX Aktien</strong> auf das Signal
         <strong id="selectedSmaLabel">Kurs ueber SMA200</strong> (Tagesbasis).
       </p>
     </section>
@@ -180,7 +179,7 @@
       </h2>
       <div class="sync-grid">
         <div class="sync-item">
-          <span class="sync-label">Verarbeitete ETFs</span>
+          <span class="sync-label">Verarbeitete Werte</span>
           <span class="sync-value" id="syncProcessed">0</span>
         </div>
         <div class="sync-item">
@@ -216,7 +215,7 @@
     <!-- ── Results Table ─────────────────────────────────────────────────── -->
     <section id="resultsSection" class="results-section hidden">
       <h2 class="section-title">
-        <span id="resultsTitleLabel">✅ Breakout-Signale (ETFs)</span>
+        <span id="resultsTitleLabel">✅ Breakout-Signale (Aktien)</span>
         <span class="badge" id="matchBadge">0</span>
       </h2>
 
@@ -258,7 +257,7 @@
     <!-- ── Errors Table (collapsible) ───────────────────────────────────── -->
     <section id="errorsSection" class="results-section errors-section hidden">
       <h2 class="section-title">
-        <span id="errorsTitleLabel">⚠️ Nicht abrufbare ETFs</span>
+        <span id="errorsTitleLabel">⚠️ Nicht abrufbare Werte</span>
         <span class="badge badge-warn" id="errorBadge">0</span>
       </h2>
 
@@ -282,12 +281,11 @@
     <div id="tabDurationContent" class="hidden">
     <section class="controls-panel">
       <div class="controls-row">
-        <label class="input-label" for="durationAssetClassFilter">Asset-Typ</label>
-        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen ETFs, DAX40, MDAX und indexuebergreifender Ansicht wechseln">
-          <option value="etf" selected>ETFs</option>
-          <option value="dax40">DAX40-Einzelwerte</option>
-          <option value="mdax">MDAX-Einzelwerte</option>
-          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
+        <label class="input-label" for="durationAssetClassFilter">Aktienbasis</label>
+        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen DAX40, MDAX oder beiden Aktienindizes wechseln">
+          <option value="all" selected>DAX40 + MDAX</option>
+          <option value="dax40">nur DAX40</option>
+          <option value="mdax">nur MDAX</option>
         </select>
 
         <label class="input-label" for="investmentDurationMonthsInput">Anlagedauer (Monate)</label>
@@ -307,7 +305,7 @@
         </button>
       </div>
       <p class="hint" id="durationHint">
-        Liefert eine technische Buy/Hold/Sell Uebersicht fuer <strong id="durationAssetHintLabel">ETFs</strong> auf Basis der gewaehlten Anlagedauer.
+        Liefert eine technische Buy/Hold/Sell Uebersicht fuer <strong id="durationAssetHintLabel">Aktien</strong> auf Basis der gewaehlten Anlagedauer.
       </p>
 
       <section class="criteria-panel" aria-labelledby="criteriaTitle">
@@ -467,11 +465,10 @@
     <section class="controls-panel db-controls-panel">
       <div class="controls-row">
         <label class="input-label" for="dbAssetClassFilter">DB-Filter</label>
-        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach ETFs, DAX40, MDAX oder indexuebergreifend filtern">
-          <option value="etf" selected>ETFs</option>
-          <option value="dax40">DAX40-Einzelwerte</option>
-          <option value="mdax">MDAX-Einzelwerte</option>
-          <option value="daxmdax">DAX40 + MDAX (indexuebergreifend)</option>
+        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach DAX40, MDAX oder beiden Indizes filtern">
+          <option value="all" selected>DAX40 + MDAX</option>
+          <option value="dax40">nur DAX40</option>
+          <option value="mdax">nur MDAX</option>
         </select>
       </div>
     </section>
@@ -479,7 +476,7 @@
     <!-- ── Database ETF List ─────────────────────────────────────────────── -->
     <section id="dbEtfSection" class="results-section">
       <h2 class="section-title">
-        <span id="dbSectionTitleLabel">📚 ETFs mit vorhandenen DB-Daten</span>
+        <span id="dbSectionTitleLabel">📚 Aktien mit vorhandenen DB-Daten</span>
         <span class="badge" id="dbEtfBadge">0</span>
         <span class="badge" id="dbFreshnessBadge">Unbekannt</span>
       </h2>
@@ -505,7 +502,7 @@
       </div>
 
       <p id="dbEtfEmpty" class="no-matches hidden">
-        Noch keine ETFs mit gespeicherten Yahoo-Daten vorhanden.
+        Noch keine Aktien mit gespeicherten Yahoo-Daten vorhanden.
       </p>
     </section>
     </div>

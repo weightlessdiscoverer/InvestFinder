@@ -36,7 +36,7 @@ async function analyzeInstrumentForDuration(instrument, { bypassCache = false, i
     });
 
     return {
-      assetClass: instrument.assetClass || 'etf',
+      assetClass: instrument.assetClass || 'stock',
       provider: instrument.provider,
       ticker: instrument.ticker,
       name: instrument.name,
@@ -120,7 +120,7 @@ async function analyzeUniverse(universe, { bypassCache, investmentDurationMonths
 async function getTopRecommendations({
   bypassCache = false,
   providerFilter = 'all',
-  assetClass: assetClassInput = 'etf',
+  assetClass: assetClassInput = 'all',
   investmentDurationMonths: investmentDurationMonthsInput,
   limit: limitInput = DEFAULT_RECOMMENDATION_LIMIT,
 } = {}) {

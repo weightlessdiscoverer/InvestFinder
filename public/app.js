@@ -1,5 +1,5 @@
 /**
- * app.js  –  Frontend logic for the InvestFinder Multi-Provider ETF Scanner.
+ * app.js  –  Frontend logic for the InvestFinder DAX40/MDAX Aktien Scanner.
  *
  * Responsibilities:
  *  - Handle "Scan starten" button click
@@ -112,8 +112,8 @@ const DEFAULT_LOOKBACK_WEEKS = 0;
 const MIN_INVESTMENT_DURATION_MONTHS = 1;
 const MAX_INVESTMENT_DURATION_MONTHS = 120;
 const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
-const ALLOWED_ASSET_CLASSES = new Set(['etf', 'dax40', 'mdax', 'daxmdax']);
-const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'ishares', 'xtrackers']);
+const ALLOWED_ASSET_CLASSES = new Set(['all', 'dax40', 'mdax', 'daxmdax']);
+const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'dax40', 'mdax']);
 const RECOMMENDATION_PROFILES = {
   short: {
     rangeLabel: '1 bis 3 Monate',
@@ -138,9 +138,9 @@ const RECOMMENDATION_PROFILES = {
   },
 };
 
-/** Total number of ETFs in the current filter (filled after first response). */
+/** Total number of instruments in the current filter (filled after first response). */
 let knownTotal = '…';
-let currentAssetClass = 'etf';
+let currentAssetClass = 'all';
 let lastMatches = [];
 let currentSignalMode = 'price-breakout';
 let currentSmaPeriod = DEFAULT_SMA_PERIOD;
@@ -150,11 +150,11 @@ let currentLookbackWeeks = DEFAULT_LOOKBACK_WEEKS;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
 let currentTab = 'duration';
-let currentRecommendationAssetClass = 'etf';
+let currentRecommendationAssetClass = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
 let recommendationStatusInterval = null;
 let activeDurationFilterMenu = null;
-let currentDbAssetClass = 'etf';
+let currentDbAssetClass = 'all';
 
 const DURATION_TABLE_KEYS = {
   all: 'all',
@@ -350,36 +350,36 @@ function getSelectedLookbackWeeks() {
 function getSelectedProviderFilter() {
   const value = String(providerFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_PROVIDER_FILTERS.has(value)) {
-    throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur iShares, nur Xtrackers.');
+    throw new Error('Ungueltiger Anbieterfilter. Erlaubt: Alle, nur DAX40, nur MDAX.');
   }
   return value;
 }
 
 function getSelectedAssetClass() {
-  const value = String(assetClassFilter.value || 'etf').trim().toLowerCase();
+  const value = String(assetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, daxmdax.');
   }
   return value;
 }
 
 function getSelectedRecommendationAssetClass() {
-  const value = String(durationAssetClassFilter.value || 'etf').trim().toLowerCase();
+  const value = String(durationAssetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: etf, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, daxmdax.');
   }
   return value;
 }
 
 function isStockUniverseAssetClass(assetClass) {
-  return assetClass === 'dax40' || assetClass === 'mdax' || assetClass === 'daxmdax';
+  return assetClass === 'all' || assetClass === 'dax40' || assetClass === 'mdax' || assetClass === 'daxmdax';
 }
 
 function getAssetClassLabel(assetClass) {
   if (assetClass === 'dax40') return 'DAX40-Einzelwerte';
   if (assetClass === 'mdax') return 'MDAX-Einzelwerte';
-  if (assetClass === 'daxmdax') return 'DAX40 + MDAX (indexuebergreifend)';
-  return 'ETFs';
+  if (assetClass === 'daxmdax' || assetClass === 'all') return 'DAX40 + MDAX';
+  return 'Aktien';
 }
 
 function getSelectedInvestmentDurationMonths() {
@@ -398,54 +398,38 @@ function getSelectedInvestmentDurationMonths() {
 }
 
 function applyAssetClassUiState() {
-  if (isStockUniverseAssetClass(currentAssetClass)) {
+  const label = getAssetClassLabel(currentAssetClass);
+  const isFixedIndex = currentAssetClass === 'dax40' || currentAssetClass === 'mdax';
+
+  providerFilter.disabled = isFixedIndex;
+  if (isFixedIndex) {
     providerFilter.value = 'all';
-    providerFilter.disabled = true;
-    const label = getAssetClassLabel(currentAssetClass);
-    assetHintLabel.textContent = label;
-    resultsTitleLabel.textContent = `✅ Breakout-Signale (${label})`;
-    errorsTitleLabel.textContent = `⚠️ Nicht abrufbare ${label}`;
-    return;
   }
 
-  providerFilter.disabled = false;
-  assetHintLabel.textContent = 'ETFs (iShares/Xtrackers)';
-  resultsTitleLabel.textContent = '✅ Breakout-Signale (ETFs)';
-  errorsTitleLabel.textContent = '⚠️ Nicht abrufbare ETFs';
+  assetHintLabel.textContent = label;
+  resultsTitleLabel.textContent = `✅ Breakout-Signale (${label})`;
+  errorsTitleLabel.textContent = `⚠️ Nicht abrufbare ${label}`;
 }
 
 function getSelectedDbAssetClass() {
-  const value = String(dbAssetClassFilter.value || 'etf').trim().toLowerCase();
+  const value = String(dbAssetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger DB-Filter. Erlaubt: etf, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger DB-Filter. Erlaubt: all, dax40, mdax, daxmdax.');
   }
   return value;
 }
 
 function applyDbAssetClassUiState() {
-  if (isStockUniverseAssetClass(currentDbAssetClass)) {
-    const label = getAssetClassLabel(currentDbAssetClass);
-    dbSectionTitleLabel.textContent = `📚 ${label} mit vorhandenen DB-Daten`;
-    dbEtfEmpty.textContent = `Noch keine ${label} mit gespeicherten Yahoo-Daten vorhanden.`;
-    return;
-  }
-
-  dbSectionTitleLabel.textContent = '📚 ETFs mit vorhandenen DB-Daten';
-  dbEtfEmpty.textContent = 'Noch keine ETFs mit gespeicherten Yahoo-Daten vorhanden.';
+  const label = getAssetClassLabel(currentDbAssetClass);
+  dbSectionTitleLabel.textContent = `📚 ${label} mit vorhandenen DB-Daten`;
+  dbEtfEmpty.textContent = `Noch keine ${label} mit gespeicherten Yahoo-Daten vorhanden.`;
 }
 
 function applyRecommendationAssetClassUiState() {
-  if (isStockUniverseAssetClass(currentRecommendationAssetClass)) {
-    const label = getAssetClassLabel(currentRecommendationAssetClass);
-    durationAssetHintLabel.textContent = label;
-    recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
-    allRecommendationTitleLabel.textContent = `Empfehlung je ${label} (Buy/Hold/Sell)`;
-    return;
-  }
-
-  durationAssetHintLabel.textContent = 'ETFs';
+  const label = getAssetClassLabel(currentRecommendationAssetClass);
+  durationAssetHintLabel.textContent = label;
   recommendationTitleLabel.textContent = '🏆 Buy/Hold/Sell Empfehlungen';
-  allRecommendationTitleLabel.textContent = 'Empfehlung je Einzelwert (Buy/Hold/Sell)';
+  allRecommendationTitleLabel.textContent = `Empfehlung je ${label} (Buy/Hold/Sell)`;
 }
 
 function getRecommendationProfileByDuration(months) {
@@ -1310,7 +1294,7 @@ async function runScan() {
       throw new Error('Fast-SMA und Slow-SMA muessen unterschiedlich sein.');
     }
 
-    provider = isStockUniverseAssetClass(assetClass) ? 'all' : getSelectedProviderFilter();
+    provider = getSelectedProviderFilter();
   } catch (validationErr) {
     errorMessage.textContent = validationErr.message;
     setVisible(errorBanner, true);

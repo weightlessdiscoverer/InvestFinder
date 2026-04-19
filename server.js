@@ -59,8 +59,8 @@ const scanLimiter = rateLimit({
 
 /**
  * GET /api/scan
- * Scans all ETFs for a breakout signal over a selectable SMA(N).
- * Returns JSON array of matching ETFs.
+ * Scans the selected stock universe for a breakout signal over a selectable SMA(N).
+ * Returns JSON array of matching stocks.
  *
  * Query params:
  *   - cache=false            – bypass in-memory cache (default: use cache)
@@ -69,7 +69,7 @@ const scanLimiter = rateLimit({
  *   - slowSma=200            – langsame SMA-Linie fuer SMA-Crossover (optional)
  *   - lookbackDays=21        – lookback period in days (0 = only yesterday vs today)
  *   - lookbackWeeks=3        – Alternative zu lookbackDays; wird intern *7 gerechnet
- *   - provider=all|ishares|xtrackers
+ *   - provider=all|dax40|mdax
  */
 app.get('/api/scan', scanLimiter, async (req, res) => {
   const bypassCache = req.query.cache === 'false';
@@ -101,7 +101,7 @@ app.get('/api/scan', scanLimiter, async (req, res) => {
     }
 
     providerFilter = normalizeProviderFilter(req.query.provider ?? 'all');
-    assetClass = normalizeAssetClass(req.query.assetClass ?? 'etf');
+    assetClass = normalizeAssetClass(req.query.assetClass ?? 'all');
     lookbackDays = normalizeLookbackDays(lookbackInput);
   } catch (validationErr) {
     return res.status(400).json({ ok: false, error: validationErr.message });
@@ -196,7 +196,7 @@ const handleAvailableInstruments = createAvailableInstrumentsHandler({
 /**
  * GET /api/available-instruments
  * Returns persisted Yahoo history entries for selected asset class.
- * Optional query: provider=all|ishares|xtrackers and assetClass=etf|dax40|mdax|daxmdax|all
+ * Optional query: provider=all|dax40|mdax and assetClass=all|dax40|mdax|daxmdax
  */
 app.get('/api/available-instruments', handleAvailableInstruments);
 

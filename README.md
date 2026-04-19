@@ -1,25 +1,24 @@
-# InvestFinder – Multi-Provider ETF SMA Breakout Scanner
+# InvestFinder – DAX40/MDAX Aktien SMA Breakout Scanner
 
-A locally running web app that scans ETFs from **iShares and Xtrackers** for **SMA breakout signals** (price crossing from below to above a selectable Simple Moving Average on a daily basis).
+A locally running web app that scans DAX40 and MDAX stocks for **SMA breakout signals** (price crossing from below to above a selectable Simple Moving Average on a daily basis).
 
 ---
 
 ## Features
 
-- 📈 Scans ETFs across multiple providers (currently iShares + Xtrackers)
-- 🔢 Calculates selectable SMA periods (e.g. 20, 50, 100, 200) per ETF
+- 📈 Scans DAX40 and MDAX stocks for SMA breakout signals
+- 🔢 Calculates selectable SMA periods (e.g. 20, 50, 100, 200) per stock
 - ✅ Detects breakout: `yesterday.close < yesterday.SMA(N)` **AND** `today.close > today.SMA(N)`
 - 🔀 Detects SMA crossover: `SMA(y)` crosses `SMA(z)` from below within optional lookback window
 - ⚡ In-memory caching for raw price history (6 h TTL) to avoid repeated Yahoo calls when SMA changes
 - 💾 Persistente Yahoo-Preis-Datenbank in `src/data/provider-cache/yahoo-history-db.json`
-- 🔄 Background-Synchronisierung beim Start: ETFs mit aeltestem `updatedAt` werden zuerst aktualisiert
+- 🔄 Background-Synchronisierung beim Start: Aktien mit aeltestem `updatedAt` werden zuerst aktualisiert
 - 🧊 Automatischer Cooldown bei Yahoo-Rate-Limit (HTTP 429) mit anschliessender Fortsetzung
 - 🖥️ Live-Sync-Status im Frontend (inkl. Cooldown-Restzeit und Cache-Stand)
-- 🧾 Includes ETF master data per hit: **Provider**, **Ticker**, **Name**, **ISIN**, optional **WKN**
+- 🧾 Includes stock master data per hit: **Provider**, **Ticker**, **Name**, **ISIN**, optional **WKN**
 - 🗂️ Separate master-data layer with static ticker mapping + in-memory cache (24 h TTL)
 - 🛡️ Robust mapping by full Yahoo ticker (incl. exchange suffix) and ISIN format validation
-- 🧱 Modular provider architecture with separate source modules and merged processing layer
-- 🖥️ UI filter for provider scope: **Alle**, **nur iShares**, **nur Xtrackers**
+- 🧱 Modular architecture with separate index source modules and merged processing layer
 - 🧭 Hintergrund-Check fuer DAX40-Aktualitaet mit regelmaessigem Soll/Ist-Abgleich gegen externe Quelle
 - 🤖 Optionales DAX40-Auto-Update: Bei Abweichungen wird `src/dax40List.js` automatisch aktualisiert
 - 🧹 Optionales DAX40-History-Pruning: Rausgeflogene DAX-Ticker werden aus `yahoo-history-db.json` entfernt
@@ -128,13 +127,13 @@ Scans Instrumente fuer den gewaehlten Asset-Typ und gibt Treffer zurueck.
 | Param | Values | Description |
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force a fresh scan |
-| `assetClass` | `etf`, `dax40`, `mdax`, `daxmdax`, `all` | Asset-Typ (default: `etf`) |
+| `assetClass` | `all`, `dax40`, `mdax`, `daxmdax` | Asset-Typ (default: `all`) |
 | `sma` | `20`, `50`, `100`, `200`, ... | SMA period for `price-breakout` mode (integer > 1, max 400; default: 200) |
 | `fastSma` | `20`, `50`, ... | Fast SMA period for `sma-crossover` mode (optional; must be used together with `slowSma`) |
 | `slowSma` | `50`, `100`, `200`, ... | Slow SMA period for `sma-crossover` mode (optional; must be used together with `fastSma`) |
 | `lookbackDays` | `0`..`365` | Lookback period in days (default: `0`) |
 | `lookbackWeeks` | `0`..`52` | Alternative lookback in weeks (converted to days internally) |
-| `provider` | `all`, `ishares`, `xtrackers` | Provider filter (default: `all`) |
+| `provider` | `all`, `dax40`, `mdax` | Provider filter (default: `all`) |
 
 **Response:**
 
@@ -236,8 +235,8 @@ Liefert Kauf- und Verkaufskandidaten passend zur gewaehlten Anlagedauer sowie ei
 | Param | Values | Description |
 |-------|--------|-------------|
 | `cache` | `false` | Bypass in-memory cache and force fresh price loading |
-| `assetClass` | `etf`, `dax40`, `mdax`, `daxmdax`, `all` | Asset-Typ (default: `etf`) |
-| `provider` | `all`, `ishares`, `xtrackers` | Provider filter (default: `all`) |
+| `assetClass` | `all`, `dax40`, `mdax`, `daxmdax` | Asset-Typ (default: `all`) |
+| `provider` | `all`, `dax40`, `mdax` | Provider filter (default: `all`) |
 | `investmentDurationMonths` | `1`..`120` | Geplante Anlagedauer in Monaten |
 | `limit` | `1`..`10` | Anzahl der zurueckgegebenen Top-Werte |
 

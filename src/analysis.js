@@ -58,7 +58,7 @@ async function scanETF(etf, { bypassCache, signalConfig, lookbackDays = DEFAULT_
     });
 
     const baseResult = {
-      assetClass: etf.assetClass || 'etf',
+      assetClass: etf.assetClass || 'stock',
       provider: etf.provider,
       ticker: etf.ticker,
       name: etf.name,
@@ -146,7 +146,7 @@ async function scanAllETFs({
   fastSmaPeriod: fastSmaPeriodInput,
   slowSmaPeriod: slowSmaPeriodInput,
   providerFilter = 'all',
-  assetClass: assetClassInput = 'etf',
+  assetClass: assetClassInput = 'all',
   lookbackDays: lookbackDaysInput,
 } = {}) {
   const signalConfig = normalizeSignalConfig({
