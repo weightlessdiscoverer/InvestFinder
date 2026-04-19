@@ -56,10 +56,8 @@ const syncOldestUpdate = document.getElementById('syncOldestUpdate');
 const syncFreshness = document.getElementById('syncFreshness');
 const syncStatusNote = document.getElementById('syncStatusNote');
 const tabMainBtn = document.getElementById('tabMainBtn');
-const tabDurationBtn = document.getElementById('tabDurationBtn');
 const tabDbBtn = document.getElementById('tabDbBtn');
 const tabMainContent = document.getElementById('tabMainContent');
-const tabDurationContent = document.getElementById('tabDurationContent');
 const tabDbContent = document.getElementById('tabDbContent');
 const durationAssetClassFilter = document.getElementById('durationAssetClassFilter');
 const investmentDurationMonthsInput = document.getElementById('investmentDurationMonthsInput');
@@ -149,7 +147,7 @@ let currentSlowSmaPeriod = 200;
 let currentLookbackWeeks = DEFAULT_LOOKBACK_WEEKS;
 let currentProviderFilter = 'all';
 let syncStatusInterval = null;
-let currentTab = 'duration';
+let currentTab = 'main';
 let currentRecommendationAssetClass = 'all';
 let currentInvestmentDurationMonths = DEFAULT_INVESTMENT_DURATION_MONTHS;
 let recommendationStatusInterval = null;
@@ -492,19 +490,16 @@ function updateSignalLabels() {
 }
 
 function setActiveTab(tab) {
-  const allowed = ['main', 'duration', 'db'];
+  const allowed = ['main', 'db'];
   currentTab = allowed.includes(tab) ? tab : 'main';
 
   const mainActive = currentTab === 'main';
-  const durationActive = currentTab === 'duration';
   const dbActive = currentTab === 'db';
 
   setVisible(tabMainContent, mainActive);
-  setVisible(tabDurationContent, durationActive);
   setVisible(tabDbContent, dbActive);
 
   tabMainBtn.classList.toggle('active', mainActive);
-  tabDurationBtn.classList.toggle('active', durationActive);
   tabDbBtn.classList.toggle('active', dbActive);
 
   if (dbActive) {
@@ -1607,7 +1602,6 @@ maxAboveSmaPctInput.addEventListener('input', () => {
 });
 
 tabMainBtn.addEventListener('click', () => setActiveTab('main'));
-tabDurationBtn.addEventListener('click', () => setActiveTab('duration'));
 tabDbBtn.addEventListener('click', () => setActiveTab('db'));
 
 /* ── Initialisation ──────────────────────────────────────────────────────── */
@@ -1630,4 +1624,4 @@ setCriteriaVisibility(false);
 updateSignalLabels();
 initDurationTableHeaderControls();
 startSyncStatusPolling();
-setActiveTab('duration');
+  setActiveTab('main');
