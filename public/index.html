@@ -29,10 +29,14 @@
     <section class="controls-panel">
       <div class="controls-row">
         <label class="input-label" for="assetClassFilter">Aktienbasis</label>
-        <select id="assetClassFilter" class="provider-select" title="Auswahl des Aktienuniversums für den Scan: DAX40, MDAX oder beide Indizes.">
-          <option value="all" selected>DAX40 + MDAX</option>
+        <select id="assetClassFilter" class="provider-select" title="Auswahl des Aktienuniversums für den Scan: DAX40, MDAX, SDAX, S&P 500 oder Kombinationen.">
+          <option value="all" selected>DAX40 + MDAX + SDAX + S&P 500</option>
           <option value="dax40">nur DAX40</option>
           <option value="mdax">nur MDAX</option>
+          <option value="sdax">nur SDAX</option>
+          <option value="sp500">nur S&P 500</option>
+          <option value="daxmdax">DAX40 + MDAX</option>
+          <option value="daxmdaxsdax">DAX40 + MDAX + SDAX</option>
         </select>
         <label class="input-label" for="signalMode">Signaltyp</label>
         <select id="signalMode" class="provider-select" title="Wähle den Typ des Signals. Für dein beschriebenes Vorgehen verwende 'Kurs über SMA'.">
@@ -305,10 +309,14 @@
     <section class="controls-panel">
       <div class="controls-row">
         <label class="input-label" for="durationAssetClassFilter">Aktienbasis</label>
-        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen DAX40, MDAX oder beiden Aktienindizes wechseln">
-          <option value="all" selected>DAX40 + MDAX</option>
+        <select id="durationAssetClassFilter" class="provider-select" title="Zwischen DAX40, MDAX, SDAX, S&P 500 oder Kombinationen wechseln">
+          <option value="all" selected>DAX40 + MDAX + SDAX + S&P 500</option>
           <option value="dax40">nur DAX40</option>
           <option value="mdax">nur MDAX</option>
+          <option value="sdax">nur SDAX</option>
+          <option value="sp500">nur S&P 500</option>
+          <option value="daxmdax">DAX40 + MDAX</option>
+          <option value="daxmdaxsdax">DAX40 + MDAX + SDAX</option>
         </select>
 
         <label class="input-label" for="investmentDurationMonthsInput">Anlagedauer (Monate)</label>
@@ -488,10 +496,14 @@
     <section class="controls-panel db-controls-panel">
       <div class="controls-row">
         <label class="input-label" for="dbAssetClassFilter">DB-Filter</label>
-        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach DAX40, MDAX oder beiden Indizes filtern">
-          <option value="all" selected>DAX40 + MDAX</option>
+        <select id="dbAssetClassFilter" class="provider-select" title="DB-Daten nach DAX40, MDAX, SDAX, S&P 500 oder Kombinationen filtern">
+          <option value="all" selected>DAX40 + MDAX + SDAX + S&P 500</option>
           <option value="dax40">nur DAX40</option>
           <option value="mdax">nur MDAX</option>
+          <option value="sdax">nur SDAX</option>
+          <option value="sp500">nur S&P 500</option>
+          <option value="daxmdax">DAX40 + MDAX</option>
+          <option value="daxmdaxsdax">DAX40 + MDAX + SDAX</option>
         </select>
       </div>
     </section>
