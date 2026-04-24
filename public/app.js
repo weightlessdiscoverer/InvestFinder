@@ -118,7 +118,7 @@ const MAX_PERFORMANCE_PCT = 1000;
 const MIN_INVESTMENT_DURATION_MONTHS = 1;
 const MAX_INVESTMENT_DURATION_MONTHS = 120;
 const DEFAULT_INVESTMENT_DURATION_MONTHS = 12;
-const ALLOWED_ASSET_CLASSES = new Set(['all', 'dax40', 'mdax', 'daxmdax']);
+const ALLOWED_ASSET_CLASSES = new Set(['all', 'dax40', 'mdax', 'sdax', 'sp500', 'daxmdax', 'daxmdaxsdax', 'daxmdaxsdaxsp500']);
 const ALLOWED_PROVIDER_FILTERS = new Set(['all', 'dax40', 'mdax']);
 const RECOMMENDATION_PROFILES = {
   short: {
@@ -428,7 +428,7 @@ function getSelectedProviderFilter() {
 function getSelectedAssetClass() {
   const value = String(assetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, sdax, sp500, daxmdax, daxmdaxsdax, daxmdaxsdaxsp500.');
   }
   return value;
 }
@@ -436,19 +436,23 @@ function getSelectedAssetClass() {
 function getSelectedRecommendationAssetClass() {
   const value = String(durationAssetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger Asset-Typ. Erlaubt: all, dax40, mdax, sdax, sp500, daxmdax, daxmdaxsdax, daxmdaxsdaxsp500.');
   }
   return value;
 }
 
 function isStockUniverseAssetClass(assetClass) {
-  return assetClass === 'all' || assetClass === 'dax40' || assetClass === 'mdax' || assetClass === 'daxmdax';
+  return assetClass === 'all' || assetClass === 'dax40' || assetClass === 'mdax' || assetClass === 'sdax' || assetClass === 'sp500' || assetClass === 'daxmdax' || assetClass === 'daxmdaxsdax' || assetClass === 'daxmdaxsdaxsp500';
 }
 
 function getAssetClassLabel(assetClass) {
   if (assetClass === 'dax40') return 'DAX40-Einzelwerte';
   if (assetClass === 'mdax') return 'MDAX-Einzelwerte';
-  if (assetClass === 'daxmdax' || assetClass === 'all') return 'DAX40 + MDAX';
+  if (assetClass === 'sdax') return 'SDAX-Einzelwerte';
+  if (assetClass === 'sp500') return 'S&P 500-Einzelwerte';
+  if (assetClass === 'daxmdax') return 'DAX40 + MDAX';
+  if (assetClass === 'daxmdaxsdax') return 'DAX40 + MDAX + SDAX';
+  if (assetClass === 'daxmdaxsdaxsp500' || assetClass === 'all') return 'DAX40 + MDAX + SDAX + S&P 500';
   return 'Aktien';
 }
 
@@ -484,7 +488,7 @@ function applyAssetClassUiState() {
 function getSelectedDbAssetClass() {
   const value = String(dbAssetClassFilter.value || 'all').trim().toLowerCase();
   if (!ALLOWED_ASSET_CLASSES.has(value)) {
-    throw new Error('Ungueltiger DB-Filter. Erlaubt: all, dax40, mdax, daxmdax.');
+    throw new Error('Ungueltiger DB-Filter. Erlaubt: all, dax40, mdax, sdax, sp500, daxmdax, daxmdaxsdax, daxmdaxsdaxsp500.');
   }
   return value;
 }

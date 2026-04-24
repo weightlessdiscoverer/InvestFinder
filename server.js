@@ -210,7 +210,7 @@ const handleAvailableInstruments = createAvailableInstrumentsHandler({
 /**
  * GET /api/available-instruments
  * Returns persisted Yahoo history entries for selected asset class.
- * Optional query: provider=all|dax40|mdax and assetClass=all|dax40|mdax|daxmdax
+ * Optional query: provider=all|dax40|mdax|sdax|sp500|ishares|xtrackers and assetClass=all|dax40|mdax|sdax|sp500|etf|daxmdax|daxmdaxsdax|daxmdaxsdaxsp500
  */
 app.get('/api/available-instruments', handleAvailableInstruments);
 

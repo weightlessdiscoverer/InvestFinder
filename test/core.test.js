@@ -756,6 +756,7 @@ test('normalizeProviderFilter validates allowed provider values', () => {
   assert.equal(normalizeProviderFilter('all'), 'all');
   assert.equal(normalizeProviderFilter(' iShares '), 'ishares');
   assert.equal(normalizeProviderFilter('XTRACKERS'), 'xtrackers');
+  assert.equal(normalizeProviderFilter('SP500'), 'sp500');
   assert.throws(() => normalizeProviderFilter('other'), /Ungueltiger Anbieterfilter/);
 });
 
@@ -851,7 +852,11 @@ test('normalizeAssetClass validates allowed asset types', () => {
   assert.equal(normalizeAssetClass('etf'), 'etf');
   assert.equal(normalizeAssetClass(' DAX40 '), 'dax40');
   assert.equal(normalizeAssetClass(' mdax '), 'mdax');
+  assert.equal(normalizeAssetClass(' sdax '), 'sdax');
+  assert.equal(normalizeAssetClass(' sp500 '), 'sp500');
   assert.equal(normalizeAssetClass(' daxmdax '), 'daxmdax');
+  assert.equal(normalizeAssetClass(' daxmdaxsdax '), 'daxmdaxsdax');
+  assert.equal(normalizeAssetClass(' daxmdaxsdaxsp500 '), 'daxmdaxsdaxsp500');
   assert.equal(normalizeAssetClass('all'), 'all');
   assert.throws(() => normalizeAssetClass('stocks'), /Ungueltiger Asset-Typ/);
 });
@@ -867,6 +872,9 @@ test('getEtfUniverse returns deduplicated valid entries', async () => {
   const ishares = await getEtfUniverse({ providerFilter: 'ishares', bypassCache: true });
   assert.ok(ishares.every(item => item.provider === 'iShares'));
 
+  const sp500 = await getEtfUniverse({ providerFilter: 'sp500', bypassCache: true });
+  assert.ok(sp500.every(item => item.provider === 'SP500'));
+
   const dax40 = await getEtfUniverse({ assetClass: 'dax40', bypassCache: true });
   assert.ok(dax40.length > 0);
   assert.ok(dax40.every(item => item.provider === 'DAX40'));
@@ -877,10 +885,33 @@ test('getEtfUniverse returns deduplicated valid entries', async () => {
   assert.ok(mdax.every(item => item.provider === 'MDAX'));
   assert.ok(mdax.every(item => item.assetClass === 'mdax'));
 
+  const sdax = await getEtfUniverse({ assetClass: 'sdax', bypassCache: true });
+  assert.ok(sdax.length > 0);
+  assert.ok(sdax.every(item => item.provider === 'SDAX'));
+  assert.ok(sdax.every(item => item.assetClass === 'sdax'));
+
+  const sp500 = await getEtfUniverse({ assetClass: 'sp500', bypassCache: true });
+  assert.ok(sp500.length > 0);
+  assert.ok(sp500.every(item => item.provider === 'SP500'));
+  assert.ok(sp500.every(item => item.assetClass === 'sp500'));
+
   const daxmdax = await getEtfUniverse({ assetClass: 'daxmdax', bypassCache: true });
   assert.ok(daxmdax.length > 0);
   assert.ok(daxmdax.some(item => item.provider === 'DAX40'));
   assert.ok(daxmdax.some(item => item.provider === 'MDAX'));
+
+  const daxmdaxsdax = await getEtfUniverse({ assetClass: 'daxmdaxsdax', bypassCache: true });
+  assert.ok(daxmdaxsdax.length > 0);
+  assert.ok(daxmdaxsdax.some(item => item.provider === 'DAX40'));
+  assert.ok(daxmdaxsdax.some(item => item.provider === 'MDAX'));
+  assert.ok(daxmdaxsdax.some(item => item.provider === 'SDAX'));
+
+  const daxmdaxsdaxsp500 = await getEtfUniverse({ assetClass: 'daxmdaxsdaxsp500', bypassCache: true });
+  assert.ok(daxmdaxsdaxsp500.length > 0);
+  assert.ok(daxmdaxsdaxsp500.some(item => item.provider === 'DAX40'));
+  assert.ok(daxmdaxsdaxsp500.some(item => item.provider === 'MDAX'));
+  assert.ok(daxmdaxsdaxsp500.some(item => item.provider === 'SDAX'));
+  assert.ok(daxmdaxsdaxsp500.some(item => item.provider === 'SP500'));
 });
 
 test('masterDataService resolves identifiers and supports cache warmup', async () => {
