@@ -4,5 +4,5 @@ npm-debug.log*
 *.env
 
 # Yahoo history store
-src/data/providers/yahoo-history-db.json
-src/data/providers/yahoo-history-db.backup.json
+src/data/provider-cache/yahoo-history-db.json
+src/data/provider-cache/yahoo-history-db.backup.json
