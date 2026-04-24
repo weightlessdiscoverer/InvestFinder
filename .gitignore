@@ -2,3 +2,7 @@ node_modules/
 npm-debug.log*
 .DS_Store
 *.env
+
+# Yahoo history store
+src/data/provider-cache/yahoo-history-db.json
+src/data/provider-cache/yahoo-history-db.backup.json
